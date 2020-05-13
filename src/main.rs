@@ -1,6 +1,7 @@
 use std::error::Error;
 use std::env;
 use std::fs::File;
+use std::io::Write;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -12,11 +13,12 @@ fn main() {
                 Ok(f) => f,
             };
 
-            println!(".intel_syntax noprefix");
-            println!(".global main\n");
-            println!("main:\n");
-            println!("  mov rax, {}\n", args[1]);
-            println!("  ret\n");
+            f.write_all(b"hoge").unwrap();
+            f.write_all(b".intel_syntax noprefix").unwrap();
+            f.write_all(b".global main\n").unwrap();
+            f.write_all(b"main:\n").unwrap();
+            write!(& mut f, "  mov rax, {}\n", args[1]).unwrap();
+            f.write_all(b"  ret\n").unwrap();
         },
         _ => {
             eprintln!("Wrong number of arguments!");
