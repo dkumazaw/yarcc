@@ -17,7 +17,7 @@ fn main() {
             f.write_all(b".intel_syntax noprefix").unwrap();
             f.write_all(b".global main\n").unwrap();
             f.write_all(b"main:\n").unwrap();
-            write!(& mut f, "  mov rax, {}\n", args[1]).unwrap();
+            write!(&mut f, "  mov rax, {}\n", args[1]).unwrap();
             f.write_all(b"  ret\n").unwrap();
         },
         _ => {
