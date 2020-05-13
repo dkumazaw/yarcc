@@ -1,3 +1,4 @@
+use assert_cmd::prelude::*;
 use std::process::Command;
 
 macro_rules! tests {
@@ -5,8 +6,16 @@ macro_rules! tests {
         $(
             #[test]
             fn $name() {
-                println!($input);
-                println!($expected);
+                let mut rcc = Command::cargo_bin("rcc").unwrap();
+                rcc.arg($input)
+                    .assert()
+                    .success();
+
+                let mut obj = Command::new("sh")
+                                      .arg("-c")
+                                      .arg("cc -o tmp tmp.s")
+                                      .output()
+                                      .unwrap();
             }
         )*
     }
