@@ -6,25 +6,28 @@ macro_rules! tests {
         $(
             #[test]
             fn $name() {
-                let mut rcc = Command::cargo_bin("rcc").unwrap();
-                rcc.arg($input)
-                    .assert()
-                    .success();
+                let _rcc = Command::cargo_bin("rcc")
+                                .unwrap()
+                                .arg($input)
+                                .assert()
+                                .success();
 
-                let mut obj = Command::new("cc")
-                                      .args(&["-o", "tmp", "tmp.s"])
-                                      .output()
-                                      .unwrap();
+                let _obj = Command::new("cc")
+                                 .args(&["-o", "tmp", "tmp.s"])
+                                 .output()
+                                 .unwrap();
 
-                let mut tmp = Command::new("./tmp")
+                let status = Command::new("./tmp")
                                        .status()
                                        .unwrap();
-                println!("{}", tmp);
+                // println!("{}", status.code().unwrap());
+                assert_eq!($expected, status.code().unwrap());
             }
         )*
     }
 }
 
 tests! {
-    hoge: ("1", "1"),
+    simple0: ("0", 0),
+    simple1: ("42", 42),
 }
