@@ -11,16 +11,20 @@ macro_rules! tests {
                     .assert()
                     .success();
 
-                let mut obj = Command::new("sh")
-                                      .arg("-c")
-                                      .arg("cc -o tmp tmp.s")
+                let mut obj = Command::new("cc")
+                                      .args(&["-o", "tmp", "tmp.s"])
                                       .output()
                                       .unwrap();
+
+                let mut tmp = Command::new("./tmp")
+                                       .status()
+                                       .unwrap();
+                println!("{}", tmp);
             }
         )*
     }
 }
 
 tests! {
-    hoge: ("fuga", "foo"),
+    hoge: ("1", "1"),
 }
