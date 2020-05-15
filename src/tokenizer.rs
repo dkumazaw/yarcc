@@ -27,11 +27,15 @@ impl Tokenizer {
 
     pub fn tokenize(&mut self, in_str: &str) {
         for c in in_str.chars() {
-            if c == ' ' {
-                continue;
-            }
+            match c {
+                ' ' => {
+                    continue;
+                }
 
-            println!("{}", c);
+                _ => {
+                    println!("{}", c);
+                }
+            }
         }
     }
 }
