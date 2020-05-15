@@ -17,7 +17,8 @@ fn main() {
                 Ok(f) => f,
             };
 
-            let tk = Tokenizer::new();
+            let tk = Tokenizer::new()
+                               .tokenize(&args[1]);
 
             f.write_all(b".intel_syntax noprefix\n").unwrap();
             f.write_all(b".global main\n\n").unwrap();

@@ -24,4 +24,10 @@ impl Tokenizer {
             tokens: LinkedList::new(),
         }
     }
+
+    pub fn tokenize(&self, in_str: &str) {
+        for c in in_str.chars() {
+            println!("{}", c);
+        }
+    }
 }
