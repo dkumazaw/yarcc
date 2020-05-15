@@ -3,6 +3,10 @@ use std::error::Error;
 use std::fs::File;
 use std::io::Write;
 
+mod tokenizer;
+
+use tokenizer::Tokenizer;
+
 fn main() {
     let args: Vec<String> = env::args().collect();
 
@@ -12,6 +16,8 @@ fn main() {
                 Err(why) => panic!("Couldn't create tmp.s because {}", why.to_string()),
                 Ok(f) => f,
             };
+
+            let tk = Tokenizer::new();
 
             f.write_all(b".intel_syntax noprefix\n").unwrap();
             f.write_all(b".global main\n\n").unwrap();
