@@ -25,8 +25,12 @@ impl Tokenizer {
         }
     }
 
-    pub fn tokenize(&self, in_str: &str) {
+    pub fn tokenize(&mut self, in_str: &str) {
         for c in in_str.chars() {
+            if c == ' ' {
+                continue;
+            }
+
             println!("{}", c);
         }
     }
