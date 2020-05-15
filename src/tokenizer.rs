@@ -28,12 +28,22 @@ impl Tokenizer {
     pub fn tokenize(&mut self, in_str: &str) {
         for c in in_str.chars() {
             match c {
-                ' ' => {
+                c if c.is_whitespace() => {
+                    println!("That's a whitespace!");
                     continue;
-                }
+                },
+
+                '+' | '-' => {
+                    continue;
+                },
+
+                c if c.is_numeric() => {
+                    println!("{}", c);
+                    continue;
+                },
 
                 _ => {
-                    println!("{}", c);
+                    panic!("Unexpected char.")
                 }
             }
         }
