@@ -23,8 +23,8 @@ fn main() {
                 Ok(f) => f,
             };
 
-            let tk = Tokenizer::new()
-                               .tokenize(&args[1]);
+            let mut tk = Tokenizer::new();
+            let mut tkiter = tk.tokenize(&args[1]);
 
             // Preamble: 
             gen_line!(&mut f, ".intel_syntax noprefix\n");
@@ -33,6 +33,8 @@ fn main() {
 
 
             gen_line!(&mut f, "  mov rax, {}\n", args[1]);
+
+            println!("{:?}", tkiter.next().unwrap());
 
             //while !tk.at_eof() {
                 

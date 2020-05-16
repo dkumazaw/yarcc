@@ -1,12 +1,15 @@
 use std::collections::LinkedList;
+use std::collections::linked_list::IterMut;
 
+#[derive(Debug)]
 enum TokenKind {
     TKRESERVED,
     TKNUM,
     TKEOF
 }
 
-struct Token {
+#[derive(Debug)]
+pub struct Token {
     kind: TokenKind,
     val: i32,
 }
@@ -41,7 +44,7 @@ impl Tokenizer {
     }
 
     // Tokenizes the passed str
-    pub fn tokenize(&mut self, in_str: &str) {
+    pub fn tokenize(&mut self, in_str: &str) -> IterMut<Token> {
         use TokenKind::*;
 
         for c in in_str.chars() {
@@ -69,6 +72,8 @@ impl Tokenizer {
 
         // Finally add eof
         self.tokens.push_back(Token::new(TKEOF));
+
+        self.tokens.iter_mut()
     }
 
     // Returns true if we arrieved at EOF
