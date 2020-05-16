@@ -6,8 +6,16 @@ enum TokenKind {
     TK_EOF
 }
 
+impl Default for TokenKind {
+    fn default() -> Self {
+        TokenKind::TK_RESERVED
+    }
+}
+
+#[derive(Default)]
 struct Token {
     kind: TokenKind,
+    val: i32,
 }
 
 pub struct Tokenizer {
@@ -19,7 +27,7 @@ impl Token {
 }
 
 impl Tokenizer {
-    pub fn new() -> Tokenizer {
+    pub fn new() -> Self {
         Tokenizer {
             tokens: LinkedList::new(),
         }
