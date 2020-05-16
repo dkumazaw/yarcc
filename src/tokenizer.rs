@@ -1,9 +1,9 @@
 use std::collections::LinkedList;
 
 enum TokenKind {
-    TK_RESERVED,
-    TK_NUM,
-    TK_EOF
+    TKRESERVED,
+    TKNUM,
+    TKEOF
 }
 
 struct Token {
@@ -47,14 +47,13 @@ impl Tokenizer {
                 },
 
                 '+' | '-' => {
-                    self.tokens.push_back(Token::new(TK_RESERVED));
+                    self.tokens.push_back(Token::new(TKRESERVED));
                     continue;
                 },
 
                 c if c.is_numeric() => {
-                    self.tokens.push_back(Token::new(TK_NUM)
+                    self.tokens.push_back(Token::new(TKNUM)
                                                 .val(c.to_digit(10).unwrap() as i32));
-                    println!("{}", c);
                     continue;
                 },
 
