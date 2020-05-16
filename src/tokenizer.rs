@@ -12,7 +12,8 @@ struct Token {
 }
 
 pub struct Tokenizer {
-    tokens: LinkedList<Token>
+    tokens: LinkedList<Token>, // Linked list of tokens
+    pos: u32, // Token that is being read currently
 }
 
 impl Token {
@@ -31,12 +32,15 @@ impl Token {
 }
 
 impl Tokenizer {
+    // Constructor
     pub fn new() -> Self {
         Tokenizer {
             tokens: LinkedList::new(),
+            pos: 0
         }
     }
 
+    // Tokenizes the passed str
     pub fn tokenize(&mut self, in_str: &str) {
         use TokenKind::*;
 
@@ -62,5 +66,13 @@ impl Tokenizer {
                 }
             }
         }
+
+        // Finally add eof
+        self.tokens.push_back(Token::new(TKEOF));
+    }
+
+    // Returns true if we arrieved at EOF
+    pub fn at_eof(&mut self) -> bool {
+        false
     }
 }
