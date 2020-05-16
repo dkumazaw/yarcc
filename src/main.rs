@@ -14,6 +14,8 @@ macro_rules! gen_line {
 }
 
 fn main() {
+    use tokenizer::TokenKind::*;
+
     let args: Vec<String> = env::args().collect();
 
     match args.len() {
@@ -24,7 +26,7 @@ fn main() {
             };
 
             let mut tk = Tokenizer::new();
-            let mut tkiter = tk.tokenize(&args[1]);
+            let mut tkiter = tk.tokenize(&args[1]).peekable();
 
             // Preamble: 
             gen_line!(&mut f, ".intel_syntax noprefix\n");
@@ -34,7 +36,8 @@ fn main() {
 
             gen_line!(&mut f, "  mov rax, {}\n", args[1]);
 
-            println!("{:?}", tkiter.next().unwrap());
+            //while tkiter.peek_next().unwrap().kind != TKEOF
+            println!("{:?}", tkiter.next());
 
             //while !tk.at_eof() {
                 
