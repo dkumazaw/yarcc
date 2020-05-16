@@ -7,6 +7,12 @@ mod tokenizer;
 
 use tokenizer::Tokenizer;
 
+macro_rules! gen_line {
+    ($dst:expr, $($arg: tt)*) => {
+        write!($dst, $($arg)*).unwrap()
+    } 
+}
+
 fn main() {
     let args: Vec<String> = env::args().collect();
 
@@ -20,11 +26,19 @@ fn main() {
             let tk = Tokenizer::new()
                                .tokenize(&args[1]);
 
-            f.write_all(b".intel_syntax noprefix\n").unwrap();
-            f.write_all(b".global main\n\n").unwrap();
-            f.write_all(b"main:\n").unwrap();
-            write!(&mut f, "  mov rax, {}\n", args[1]).unwrap();
-            f.write_all(b"  ret\n").unwrap();
+            // Preamble: 
+            gen_line!(&mut f, ".intel_syntax noprefix\n");
+            gen_line!(&mut f, ".global main\n\n");
+            gen_line!(&mut f, "main:\n");
+
+
+            gen_line!(&mut f, "  mov rax, {}\n", args[1]);
+
+            //while !tk.at_eof() {
+                
+            //}
+
+            gen_line!(&mut f, "  ret\n");
         }
         _ => {
             eprintln!("Wrong number of arguments!");
