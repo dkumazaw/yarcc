@@ -6,13 +6,6 @@ enum TokenKind {
     TK_EOF
 }
 
-impl Default for TokenKind {
-    fn default() -> Self {
-        TokenKind::TK_RESERVED
-    }
-}
-
-#[derive(Default)]
 struct Token {
     kind: TokenKind,
     val: i32,
@@ -23,7 +16,18 @@ pub struct Tokenizer {
 }
 
 impl Token {
-    fn new(kind: TokenKind) {}
+    fn new(kind: TokenKind) -> Self {
+        // TODO: Can we have some default behavior?
+        Token {
+            kind: kind,
+            val: 0,
+        }
+    }
+
+    fn val(mut self, value: i32) -> Self {
+        self.val = value; 
+        self
+    }
 }
 
 impl Tokenizer {
@@ -34,18 +38,22 @@ impl Tokenizer {
     }
 
     pub fn tokenize(&mut self, in_str: &str) {
+        use TokenKind::*;
+
         for c in in_str.chars() {
             match c {
                 c if c.is_whitespace() => {
-                    println!("That's a whitespace!");
                     continue;
                 },
 
                 '+' | '-' => {
+                    self.tokens.push_back(Token::new(TK_RESERVED));
                     continue;
                 },
 
                 c if c.is_numeric() => {
+                    self.tokens.push_back(Token::new(TK_NUM)
+                                                .val(c.to_digit(10).unwrap() as i32));
                     println!("{}", c);
                     continue;
                 },
