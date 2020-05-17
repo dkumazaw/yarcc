@@ -87,11 +87,25 @@ impl<'a> TokenIter<'a> {
         }
     }
 
-    fn expect() {
+    pub fn expect(c: char) {
+
+    }
+
+    pub fn expect_number(&mut self) -> i32 {
 
     }
     
-    fn consume() {
+    pub fn consume() {
 
+    }
+
+    // Wrapper to hide option unwrapping
+    fn peek(&mut self) -> &Token {
+        self.iter.peek().unwrap()
+    }
+
+    // Wrapper to hide option unwrapping
+    fn next(&mut self) -> &Token {
+        self.iter.next().unwrap()
     }
 }
