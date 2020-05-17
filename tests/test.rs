@@ -30,4 +30,5 @@ macro_rules! tests {
 tests! {
     simple0: ("0", 0),
     simple1: ("42", 42),
+    simple2: (" 12 + 34 - 5 ", 41),
 }
