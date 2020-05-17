@@ -18,8 +18,8 @@ pub struct Tokenizer {
     tokens: LinkedList<Token>, // Linked list of tokens
 }
 
-pub struct TokenIter<'a, T> where T: 'a {
-    iter: Iter<'a, T>,    
+pub struct TokenIter<'a> {
+    iter: Iter<'a, Token>,    
 }
 
 impl Token {
