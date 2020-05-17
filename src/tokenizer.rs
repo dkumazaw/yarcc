@@ -12,6 +12,7 @@ pub enum TokenKind {
 #[derive(Debug)]
 pub struct Token {
     pub kind: TokenKind,
+    string: Option<String>,
     val: i32,
 }
 
@@ -28,6 +29,7 @@ impl Token {
         // TODO: Can we have some default behavior?
         Token {
             kind: kind,
+            string: None,
             val: 0,
         }
     }
@@ -88,11 +90,18 @@ impl<'a> TokenIter<'a> {
     }
 
     pub fn expect(c: char) {
+        if self.peek().kind != TokenKind::TKRESERVED {
+            panic!
+        }
 
     }
 
     pub fn expect_number(&mut self) -> i32 {
+        if self.peek().kind != TokenKind::TKNUM {
+            panic!("TokenIter: Expected number.")
+        }
 
+        self.next().val
     }
     
     pub fn consume() {
