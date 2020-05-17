@@ -1,7 +1,7 @@
 use std::collections::LinkedList;
 use std::collections::linked_list::Iter;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum TokenKind {
     TKRESERVED,
     TKNUM,
@@ -10,13 +10,16 @@ pub enum TokenKind {
 
 #[derive(Debug)]
 pub struct Token {
-    kind: TokenKind,
+    pub kind: TokenKind,
     val: i32,
 }
 
 pub struct Tokenizer {
     tokens: LinkedList<Token>, // Linked list of tokens
-    pos: u32, // Token that is being read currently
+}
+
+pub struct TokenIter<'a, T> where T: 'a {
+    iter: Iter<'a, T>,    
 }
 
 impl Token {
@@ -39,7 +42,6 @@ impl Tokenizer {
     pub fn new() -> Self {
         Tokenizer {
             tokens: LinkedList::new(),
-            pos: 0
         }
     }
 
@@ -74,10 +76,5 @@ impl Tokenizer {
         self.tokens.push_back(Token::new(TKEOF));
 
         self.tokens.iter()
-    }
-
-    // Returns true if we arrieved at EOF
-    pub fn at_eof(&mut self) -> bool {
-        false
     }
 }

@@ -36,12 +36,12 @@ fn main() {
 
             gen_line!(&mut f, "  mov rax, {}\n", args[1]);
 
-            //while tkiter.peek_next().unwrap().kind != TKEOF
-            println!("{:?}", tkiter.next());
+            while tkiter.peek().unwrap().kind != TKEOF {
 
-            //while !tk.at_eof() {
-                
-            //}
+
+            }
+            
+            println!("{:?}", tkiter.peek());
 
             gen_line!(&mut f, "  ret\n");
         }
