@@ -4,12 +4,12 @@ use std::io::Write;
 
 mod tokenizer;
 
-use tokenizer::{Tokenizer, TokenIter};
+use tokenizer::{TokenIter, Tokenizer};
 
 macro_rules! gen_line {
     ($dst:expr, $($arg: tt)*) => {
         write!($dst, $($arg)*).unwrap()
-    } 
+    }
 }
 
 fn main() {
@@ -25,7 +25,7 @@ fn main() {
             let mut tk = Tokenizer::new();
             let mut tkiter = TokenIter::new(tk.tokenize(&args[1]));
 
-            // Preamble: 
+            // Preamble:
             gen_line!(&mut f, ".intel_syntax noprefix\n");
             gen_line!(&mut f, ".global main\n\n");
             gen_line!(&mut f, "main:\n");

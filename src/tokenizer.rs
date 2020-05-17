@@ -1,12 +1,12 @@
-use std::collections::LinkedList;
 use std::collections::linked_list::Iter;
+use std::collections::LinkedList;
 use std::iter::Peekable;
 
 #[derive(Debug, PartialEq)]
 pub enum TokenKind {
     TKRESERVED,
     TKNUM,
-    TKEOF
+    TKEOF,
 }
 
 #[derive(Debug)]
@@ -21,7 +21,7 @@ pub struct Tokenizer {
 }
 
 pub struct TokenIter<'a> {
-    iter: Peekable<Iter<'a, Token>>,    
+    iter: Peekable<Iter<'a, Token>>,
 }
 
 impl Token {
@@ -35,7 +35,7 @@ impl Token {
     }
 
     fn val(mut self, value: i32) -> Self {
-        self.val = value; 
+        self.val = value;
         self
     }
 
@@ -57,27 +57,40 @@ impl Tokenizer {
     pub fn tokenize(&mut self, in_str: &str) -> Iter<Token> {
         use TokenKind::*;
 
-        for c in in_str.chars() {
+        let len = in_str.len();
+        let mut cur = 0;
+
+        while cur != len {
+            let c = in_str.chars().nth(cur).unwrap();
             match c {
                 c if c.is_whitespace() => {
+                    cur += 1;
                     continue;
-                },
+                }
 
                 '+' | '-' => {
-                    self.tokens.push_back(Token::new(TKRESERVED)
-                                                .string(&c.to_string()));
+                    self.tokens
+                        .push_back(Token::new(TKRESERVED).string(&c.to_string()));
+                    cur += 1;
                     continue;
-                },
+                }
 
                 c if c.is_numeric() => {
-                    self.tokens.push_back(Token::new(TKNUM)
-                                                .val(c.to_digit(10).unwrap() as i32));
+                    let mut val = c.to_digit(10).unwrap() as i32;
+                    cur += 1;
+                    while cur != len {
+                        let _c = in_str.chars().nth(cur).unwrap();
+                        if !_c.is_numeric() {
+                            break;
+                        }
+                        val = val * 10 + (_c.to_digit(10).unwrap() as i32);
+                        cur += 1;
+                    }
+                    self.tokens.push_back(Token::new(TKNUM).val(val));
                     continue;
-                },
-
-                _ => {
-                    panic!("Unexpected char.")
                 }
+
+                _ => panic!("Unexpected char."),
             }
         }
 
@@ -91,7 +104,7 @@ impl Tokenizer {
 impl<'a> TokenIter<'a> {
     pub fn new(baseiter: Iter<'a, Token>) -> Self {
         TokenIter {
-            iter: baseiter.peekable()
+            iter: baseiter.peekable(),
         }
     }
 
@@ -117,7 +130,7 @@ impl<'a> TokenIter<'a> {
 
         t.val
     }
-    
+
     pub fn consume(&mut self, s: &str) -> bool {
         let t = self.peek();
         if t.kind == TokenKind::TKRESERVED {
@@ -132,7 +145,7 @@ impl<'a> TokenIter<'a> {
     }
 
     pub fn at_eof(&mut self) -> bool {
-        self.peek().kind == TokenKind::TKEOF 
+        self.peek().kind == TokenKind::TKEOF
     }
 
     // Wrapper to hide option unwrapping
