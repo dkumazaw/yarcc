@@ -1,5 +1,6 @@
 use std::collections::LinkedList;
 use std::collections::linked_list::Iter;
+use std::iter::Peekable;
 
 #[derive(Debug, PartialEq)]
 pub enum TokenKind {
@@ -19,7 +20,7 @@ pub struct Tokenizer {
 }
 
 pub struct TokenIter<'a> {
-    iter: Iter<'a, Token>,    
+    iter: Peekable<Iter<'a, Token>>,    
 }
 
 impl Token {
@@ -76,5 +77,21 @@ impl Tokenizer {
         self.tokens.push_back(Token::new(TKEOF));
 
         self.tokens.iter()
+    }
+}
+
+impl<'a> TokenIter<'a> {
+    fn new(baseiter: Iter<'a, Token>) -> Self {
+        TokenIter {
+            iter: baseiter.peekable()
+        }
+    }
+
+    fn expect() {
+
+    }
+    
+    fn consume() {
+
     }
 }
