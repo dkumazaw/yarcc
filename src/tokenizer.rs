@@ -81,7 +81,7 @@ impl Tokenizer {
 }
 
 impl<'a> TokenIter<'a> {
-    fn new(baseiter: Iter<'a, Token>) -> Self {
+    pub fn new(baseiter: Iter<'a, Token>) -> Self {
         TokenIter {
             iter: baseiter.peekable()
         }

@@ -1,11 +1,10 @@
 use std::env;
-use std::error::Error;
 use std::fs::File;
 use std::io::Write;
 
 mod tokenizer;
 
-use tokenizer::Tokenizer;
+use tokenizer::{Tokenizer, TokenIter};
 
 macro_rules! gen_line {
     ($dst:expr, $($arg: tt)*) => {
@@ -26,7 +25,7 @@ fn main() {
             };
 
             let mut tk = Tokenizer::new();
-            let mut tkiter = tk.tokenize(&args[1]).peekable();
+            let mut tkiter = TokenIter::new(tk.tokenize(&args[1]));
 
             // Preamble: 
             gen_line!(&mut f, ".intel_syntax noprefix\n");
@@ -35,13 +34,6 @@ fn main() {
 
 
             gen_line!(&mut f, "  mov rax, {}\n", args[1]);
-
-            while tkiter.peek().unwrap().kind != TKEOF {
-
-
-            }
-            
-            println!("{:?}", tkiter.peek());
 
             gen_line!(&mut f, "  ret\n");
         }
