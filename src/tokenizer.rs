@@ -90,31 +90,39 @@ impl<'a> TokenIter<'a> {
     }
 
     pub fn expect(&mut self, s: &str) {
-        let t = self.peek();
+        let t = self.next();
         if t.kind != TokenKind::TKRESERVED {
             panic!("TokenIter: Expected reserved token {}", s);
         }
         if let Some(ref tkstr) = t.string {
             if tkstr != s {
-                panic!("hogehoge!")
+                panic!("TokenIter: Wrong token string.")
             }
         } else {
-            panic!("HOge!")
+            panic!("TokenIter: Expected that string exists.")
         }
-
-        self.next();
     }
 
     pub fn expect_number(&mut self) -> i32 {
-        if self.peek().kind != TokenKind::TKNUM {
+        let t = self.next();
+        if t.kind != TokenKind::TKNUM {
             panic!("TokenIter: Expected number.")
         }
 
-        self.next().val
+        t.val
     }
     
-    pub fn consume(&mut self) -> bool {
-        
+    pub fn consume(&mut self, s: &str) -> bool {
+        let t = self.peek();
+        if t.kind == TokenKind::TKRESERVED {
+            if let Some(ref tkstr) = t.string {
+                if tkstr == s {
+                    self.next();
+                    return true;
+                }
+            }
+        }
+        false
     }
 
     pub fn at_eof(&mut self) -> bool {
