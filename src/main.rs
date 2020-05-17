@@ -32,6 +32,9 @@ fn main() {
             gen_line!(&mut f, ".global main\n\n");
             gen_line!(&mut f, "main:\n");
 
+            while !tkiter.at_eof() {
+                
+            }
 
             gen_line!(&mut f, "  mov rax, {}\n", args[1]);
 

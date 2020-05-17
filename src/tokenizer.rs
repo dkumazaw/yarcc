@@ -89,11 +89,20 @@ impl<'a> TokenIter<'a> {
         }
     }
 
-    pub fn expect(c: char) {
-        if self.peek().kind != TokenKind::TKRESERVED {
-            panic!
+    pub fn expect(&mut self, s: &str) {
+        let t = self.peek();
+        if t.kind != TokenKind::TKRESERVED {
+            panic!("TokenIter: Expected reserved token {}", s);
+        }
+        if let Some(ref tkstr) = t.string {
+            if tkstr != s {
+                panic!("hogehoge!")
+            }
+        } else {
+            panic!("HOge!")
         }
 
+        self.next();
     }
 
     pub fn expect_number(&mut self) -> i32 {
@@ -104,8 +113,12 @@ impl<'a> TokenIter<'a> {
         self.next().val
     }
     
-    pub fn consume() {
+    pub fn consume(&mut self) -> bool {
+        
+    }
 
+    pub fn at_eof(&mut self) -> bool {
+        self.peek().kind == TokenKind::TKEOF 
     }
 
     // Wrapper to hide option unwrapping
