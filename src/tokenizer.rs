@@ -38,6 +38,11 @@ impl Token {
         self.val = value; 
         self
     }
+
+    fn string(mut self, s: &str) -> Self {
+        self.string = Some(String::from(s));
+        self
+    }
 }
 
 impl Tokenizer {
@@ -59,7 +64,8 @@ impl Tokenizer {
                 },
 
                 '+' | '-' => {
-                    self.tokens.push_back(Token::new(TKRESERVED));
+                    self.tokens.push_back(Token::new(TKRESERVED)
+                                                .string(&c.to_string()));
                     continue;
                 },
 

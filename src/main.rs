@@ -13,8 +13,6 @@ macro_rules! gen_line {
 }
 
 fn main() {
-    use tokenizer::TokenKind::*;
-
     let args: Vec<String> = env::args().collect();
 
     match args.len() {
@@ -32,12 +30,17 @@ fn main() {
             gen_line!(&mut f, ".global main\n\n");
             gen_line!(&mut f, "main:\n");
 
+            gen_line!(&mut f, "  mov rax, {}\n", tkiter.expect_number());
+
             while !tkiter.at_eof() {
-                
+                if tkiter.consume("+") {
+                    gen_line!(&mut f, "  add rax, {}\n", tkiter.expect_number());
+                    continue;
+                }
+
+                tkiter.expect("-");
+                gen_line!(&mut f, "  sub rax, {}\n", tkiter.expect_number());
             }
-
-            gen_line!(&mut f, "  mov rax, {}\n", args[1]);
-
             gen_line!(&mut f, "  ret\n");
         }
         _ => {
