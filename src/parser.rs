@@ -19,7 +19,7 @@ pub struct Node {
 
 pub struct Parser<'a> {
     iter: TokenIter<'a>,
-    root: Node
+    root: Option<Node>
 }
 
 impl Node {
@@ -40,10 +40,18 @@ impl Node {
 
 impl<'a> Parser<'a> {
     pub fn new(iter: TokenIter<'a>) -> Self {
+        Parser {
+            iter: iter,
+            root: None,
+        }
+    }
+
+    pub fn parse(&mut self) {
+        self.root = Some(self.expr());
     }
 
     fn expr(&mut self) -> Node {
-        let node = self.mul(); 
+        let mut node = self.mul(); 
 
         loop {
             if self.iter.consume("+") {
@@ -59,7 +67,7 @@ impl<'a> Parser<'a> {
     }
 
     fn mul(&mut self) -> Node {
-        let node = self.primary();
+        let mut node = self.primary();
 
         loop {
             if self.iter.consume("*") {
