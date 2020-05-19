@@ -47,9 +47,9 @@ impl<'a> Parser<'a> {
 
         loop {
             if self.iter.consume("+") {
-                node = Node::new(NodeKind::ADD, Some(Box::new(node)), Some(Box::new(node)));
+                node = Node::new(NodeKind::ADD, Some(Box::new(node)), Some(Box::new(self.mul())));
             } else if self.iter.consume("-") {
-                node = Node::new(NodeKind::SUB, Some(Box::new(node)), Some(Box::new(node)));
+                node = Node::new(NodeKind::SUB, Some(Box::new(node)), Some(Box::new(self.mul())));
             } else {
                 break;
             }
@@ -58,6 +58,21 @@ impl<'a> Parser<'a> {
         node
     }
 
+    fn mul(&mut self) -> Node {
+        let node = self.primary();
+
+        loop {
+            if self.iter.consume("*") {
+                node = Node::new(NodeKind::MUL, Some(Box::new(node)), Some(Box::new(self.primary())));
+            } else if self.iter.consume("/") {
+                node = Node::new(NodeKind::DIV, Some(Box::new(node)), Some(Box::new(self.primary())));
+            } else {
+                break;
+            }
+        } 
+        node
+    }
+    
     fn primary(&mut self) -> Node  {
         if self.iter.consume("(") {
             let node = self.expr();
@@ -66,14 +81,5 @@ impl<'a> Parser<'a> {
         } else {
             Node::new(NodeKind::NUM, None, None).val(self.iter.expect_number())
         }
-    }
-
-    fn mul(&mut self) -> Node {
-        let node = self.primary();
-
-        loop {
-
-        }
-
     }
 }
