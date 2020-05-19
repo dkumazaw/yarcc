@@ -3,6 +3,7 @@ use std::fs::File;
 use std::io::Write;
 
 mod tokenizer;
+mod parser;
 
 use tokenizer::{TokenIter, Tokenizer};
 
