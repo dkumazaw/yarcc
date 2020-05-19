@@ -12,8 +12,8 @@ pub enum NodeKind {
 #[derive(Debug)]
 pub struct Node {
     kind: NodeKind,
-    lhs: Box<Node>,
-    rhs: Box<Node>,
+    lhs: Option<Box<Node>>,
+    rhs: Option<Box<Node>>,
     val: Option<i32>,
 }
 
@@ -23,7 +23,7 @@ pub struct Parser<'a> {
 }
 
 impl Node {
-    fn new(kind: NodeKind, lhs: Box<Node>, rhs: Box<Node>) -> Self {
+    fn new(kind: NodeKind, lhs: Option<Box<Node>>, rhs: Option<Box<Node>>) -> Self {
         Node {
             kind: kind, 
             lhs: lhs,
@@ -47,9 +47,9 @@ impl<'a> Parser<'a> {
 
         loop {
             if self.iter.consume("+") {
-                node = Node::new(NodeKind::ADD, Box::new(node), Box::new(self.mul()));
+                node = Node::new(NodeKind::ADD, Some(Box::new(node)), Some(Box::new(node)));
             } else if self.iter.consume("-") {
-                node = Node::new(NodeKind::SUB, Box::new(node), Box::new(self.mul()));
+                node = Node::new(NodeKind::SUB, Some(Box::new(node)), Some(Box::new(node)));
             } else {
                 break;
             }
@@ -58,11 +58,22 @@ impl<'a> Parser<'a> {
         node
     }
 
-    fn primary(&mut self) -> Node {
-
+    fn primary(&mut self) -> Node  {
+        if self.iter.consume("(") {
+            let node = self.expr();
+            self.iter.expect(")");
+            node
+        } else {
+            Node::new(NodeKind::NUM, None, None).val(self.iter.expect_number())
+        }
     }
 
     fn mul(&mut self) -> Node {
+        let node = self.primary();
+
+        loop {
+
+        }
 
     }
 }
