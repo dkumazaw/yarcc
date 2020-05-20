@@ -68,6 +68,19 @@ impl Tokenizer {
                     continue;
                 }
 
+                '<' | '>' | '!' | '=' => {
+                    cur += 1;
+                    let tkstr = 
+                        if cur != len && in_str.chars().nth(cur).unwrap() == '=' {
+                            c.to_string() + "="
+                        } else {
+                            c.to_string()
+                        };
+                    self.tokens
+                        .push_back(Token::new(TKRESERVED).string(&tkstr));
+                    continue;
+                }
+
                 '+' | '-' | '*' | '/' | '(' | ')' => {
                     self.tokens
                         .push_back(Token::new(TKRESERVED).string(&c.to_string()));
