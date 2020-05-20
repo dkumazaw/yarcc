@@ -2,12 +2,6 @@ use std::fs::File;
 use crate::parser::Node;
 use std::io::Write;
 
-macro_rules! gen_line {
-    ($dst:expr, $($arg: tt)*) => {
-        write!($dst, $($arg)*).unwrap()
-    }
-}
-
 pub fn gen(f: &mut File, node: Node) {
     use crate::parser::NodeKind::*;
 

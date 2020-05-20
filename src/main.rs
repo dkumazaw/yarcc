@@ -2,6 +2,13 @@ use std::env;
 use std::fs::File;
 use std::io::Write;
 
+#[macro_use]
+macro_rules! gen_line {
+    ($dst:expr, $($arg: tt)*) => {
+        write!($dst, $($arg)*).unwrap()
+    }
+}
+
 mod tokenizer;
 mod parser;
 mod codegen;
@@ -9,12 +16,6 @@ mod codegen;
 use tokenizer::{TokenIter, Tokenizer};
 use parser::Parser;
 use codegen::gen;
-
-macro_rules! gen_line {
-    ($dst:expr, $($arg: tt)*) => {
-        write!($dst, $($arg)*).unwrap()
-    }
-}
 
 fn main() {
     let args: Vec<String> = env::args().collect();
