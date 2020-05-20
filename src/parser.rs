@@ -8,8 +8,8 @@ pub enum NodeKind {
     NDDIV, // /
     NDEQ,  // ==
     NDNEQ, // !=
-    NDGEQ, // <=
-    NDGT,  // <
+    NDLEQ, // <=
+    NDLT,  // <
     NDNUM,
 }
 
@@ -81,14 +81,14 @@ impl<'a> Parser<'a> {
 
         loop {
             if self.iter.consume("<") {
-                node = Node::new(NDGT, Some(Box::new(node)), Some(Box::new(self.add())));
+                node = Node::new(NDLT, Some(Box::new(node)), Some(Box::new(self.add())));
             } else if self.iter.consume("<=") {
-                node = Node::new(NDGEQ, Some(Box::new(node)), Some(Box::new(self.add())));
+                node = Node::new(NDLEQ, Some(Box::new(node)), Some(Box::new(self.add())));
             } else if self.iter.consume(">") {
                 // HACK: Simply flip lhs and rhs
-                node = Node::new(NDGT, Some(Box::new(self.add())), Some(Box::new(node)));
+                node = Node::new(NDLT, Some(Box::new(self.add())), Some(Box::new(node)));
             } else if self.iter.consume(">=") {
-                node = Node::new(NDGEQ, Some(Box::new(self.add())), Some(Box::new(node)));
+                node = Node::new(NDLEQ, Some(Box::new(self.add())), Some(Box::new(node)));
             } else {
                 break;
             }
