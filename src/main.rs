@@ -4,6 +4,7 @@ use std::io::Write;
 
 mod tokenizer;
 mod parser;
+mod codegen;
 
 use tokenizer::{TokenIter, Tokenizer};
 
