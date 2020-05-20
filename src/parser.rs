@@ -11,10 +11,10 @@ pub enum NodeKind {
 
 #[derive(Debug)]
 pub struct Node {
-    kind: NodeKind,
-    lhs: Option<Box<Node>>,
-    rhs: Option<Box<Node>>,
-    val: Option<i32>,
+    pub kind: NodeKind,
+    pub lhs: Option<Box<Node>>,
+    pub rhs: Option<Box<Node>>,
+    pub val: Option<i32>,
 }
 
 pub struct Parser<'a> {
