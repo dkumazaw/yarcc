@@ -5,9 +5,14 @@ use std::io::Write;
 pub fn gen(f: &mut File, node: Node) {
     use crate::parser::NodeKind::*;
 
+    // Logic for terminal nodes
     if node.kind == NDNUM {
         gen_line!(f, "  push {}\n", node.val.unwrap());
         return;
+    } else if node.kind == NDLVAR {
+
+    } else if node.kind == NDASSIGN {
+
     }
     
     if let Some(lhs) = node.lhs {

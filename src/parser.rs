@@ -25,6 +25,12 @@ pub struct Node {
     pub offset: Option<i32>, // Used only when kind is NDLVAR
 }
 
+#[derive(Debug)]
+pub struct LVar {
+    name: String, 
+    offset: i32,
+}
+
 pub struct Parser<'a> {
     iter: TokenIter<'a>,
 }
