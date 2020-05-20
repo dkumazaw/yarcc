@@ -42,6 +42,7 @@ pub struct ParsedContext {
 
 pub struct Parser<'a> {
     iter: TokenIter<'a>,
+    locals: LinkedList<LVar>,
 }
 
 impl Node {
@@ -70,14 +71,14 @@ impl<'a> Parser<'a> {
     pub fn new(iter: TokenIter<'a>) -> Self {
         Parser {
             iter: iter,
+            locals: LinkedList::new(),
         }
     }
 
     pub fn parse(&mut self) -> ParsedContext {
         ParsedContext {
             nodes: self.program(),
-            locals: LinkedList::new(),
-            
+            locals: self.locals,
         }
     }
 
@@ -220,5 +221,9 @@ impl<'a> Parser<'a> {
             // Must be NUM at this point
             Node::new(NDNUM, None, None).val(self.iter.expect_number())
         }
+    }
+
+    fn find_lvar(&mut self, ident_name: &str) -> Option<&LVar> {
+        self.locals.iter().find(|x| x.name == ident_name ) 
     }
 }
