@@ -64,7 +64,7 @@ impl<'a> Parser<'a> {
 
     // program = stmt*
     fn program(&mut self) -> LinkedList<Node> {
-        let nodes = LinkedList::new();
+        let mut nodes = LinkedList::new();
         while !self.iter.at_eof() {
             nodes.push_back(self.stmt());
         }
@@ -195,6 +195,8 @@ impl<'a> Parser<'a> {
             let node = self.expr();
             self.iter.expect(")");
             node
+        } else if let Some(ident) = self.iter.consume_ident() {
+            Node::new(NDLVAR, None, None).offset(8)
         } else {
             // Must be NUM at this point
             Node::new(NDNUM, None, None).val(self.iter.expect_number())
