@@ -43,4 +43,6 @@ pub fn gen(f: &mut File, node: Node) {
             panic!("Oops, found a strange node kind.")
         }
     }
+
+    gen_line!(f, "  push rax\n");
 }
