@@ -16,6 +16,7 @@ pub enum NodeKind {
     NDNUM,
 }
 
+// Node of an AST
 #[derive(Debug)]
 pub struct Node {
     pub kind: NodeKind,
@@ -25,12 +26,15 @@ pub struct Node {
     pub offset: Option<i32>, // Used only when kind is NDLVAR
 }
 
+// Denotes the name of lvar and its stack offset
 #[derive(Debug)]
 pub struct LVar {
     name: String, 
     offset: i32,
 }
 
+// Parser returns this context;
+// codegen should use this context to produce code
 pub struct ParsedContext {
     pub nodes: LinkedList<Node>,
     pub locals: LinkedList<LVar>,
