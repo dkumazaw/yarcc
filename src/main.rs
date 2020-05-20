@@ -30,16 +30,22 @@ fn main() {
             let mut tk = Tokenizer::new();
             let tkiter = TokenIter::new(tk.tokenize(&args[1]));
             let mut parser = Parser::new(tkiter);
-            let root = parser.parse();
+            let mut nodes = parser.parse();
 
             // Preamble:
             gen_line!(&mut f, ".intel_syntax noprefix\n");
             gen_line!(&mut f, ".global main\n\n");
             gen_line!(&mut f, "main:\n");
 
-            gen(&mut f, root);
+            loop {
+                if let Some(node) = nodes.pop_front() {
+                    gen(&mut f, node);
+                    gen_line!(&mut f, "  pop rax\n");
+                } else {
+                    break;
+                }
+            }
 
-            gen_line!(&mut f, "  pop rax\n");
             gen_line!(&mut f, "  ret\n");
         }
         _ => {
