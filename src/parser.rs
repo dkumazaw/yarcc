@@ -1,15 +1,18 @@
+use std::collections::LinkedList;
 use crate::tokenizer::TokenIter;
 
 #[derive(Debug, PartialEq)]
 pub enum NodeKind {
-    NDADD, // +
-    NDSUB, // -
-    NDMUL, // *
-    NDDIV, // /
-    NDEQ,  // ==
-    NDNEQ, // !=
-    NDLEQ, // <=
-    NDLT,  // <
+    NDADD,    // +
+    NDSUB,    // -
+    NDMUL,    // *
+    NDDIV,    // /
+    NDEQ,     // ==
+    NDNEQ,    // !=
+    NDLEQ,    // <=
+    NDLT,     // <
+    NDASSIGN, // =
+    NDLVAR,   // local var
     NDNUM,
 }
 
@@ -18,7 +21,8 @@ pub struct Node {
     pub kind: NodeKind,
     pub lhs: Option<Box<Node>>,
     pub rhs: Option<Box<Node>>,
-    pub val: Option<i32>,
+    pub val: Option<i32>, // Used only when kind is NDNUM
+    pub offset: Option<i32>, // Used only when kind is NDLVAR
 }
 
 pub struct Parser<'a> {
@@ -31,12 +35,18 @@ impl Node {
             kind: kind, 
             lhs: lhs,
             rhs: rhs,
-            val: None
+            val: None,
+            offset: None,
         }
     }
 
     fn val(mut self, value: i32) -> Self {
         self.val = Some(value);
+        self
+    }
+
+    fn offset(mut self, offset: i32) -> Self {
+        val.offset = Some(offset);
         self
     }
 }
@@ -48,13 +58,40 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn parse(&mut self) -> Node {
-        self.expr()
+    pub fn parse(&mut self) -> LinkedList<Node> {
+        self.program()
     }
 
-    // expr = equality
+    // program = stmt*
+    fn program(&mut self) -> LinkedList<Node> {
+        let nodes = LinkedList::new();
+        while !self.iter.at_eof() {
+            nodes.push_back(self.stmt());
+        }
+        nodes
+    }
+
+    // stmt = expr ";"
+    fn stmt(&mut self) -> Node {
+        let node = self.expr();
+        self.iter.expect(";");
+        node
+    }
+
+    // expr = assign
     fn expr(&mut self) -> Node {
-        self.equality() 
+        self.assign() 
+    }
+
+    // assign = equality ("=" assign)?
+    fn assign(&mut self) -> Node {
+        use NodeKind::*;
+        let mut node = self.equality();
+        
+        if self.iter.consume("=") {
+            node = Node::new(NDASSIGN, Some(Box::new(node)), Some(Box::new(self.assign())));
+        }
+        node 
     }
 
     // equality = relational ("==" relational | "!=" relational)*
@@ -150,7 +187,7 @@ impl<'a> Parser<'a> {
         node
     }
     
-    // primary = num | "(" expr ")"
+    // primary = num | ident | "(" expr ")"
     fn primary(&mut self) -> Node  {
         use NodeKind::*;
 
@@ -159,6 +196,7 @@ impl<'a> Parser<'a> {
             self.iter.expect(")");
             node
         } else {
+            // Must be NUM at this point
             Node::new(NDNUM, None, None).val(self.iter.expect_number())
         }
     }
