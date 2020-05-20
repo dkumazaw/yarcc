@@ -36,4 +36,10 @@ tests! {
     simple5: ("(3+5)/2", 4),
     unary0: ("-3*-5", 15),
     unary1: ("8*(-3)+30", 6),
+    relational0: ("1 == 1", 1),
+    relational1: ("1 != 1", 0), 
+    relational2: ("2 < 0", 0),
+    relational3: ("3 > -1", 1),
+    relational4: ("5 >= -5", 1),
+    relational5: ("5 <= -5", 0),
 }
