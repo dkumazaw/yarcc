@@ -46,7 +46,7 @@ impl Node {
     }
 
     fn offset(mut self, offset: i32) -> Self {
-        val.offset = Some(offset);
+        self.offset = Some(offset);
         self
     }
 }
