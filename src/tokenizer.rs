@@ -77,7 +77,6 @@ impl Tokenizer {
                         } else {
                             c.to_string()
                         };
-                    println!("{}", tkstr);
                     self.tokens
                         .push_back(Token::new(TKRESERVED).string(&tkstr));
                     continue;
