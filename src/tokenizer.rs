@@ -152,17 +152,30 @@ impl<'a> TokenIter<'a> {
         t.val
     }
 
+    // Consumes TKRESERVED matching s
     pub fn consume(&mut self, s: &str) -> bool {
         let t = self.peek();
+        let ret = false;
         if t.kind == TokenKind::TKRESERVED {
             if let Some(ref tkstr) = t.string {
                 if tkstr == s {
                     self.next();
-                    return true;
+                    ret = true;
                 }
             }
         }
-        false
+        ret
+    }
+
+    // Consumes TKIDENT
+    pub fn consume_ident(&mut self) -> Option<String> {
+        let t = self.peek();
+        let ret = None;
+        if t.kind == TokenKind::TKIDENT {
+            self.next(); 
+            ret = t.string;
+        }
+        ret
     }
 
     pub fn at_eof(&mut self) -> bool {
