@@ -49,13 +49,15 @@ impl<'a> Parser<'a> {
     }
 
     fn expr(&mut self) -> Node {
+        use NodeKind::*;
+
         let mut node = self.mul(); 
 
         loop {
             if self.iter.consume("+") {
-                node = Node::new(NodeKind::NDADD, Some(Box::new(node)), Some(Box::new(self.mul())));
+                node = Node::new(NDADD, Some(Box::new(node)), Some(Box::new(self.mul())));
             } else if self.iter.consume("-") {
-                node = Node::new(NodeKind::NDSUB, Some(Box::new(node)), Some(Box::new(self.mul())));
+                node = Node::new(NDSUB, Some(Box::new(node)), Some(Box::new(self.mul())));
             } else {
                 break;
             }
@@ -64,28 +66,51 @@ impl<'a> Parser<'a> {
         node
     }
 
+    // mul = unary ("*" unary | "/" unary)*
     fn mul(&mut self) -> Node {
+        use NodeKind::*;
+
         let mut node = self.primary();
 
         loop {
             if self.iter.consume("*") {
-                node = Node::new(NodeKind::NDMUL, Some(Box::new(node)), Some(Box::new(self.primary())));
+                node = Node::new(NDMUL, Some(Box::new(node)), Some(Box::new(self.unary())));
             } else if self.iter.consume("/") {
-                node = Node::new(NodeKind::NDDIV, Some(Box::new(node)), Some(Box::new(self.primary())));
+                node = Node::new(NDDIV, Some(Box::new(node)), Some(Box::new(self.unary())));
             } else {
                 break;
             }
         } 
         node
     }
+
+    // unary = ("+" | "-")? primary
+    fn unary(&mut self) -> Node {
+        use NodeKind::*;
+
+        let node;
+        if self.iter.consume("+") {
+            node = self.primary();
+        } else if self.iter.consume("-") {
+            node = Node::new(NDSUB, 
+                             Some(Box::new(Node::new(NDNUM, None, None).val(0))),
+                             Some(Box::new(self.primary())));
+        } else {
+            node = self.primary();
+        }
+        node
+    }
     
+    // primary = num | "(" expr ")"
     fn primary(&mut self) -> Node  {
+        use NodeKind::*;
+
         if self.iter.consume("(") {
             let node = self.expr();
             self.iter.expect(")");
             node
         } else {
-            Node::new(NodeKind::NDNUM, None, None).val(self.iter.expect_number())
+            Node::new(NDNUM, None, None).val(self.iter.expect_number())
         }
     }
 }
