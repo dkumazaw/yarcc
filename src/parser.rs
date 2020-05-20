@@ -48,6 +48,7 @@ impl<'a> Parser<'a> {
         self.expr()
     }
 
+    // expr = mul ("+" mul | "-" mul)*
     fn expr(&mut self) -> Node {
         use NodeKind::*;
 
@@ -70,7 +71,7 @@ impl<'a> Parser<'a> {
     fn mul(&mut self) -> Node {
         use NodeKind::*;
 
-        let mut node = self.primary();
+        let mut node = self.unary();
 
         loop {
             if self.iter.consume("*") {
