@@ -72,10 +72,12 @@ impl Tokenizer {
                     cur += 1;
                     let tkstr = 
                         if cur != len && in_str.chars().nth(cur).unwrap() == '=' {
+                            cur += 1;
                             c.to_string() + "="
                         } else {
                             c.to_string()
                         };
+                    println!("{}", tkstr);
                     self.tokens
                         .push_back(Token::new(TKRESERVED).string(&tkstr));
                     continue;
