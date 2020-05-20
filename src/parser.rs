@@ -2,10 +2,16 @@ use crate::tokenizer::TokenIter;
 
 #[derive(Debug, PartialEq)]
 pub enum NodeKind {
-    NDADD,
-    NDSUB,
-    NDMUL,
-    NDDIV,
+    NDADD, // +
+    NDSUB, // -
+    NDMUL, // *
+    NDDIV, // /
+    NDEQ,  // ==
+    NDNEQ, // !=
+    NDGEQ, // <=
+    NDGT,  // <
+    NDLEQ, // >=
+    NDLT,  // >
     NDNUM,
 }
 
@@ -48,8 +54,51 @@ impl<'a> Parser<'a> {
         self.expr()
     }
 
-    // expr = mul ("+" mul | "-" mul)*
+    // expr = equality
     fn expr(&mut self) -> Node {
+        self.equality() 
+    }
+
+    // equality = relational ("==" relational | "!=" relational)*
+    fn equality(&mut self) -> Node {
+        use NodeKind::*;
+        let mut node = self.relational();
+
+        loop {
+            if self.iter.consume("==") {
+                node = Node::new(NDEQ, Some(Box::new(node)), Some(Box::new(self.relational())));
+            } else if self.iter.consume("!=") {
+                node = Node::new(NDNEQ, Some(Box::new(node)), Some(Box::new(self.relational())));
+            } else{
+                break;
+            }
+        }
+        node
+    }
+
+    // relational = add ("<" add | "<=" add | ">" add | ">=" add)*
+    fn relational(&mut self) -> Node {
+        use NodeKind::*;
+        let mut node = self.add();
+
+        loop {
+            if self.iter.consume("<") {
+                node = Node::new(NDGT, Some(Box::new(node)), Some(Box::new(self.add())));
+            } else if self.iter.consume("<=") {
+                node = Node::new(NDGEQ, Some(Box::new(node)), Some(Box::new(self.add())));
+            } else if self.iter.consume(">") {
+                node = Node::new(NDLT, Some(Box::new(node)), Some(Box::new(self.add())));
+            } else if self.iter.consume(">=") {
+                node = Node::new(NDLEQ, Some(Box::new(node)), Some(Box::new(self.add())));
+            } else {
+                break;
+            }
+        }
+        node
+    }
+
+    // add = mul ("+" mul | "-" mul)*
+    fn add(&mut self) -> Node {
         use NodeKind::*;
 
         let mut node = self.mul(); 
