@@ -7,6 +7,8 @@ mod parser;
 mod codegen;
 
 use tokenizer::{TokenIter, Tokenizer};
+use parser::Parser;
+use codegen::gen;
 
 macro_rules! gen_line {
     ($dst:expr, $($arg: tt)*) => {
@@ -25,24 +27,18 @@ fn main() {
             };
 
             let mut tk = Tokenizer::new();
-            let mut tkiter = TokenIter::new(tk.tokenize(&args[1]));
+            let tkiter = TokenIter::new(tk.tokenize(&args[1]));
+            let mut parser = Parser::new(tkiter);
+            let root = parser.parse();
 
             // Preamble:
             gen_line!(&mut f, ".intel_syntax noprefix\n");
             gen_line!(&mut f, ".global main\n\n");
             gen_line!(&mut f, "main:\n");
 
-            gen_line!(&mut f, "  mov rax, {}\n", tkiter.expect_number());
+            gen(&mut f, root);
 
-            while !tkiter.at_eof() {
-                if tkiter.consume("+") {
-                    gen_line!(&mut f, "  add rax, {}\n", tkiter.expect_number());
-                    continue;
-                }
-
-                tkiter.expect("-");
-                gen_line!(&mut f, "  sub rax, {}\n", tkiter.expect_number());
-            }
+            gen_line!(&mut f, "  pop rax\n");
             gen_line!(&mut f, "  ret\n");
         }
         _ => {
