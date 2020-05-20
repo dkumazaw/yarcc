@@ -2,11 +2,11 @@ use crate::tokenizer::TokenIter;
 
 #[derive(Debug, PartialEq)]
 pub enum NodeKind {
-    ADD,
-    SUB,
-    MUL,
-    DIV,
-    NUM,
+    NDADD,
+    NDSUB,
+    NDMUL,
+    NDDIV,
+    NDNUM,
 }
 
 #[derive(Debug)]
@@ -53,9 +53,9 @@ impl<'a> Parser<'a> {
 
         loop {
             if self.iter.consume("+") {
-                node = Node::new(NodeKind::ADD, Some(Box::new(node)), Some(Box::new(self.mul())));
+                node = Node::new(NodeKind::NDADD, Some(Box::new(node)), Some(Box::new(self.mul())));
             } else if self.iter.consume("-") {
-                node = Node::new(NodeKind::SUB, Some(Box::new(node)), Some(Box::new(self.mul())));
+                node = Node::new(NodeKind::NDSUB, Some(Box::new(node)), Some(Box::new(self.mul())));
             } else {
                 break;
             }
@@ -69,9 +69,9 @@ impl<'a> Parser<'a> {
 
         loop {
             if self.iter.consume("*") {
-                node = Node::new(NodeKind::MUL, Some(Box::new(node)), Some(Box::new(self.primary())));
+                node = Node::new(NodeKind::NDMUL, Some(Box::new(node)), Some(Box::new(self.primary())));
             } else if self.iter.consume("/") {
-                node = Node::new(NodeKind::DIV, Some(Box::new(node)), Some(Box::new(self.primary())));
+                node = Node::new(NodeKind::NDDIV, Some(Box::new(node)), Some(Box::new(self.primary())));
             } else {
                 break;
             }
@@ -85,7 +85,7 @@ impl<'a> Parser<'a> {
             self.iter.expect(")");
             node
         } else {
-            Node::new(NodeKind::NUM, None, None).val(self.iter.expect_number())
+            Node::new(NodeKind::NDNUM, None, None).val(self.iter.expect_number())
         }
     }
 }
