@@ -31,6 +31,11 @@ pub struct LVar {
     offset: i32,
 }
 
+pub struct ParsedContext {
+    pub nodes: LinkedList<Node>,
+    pub locals: LinkedList<LVar>,
+}
+
 pub struct Parser<'a> {
     iter: TokenIter<'a>,
 }
@@ -64,8 +69,12 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn parse(&mut self) -> LinkedList<Node> {
-        self.program()
+    pub fn parse(&mut self) -> ParsedContext {
+        ParsedContext {
+            nodes: self.program(),
+            locals: LinkedList::new(),
+            
+        }
     }
 
     // program = stmt*

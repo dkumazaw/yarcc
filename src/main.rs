@@ -30,7 +30,7 @@ fn main() {
             let mut tk = Tokenizer::new();
             let tkiter = TokenIter::new(tk.tokenize(&args[1]));
             let mut parser = Parser::new(tkiter);
-            let mut nodes = parser.parse();
+            let mut nodes = parser.parse().nodes;
 
             // Preamble:
             gen_line!(&mut f, ".intel_syntax noprefix\n");
