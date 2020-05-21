@@ -2,94 +2,140 @@ use std::fs::File;
 use crate::parser::{Node, NodeKind};
 use std::io::Write;
 
-fn gen_lval(f: &mut File, node: Node) {
-    if node.kind != NodeKind::NDLVAR {
-        panic!("Expected kind NDLVAR but got {:?}", node.kind);
-    }
-    
-    gen_line!(f, "  mov rax, rbp\n");
-    gen_line!(f, "  sub rax, {}\n", node.offset.unwrap());
-    gen_line!(f, "  push rax\n");
+#[derive(Debug)]
+pub struct CodeGen<'a> {
+    f: &'a mut File,
+    cond_label: usize, // Used to track conditional labels
 }
 
-pub fn gen(f: &mut File, node: Node) {
-    use crate::parser::NodeKind::*;
 
-    // Logic for terminal nodes
-    if node.kind == NDNUM {
-        gen_line!(f, "  push {}\n", node.val.unwrap());
-        return;
-    } else if node.kind == NDLVAR {
-        gen_lval(f, node);
-        gen_line!(f, "  pop rax\n");
-        gen_line!(f, "  mov rax, [rax]\n");
-        gen_line!(f, "  push rax\n");
-        return;
-    } else if node.kind == NDASSIGN {
-        gen_lval(f, *node.lhs.unwrap());
-        gen(f, *node.rhs.unwrap());
-        gen_line!(f, "  pop rdi\n");
-        gen_line!(f, "  pop rax\n");
-        gen_line!(f, "  mov [rax], rdi\n");
-        gen_line!(f, "  push rdi\n");
-        return;
-    } else if node.kind == NDRETURN {
-        gen(f, *node.lhs.unwrap());
-        gen_line!(f, "  pop rax\n");
-        gen_line!(f, "  mov rsp, rbp\n");
-        gen_line!(f, "  pop rbp\n");
-        gen_line!(f, "  ret\n");
-        return;
+impl<'a> CodeGen<'a> {
+    pub fn new(f: &'a mut File) -> Self {
+        CodeGen {
+            f: f,
+            cond_label: 0,
+        }
+    }
+
+    pub fn gen_preamble(&mut self, num_vars: usize) {
+        gen_line!(self.f, ".intel_syntax noprefix\n");
+        gen_line!(self.f, ".global main\n\n");
+        gen_line!(self.f, "main:\n");
+
+        // Create enough space for variables
+        gen_line!(self.f, "  push rbp\n");
+        gen_line!(self.f, "  mov rbp, rsp\n");
+        gen_line!(self.f, "  sub rsp, {}\n", num_vars * 8);
+    }
+
+    pub fn pop_rax(&mut self) {
+        gen_line!(self.f, "  pop rax\n");
+    }
+
+    pub fn gen_postamble(&mut self) {
+        // Restore rbp and return
+        gen_line!(self.f, "  mov rsp, rbp\n");
+        gen_line!(self.f, "  pop rbp\n");
+        gen_line!(self.f, "  ret\n");
     }
     
-    if let Some(lhs) = node.lhs {
-        gen(f, *lhs);
-    }
-    if let Some(rhs) = node.rhs {
-        gen(f, *rhs);
-    }
-
-    gen_line!(f, "  pop rdi\n");
-    gen_line!(f, "  pop rax\n");
-
-    match node.kind {
-        NDADD => {
-            gen_line!(f, "  add rax, rdi\n");
+    fn gen_lval(&mut self, node: Node) {
+        if node.kind != NodeKind::NDLVAR {
+            panic!("Expected kind NDLVAR but got {:?}", node.kind);
         }
-        NDSUB => {
-            gen_line!(f, "  sub rax, rdi\n");
-        }
-        NDMUL => {
-            gen_line!(f, "  imul rax, rdi\n");
-        }
-        NDDIV => {
-            gen_line!(f, "  cqo\n");
-            gen_line!(f, "  idiv rdi\n");
-        }
-        NDEQ => {
-            gen_line!(f, "  cmp rax, rdi\n");
-            gen_line!(f, "  sete al\n");
-            gen_line!(f, "  movzb rax, al\n");
-        }
-        NDNEQ => {
-            gen_line!(f, "  cmp rax, rdi\n");
-            gen_line!(f, "  setne al\n");
-            gen_line!(f, "  movzb rax, al\n");
-        }
-        NDLEQ => {
-            gen_line!(f, "  cmp rax, rdi\n");
-            gen_line!(f, "  setle al\n");
-            gen_line!(f, "  movzb rax, al\n");
-        }
-        NDLT => {
-            gen_line!(f, "  cmp rax, rdi\n");
-            gen_line!(f, "  setl al\n");
-            gen_line!(f, "  movzb rax, al\n");
-        }
-        _ => {
-            panic!("Oops, found a strange node kind.")
-        }
+        
+        gen_line!(self.f, "  mov rax, rbp\n");
+        gen_line!(self.f, "  sub rax, {}\n", node.offset.unwrap());
+        gen_line!(self.f, "  push rax\n");
     }
 
-    gen_line!(f, "  push rax\n");
+    pub fn gen(&mut self, node: Node) {
+        use crate::parser::NodeKind::*;
+    
+        if node.kind == NDNUM {
+            gen_line!(self.f, "  push {}\n", node.val.unwrap());
+            return;
+        } else if node.kind == NDLVAR {
+            self.gen_lval(node);
+            gen_line!(self.f, "  pop rax\n");
+            gen_line!(self.f, "  mov rax, [rax]\n");
+            gen_line!(self.f, "  push rax\n");
+            return;
+        } else if node.kind == NDASSIGN {
+            self.gen_lval(*node.lhs.unwrap());
+            self.gen(*node.rhs.unwrap());
+            gen_line!(self.f, "  pop rdi\n");
+            gen_line!(self.f, "  pop rax\n");
+            gen_line!(self.f, "  mov [rax], rdi\n");
+            gen_line!(self.f, "  push rdi\n");
+            return;
+        } else if node.kind == NDRETURN {
+            self.gen(*node.lhs.unwrap());
+            gen_line!(self.f, "  pop rax\n");
+            gen_line!(self.f, "  mov rsp, rbp\n");
+            gen_line!(self.f, "  pop rbp\n");
+            gen_line!(self.f, "  ret\n");
+            return;
+        } else if node.kind == NDIF {
+            self.gen(*node.cond.unwrap());
+            gen_line!(self.f, "  pop rax\n");
+            gen_line!(self.f, "  cmp rax, 0\n");
+            gen_line!(self.f, "  je .Lend{}", self.cond_label);
+            self.gen(*node.ifnode.unwrap());
+            gen_line!(self.f, ".Lend{}", self.cond_label);
+            self.cond_label += 1;
+            return;
+        }
+        
+        if let Some(lhs) = node.lhs {
+            self.gen(*lhs);
+        }
+        if let Some(rhs) = node.rhs {
+            self.gen(*rhs);
+        }
+    
+        gen_line!(self.f, "  pop rdi\n");
+        gen_line!(self.f, "  pop rax\n");
+    
+        match node.kind {
+            NDADD => {
+                gen_line!(self.f, "  add rax, rdi\n");
+            }
+            NDSUB => {
+                gen_line!(self.f, "  sub rax, rdi\n");
+            }
+            NDMUL => {
+                gen_line!(self.f, "  imul rax, rdi\n");
+            }
+            NDDIV => {
+                gen_line!(self.f, "  cqo\n");
+                gen_line!(self.f, "  idiv rdi\n");
+            }
+            NDEQ => {
+                gen_line!(self.f, "  cmp rax, rdi\n");
+                gen_line!(self.f, "  sete al\n");
+                gen_line!(self.f, "  movzb rax, al\n");
+            }
+            NDNEQ => {
+                gen_line!(self.f, "  cmp rax, rdi\n");
+                gen_line!(self.f, "  setne al\n");
+                gen_line!(self.f, "  movzb rax, al\n");
+            }
+            NDLEQ => {
+                gen_line!(self.f, "  cmp rax, rdi\n");
+                gen_line!(self.f, "  setle al\n");
+                gen_line!(self.f, "  movzb rax, al\n");
+            }
+            NDLT => {
+                gen_line!(self.f, "  cmp rax, rdi\n");
+                gen_line!(self.f, "  setl al\n");
+                gen_line!(self.f, "  movzb rax, al\n");
+            }
+            _ => {
+                panic!("Oops, found a strange node kind.")
+            }
+        }
+    
+        gen_line!(self.f, "  push rax\n");
+    }
 }
