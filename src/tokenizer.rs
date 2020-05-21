@@ -6,6 +6,7 @@ use std::iter::Peekable;
 pub enum TokenKind {
     TKRESERVED,
     TKRETURN,
+    TKIF,
     TKIDENT,
     TKNUM,
     TKEOF,
@@ -102,10 +103,14 @@ impl Tokenizer {
                         ident_name.push(_c);
                         cur += 1;
                     }
+                    // Match keywords here
                     match ident_name.as_str() {
                         "return" => {
                             self.tokens.push_back(Token::new(TKRETURN));
                         } 
+                        "if" => {
+                            self.tokens.push_back(Token::new(TKIF));
+                        }
                         _ => {
                             self.tokens.push_back(Token::new(TKIDENT).string(ident_name));
                         }
