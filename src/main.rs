@@ -29,16 +29,22 @@ fn main() {
 
             let mut tk = Tokenizer::new();
             let tkiter = TokenIter::new(tk.tokenize(&args[1]));
-            let mut parser = Parser::new(tkiter);
-            let mut nodes = parser.parse().nodes;
+            let parser = Parser::new(tkiter);
+            let mut parsed = parser.parse();
 
             // Preamble:
             gen_line!(&mut f, ".intel_syntax noprefix\n");
             gen_line!(&mut f, ".global main\n\n");
             gen_line!(&mut f, "main:\n");
 
+
+            // Create enough space for variables
+            gen_line!(&mut f, "  push rbp\n");
+            gen_line!(&mut f, "  mov rbp, rsp\n");
+            gen_line!(&mut f, "  sub rsp, {}\n", parsed.locals.len() * 8);
+
             loop {
-                if let Some(node) = nodes.pop_front() {
+                if let Some(node) = parsed.nodes.pop_front() {
                     gen(&mut f, node);
                     gen_line!(&mut f, "  pop rax\n");
                 } else {
@@ -46,6 +52,9 @@ fn main() {
                 }
             }
 
+            // Restore rbp and return
+            gen_line!(&mut f, "  mov rsp, rbp\n");
+            gen_line!(&mut f, "  pop rbp\n");
             gen_line!(&mut f, "  ret\n");
         }
         _ => {
