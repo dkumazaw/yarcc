@@ -51,4 +51,5 @@ tests! {
     return2: ("a = 4 + 5; return a;", 9),
     return3: ("return 5; return 1; 2;", 5),
     if0: ("if (1 == 1) return 1; return 2;", 1),
+    if1: ("if (1 != 1) return 1; return 2;", 2),
 }
