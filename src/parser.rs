@@ -75,7 +75,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn parse(&mut self) -> ParsedContext {
+    pub fn parse(mut self) -> ParsedContext {
         ParsedContext {
             nodes: self.program(),
             locals: self.locals,
