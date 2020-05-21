@@ -40,8 +40,8 @@ impl Token {
         self
     }
 
-    fn string(mut self, s: &str) -> Self {
-        self.string = Some(String::from(s));
+    fn string(mut self, s: String) -> Self {
+        self.string = Some(s);
         self
     }
 }
@@ -79,20 +79,29 @@ impl Tokenizer {
                             c.to_string()
                         };
                     self.tokens
-                        .push_back(Token::new(TKRESERVED).string(&tkstr));
+                        .push_back(Token::new(TKRESERVED).string(tkstr));
                     continue;
                 }
 
                 '+' | '-' | '*' | '/' | '(' | ')' | ';' => {
                     self.tokens
-                        .push_back(Token::new(TKRESERVED).string(&c.to_string()));
+                        .push_back(Token::new(TKRESERVED).string(c.to_string()));
                     cur += 1;
                     continue;
                 }
 
                 c if c.is_ascii_alphabetic() => {
-                    self.tokens.push_back(Token::new(TKIDENT).string(&c.to_string()));
+                    let mut ident_name = c.to_string(); 
                     cur += 1;
+                    while cur != len {
+                        let _c = in_str.chars().nth(cur).unwrap();
+                        if !_c.is_ascii_alphabetic() {
+                            break;
+                        }
+                        ident_name.push(_c);
+                        cur += 1;
+                    }
+                    self.tokens.push_back(Token::new(TKIDENT).string(ident_name));
                     continue;
                 }
 
