@@ -137,7 +137,16 @@ impl<'a> CodeGen<'a> {
             }
             return;
         } else if node.kind == NDCALL {
+            let num_args = node.funcargs.len();
+            let regs = ["rdi", "rsi", "rdx", "rcx", "r8", "r9"];
+
+            // Push args to the designated registers
+            for i in 0..num_args {
+                self.gen(node.funcargs.pop_front().unwrap());
+                gen_line!(self.f, "  pop {}\n", regs[i]);
+            }
             gen_line!(self.f, "  call {}\n", node.funcname.unwrap());
+
             return;
         }
         
