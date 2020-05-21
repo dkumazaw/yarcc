@@ -130,10 +130,11 @@ impl<'a> Parser<'a> {
             node = node.ifnode(Some(Box::new(self.stmt())));
         } else if self.iter.consume_kind(TokenKind::TKRETURN) {
             node = Node::new(NDRETURN, Some(Box::new(self.expr())), None);
+            self.iter.expect(";");
         } else {
             node = self.expr();
+            self.iter.expect(";");
         }
-        self.iter.expect(";");
         node
     }
 
