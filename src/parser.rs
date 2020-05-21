@@ -164,7 +164,6 @@ impl<'a> Parser<'a> {
             while !self.iter.consume("}") {
                 node = node.blockstmt(self.stmt());
             }
-
         } else if self.iter.consume_kind(TokenKind::TKIF) {
             self.iter.expect("(");
             node = Node::new(NDIF, None, None)

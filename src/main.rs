@@ -1,6 +1,5 @@
 use std::env;
 use std::fs::File;
-use std::io::Write;
 
 #[macro_use]
 macro_rules! gen_line {

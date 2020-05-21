@@ -60,4 +60,7 @@ tests! {
     while1: ("a = 0; while (a != 10) if (a == 3) return a; else a = a + 1; return a;", 3),
     for0: ("a = 0; for (i = 0; i < 10; i = i + 1) a = a + 1; return a;", 10),
     for1: ("a = 0; for (;a < 13;) a = a + 1; return a;", 13),
+    block0: ("a = 0; while (a != 10) { a = a + 1; } return a;", 10),
+    block1: ("for (a = 0; a <= 14; a = a +1) {} return a;", 15),
+    block2: ("a = 1 * 5; if (a == 5) {a =7; return a;} else {return 10; return 11;}", 7),
 }

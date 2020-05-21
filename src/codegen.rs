@@ -49,7 +49,7 @@ impl<'a> CodeGen<'a> {
         gen_line!(self.f, "  push rax\n");
     }
 
-    pub fn gen(&mut self, node: Node) {
+    pub fn gen(&mut self, mut node: Node) {
         use crate::parser::NodeKind::*;
     
         if node.kind == NDNUM {
@@ -126,6 +126,15 @@ impl<'a> CodeGen<'a> {
             }
             gen_line!(self.f, "  jmp .Lbegin{}\n", my_label);
             gen_line!(self.f, ".Lend{}:", my_label);
+            return;
+        } else if node.kind == NDBLOCK {
+            while let Some(stmt) = node.blockstmts.pop_front() {
+                self.gen(stmt);
+                // pop if not the last stmt
+                if node.blockstmts.len() != 0 {
+                    self.pop_rax();
+                }
+            }
             return;
         }
         
