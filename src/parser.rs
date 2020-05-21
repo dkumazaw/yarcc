@@ -14,6 +14,7 @@ pub enum NodeKind {
     NDASSIGN, // =
     NDRETURN,
     NDIF, 
+    NDWHILE,
     NDLVAR,   // local var
     NDNUM,
 }
@@ -30,6 +31,8 @@ pub struct Node {
     pub cond: Option<Box<Node>>, // Used for if else & while
     pub ifnode: Option<Box<Node>>, // Used when if cond is true
     pub elsenode: Option<Box<Node>>, // Used when if cond is false and else is defined
+
+    pub repnode: Option<Box<Node>>, // Used for "for" & "while"
 }
 
 // Denotes the name of lvar and its stack offset
@@ -62,6 +65,7 @@ impl Node {
             cond: None,
             ifnode: None,
             elsenode: None,
+            repnode: None,
         }
     }
 
@@ -87,6 +91,11 @@ impl Node {
 
     fn elsenode(mut self, elsenode: Option<Box<Node>>) -> Self {
         self.elsenode = elsenode;
+        self
+    }
+
+    fn repnode(mut self, repnode: Option<Box<Node>>) -> Self {
+        self.repnode = repnode;
         self
     }
 }
@@ -117,6 +126,7 @@ impl<'a> Parser<'a> {
 
     // stmt = expr ";"
     //      | "if" "(" expr ")" stmt ("else" stmt)?
+    //      | "while" "(" expr ")" stmt
     //      | "return" expr ";"
     fn stmt(&mut self) -> Node {
         use NodeKind::*;
@@ -133,6 +143,12 @@ impl<'a> Parser<'a> {
             if self.iter.consume_kind(TokenKind::TKELSE) {
                 node = node.elsenode(Some(Box::new(self.stmt())));
             }
+        } else if self.iter.consume_kind(TokenKind::TKWHILE) {
+            self.iter.expect("(");
+            node = Node::new(NDWHILE, None, None)
+                        .cond(Some(Box::new(self.expr())));
+            self.iter.expect(")");
+            node = node.repnode(Some(Box::new(self.stmt())));
         } else if self.iter.consume_kind(TokenKind::TKRETURN) {
             node = Node::new(NDRETURN, Some(Box::new(self.expr())), None);
             self.iter.expect(";");
