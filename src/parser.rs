@@ -15,6 +15,7 @@ pub enum NodeKind {
     NDRETURN,
     NDIF, 
     NDWHILE,
+    NDFOR,
     NDLVAR,   // local var
     NDNUM,
 }
@@ -28,11 +29,14 @@ pub struct Node {
     pub val: Option<i32>, // Used only when kind is NDNUM
     pub offset: Option<usize>, // Used only when kind is NDLVAR
 
-    pub cond: Option<Box<Node>>, // Used for if else & while
+    pub cond: Option<Box<Node>>, // Used for if else, for, and while
     pub ifnode: Option<Box<Node>>, // Used when if cond is true
     pub elsenode: Option<Box<Node>>, // Used when if cond is false and else is defined
 
     pub repnode: Option<Box<Node>>, // Used for "for" & "while"
+
+    pub initnode: Option<Box<Node>>, // Used by for
+    pub stepnode: Option<Box<Node>>, // Used by for
 }
 
 // Denotes the name of lvar and its stack offset
@@ -66,6 +70,8 @@ impl Node {
             ifnode: None,
             elsenode: None,
             repnode: None,
+            initnode: None,
+            stepnode: None,
         }
     }
 
@@ -98,6 +104,16 @@ impl Node {
         self.repnode = repnode;
         self
     }
+
+    fn initnode(mut self, initnode: Option<Box<Node>>) -> Self {
+        self.initnode = initnode;
+        self
+    }
+
+    fn stepnode(mut self, stepnode: Option<Box<Node>>) -> Self {
+        self.stepnode = stepnode;
+        self
+    }
 }
 
 impl<'a> Parser<'a> {
@@ -127,6 +143,7 @@ impl<'a> Parser<'a> {
     // stmt = expr ";"
     //      | "if" "(" expr ")" stmt ("else" stmt)?
     //      | "while" "(" expr ")" stmt
+    //      | "for" "(" expr? ";" expr? ";" expr? ")" stmt
     //      | "return" expr ";"
     fn stmt(&mut self) -> Node {
         use NodeKind::*;
@@ -149,6 +166,27 @@ impl<'a> Parser<'a> {
                         .cond(Some(Box::new(self.expr())));
             self.iter.expect(")");
             node = node.repnode(Some(Box::new(self.stmt())));
+        } else if self.iter.consume_kind(TokenKind::TKFOR) {
+            self.iter.expect("(");
+            node = Node::new(NDFOR, None, None);
+
+            if !self.iter.consume(";") {
+                // init expr found!
+                node = node.initnode(Some(Box::new(self.expr())));
+                self.iter.expect(";");
+            }
+            if !self.iter.consume(";") {
+                // cond expr found!
+                node = node.cond(Some(Box::new(self.expr())));
+                self.iter.expect(";");
+            }
+            if !self.iter.consume(")") {
+                // step expr found!
+                node = node.stepnode(Some(Box::new(self.expr())));
+                self.iter.expect(")");
+            }
+            node = node.repnode(Some(Box::new(self.stmt())));
+
         } else if self.iter.consume_kind(TokenKind::TKRETURN) {
             node = Node::new(NDRETURN, Some(Box::new(self.expr())), None);
             self.iter.expect(";");
