@@ -7,6 +7,7 @@ pub enum TokenKind {
     TKRESERVED,
     TKRETURN,
     TKIF,
+    TKELSE,
     TKIDENT,
     TKNUM,
     TKEOF,
@@ -110,6 +111,9 @@ impl Tokenizer {
                         } 
                         "if" => {
                             self.tokens.push_back(Token::new(TKIF));
+                        }
+                        "else" => {
+                            self.tokens.push_back(Token::new(TKELSE));
                         }
                         _ => {
                             self.tokens.push_back(Token::new(TKIDENT).string(ident_name));
