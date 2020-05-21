@@ -13,6 +13,7 @@ pub enum NodeKind {
     NDLT,     // <
     NDASSIGN, // =
     NDRETURN,
+    NDIF, 
     NDLVAR,   // local var
     NDNUM,
 }
@@ -25,6 +26,10 @@ pub struct Node {
     pub rhs: Option<Box<Node>>,
     pub val: Option<i32>, // Used only when kind is NDNUM
     pub offset: Option<usize>, // Used only when kind is NDLVAR
+
+    pub cond: Option<Box<Node>>, // Used for if else & while
+    pub ifnode: Option<Box<Node>>, // Used when if cond is true
+    pub elsenode: Option<Box<Node>>, // Used when if cond is false and else is defined
 }
 
 // Denotes the name of lvar and its stack offset
@@ -54,6 +59,9 @@ impl Node {
             rhs: rhs,
             val: None,
             offset: None,
+            cond: None,
+            ifnode: None,
+            elsenode: None,
         }
     }
 
@@ -64,6 +72,21 @@ impl Node {
 
     fn offset(mut self, offset: usize) -> Self {
         self.offset = Some(offset);
+        self
+    }
+
+    fn cond(mut self, cond: Option<Box<Node>>) -> Self {
+        self.cond = cond;
+        self
+    }
+
+    fn ifnode(mut self, ifnode: Option<Box<Node>>) -> Self {
+        self.ifnode = ifnode;
+        self
+    }
+
+    fn elsenode(mut self, elsenode: Option<Box<Node>>) -> Self {
+        self.elsenode = elsenode;
         self
     }
 }
@@ -92,12 +115,20 @@ impl<'a> Parser<'a> {
         nodes
     }
 
-    // stmt = expr ";" | "return" expr ";"
+    // stmt = expr ";"
+    //      | "if" "(" expr ")" stmt ("else" stmt)?
+    //      | "return" expr ";"
     fn stmt(&mut self) -> Node {
         use NodeKind::*;
 
-        let node;
-        if self.iter.consume_kind(TokenKind::TKRETURN) {
+        let mut node;
+        if self.iter.consume_kind(TokenKind::TKIF) {
+            self.iter.expect("(");
+            node = Node::new(NDIF, None, None)
+                        .cond(Some(Box::new(self.expr())));
+            self.iter.expect(")");
+            node = node.ifnode(Some(Box::new(self.stmt())));
+        } else if self.iter.consume_kind(TokenKind::TKRETURN) {
             node = Node::new(NDRETURN, Some(Box::new(self.expr())), None);
         } else {
             node = self.expr();
