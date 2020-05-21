@@ -218,10 +218,10 @@ impl<'a> Parser<'a> {
         } else if let Some(ident) = self.iter.consume_ident() {
             if let Some(ref lvar) = self.find_lvar(&ident) {
                 // This ident already exists! Nice!
-                Node::new(NDNUM, None, None).offset(lvar.offset)
+                Node::new(NDLVAR, None, None).offset(lvar.offset)
             } else {
                 // Add this ident and then produce a node
-                Node::new(NDNUM, None, None).offset(self.add_lvar(ident))
+                Node::new(NDLVAR, None, None).offset(self.add_lvar(ident))
             }
         } else {
             // Must be NUM at this point
