@@ -104,6 +104,29 @@ impl<'a> CodeGen<'a> {
             gen_line!(self.f, "  jmp .Lbegin{}\n", my_label);
             gen_line!(self.f, ".Lend{}:", my_label);
             return;
+        } else if node.kind == NDFOR {
+            let my_label = self.cond_label;
+            self.cond_label += 1;
+            if let Some(initnode) = node.initnode {
+                self.gen(*initnode);
+            }
+            gen_line!(self.f, ".Lbegin{}:\n", my_label);
+            if let Some(cond) = node.cond {
+                self.gen(*cond);
+            } else {
+                // Infinite loop: push 1 to make sure the cmp always succeeds
+                gen_line!(self.f, "push 1\n");
+            }
+            gen_line!(self.f, "  pop rax\n");
+            gen_line!(self.f, "  cmp rax, 0\n");
+            gen_line!(self.f, "  je .Lend{}\n", my_label);
+            self.gen(*node.repnode.unwrap());
+            if let Some(stepnode) = node.stepnode {
+                self.gen(*stepnode);
+            }
+            gen_line!(self.f, "  jmp .Lbegin{}\n", my_label);
+            gen_line!(self.f, ".Lend{}:", my_label);
+            return;
         }
         
         if let Some(lhs) = node.lhs {
