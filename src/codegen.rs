@@ -33,6 +33,13 @@ pub fn gen(f: &mut File, node: Node) {
         gen_line!(f, "  mov [rax], rdi\n");
         gen_line!(f, "  push rdi\n");
         return;
+    } else if node.kind == NDRETURN {
+        gen(f, *node.lhs.unwrap());
+        gen_line!(f, "  pop rax\n");
+        gen_line!(f, "  mov rsp, rbp\n");
+        gen_line!(f, "  pop rbp\n");
+        gen_line!(f, "  ret\n");
+        return;
     }
     
     if let Some(lhs) = node.lhs {
