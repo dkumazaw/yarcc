@@ -58,4 +58,6 @@ tests! {
     ifelse3: ("boo = 19; if (boo == 1) return 10; else return 2;", 2),
     while0: ("a = 0; while (a != 10) a = a + 1; return a;", 10),
     while1: ("a = 0; while (a != 10) if (a == 3) return a; else a = a + 1; return a;", 3),
+    for0: ("a = 0; for (i = 0; i < 10; i = i + 1) a = a + 1; return a;", 10),
+    for1: ("a = 0; for (;a < 13;) a = a + 1; return a;", 13),
 }
