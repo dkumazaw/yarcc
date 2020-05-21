@@ -1,6 +1,16 @@
 use std::fs::File;
-use crate::parser::Node;
+use crate::parser::{Node, NodeKind};
 use std::io::Write;
+
+fn gen_lval(f: &mut File, node: Node) {
+    if node.kind != NodeKind::NDLVAR {
+        panic!("Expected kind NDLVAR but got {:?}", node.kind);
+    }
+    
+    gen_line!(f, "  mov rax, rbp\n");
+    gen_line!(f, "  sub rax, {}\n", node.offset.unwrap());
+    gen_line!(f, "  push rax\n");
+}
 
 pub fn gen(f: &mut File, node: Node) {
     use crate::parser::NodeKind::*;
@@ -10,9 +20,19 @@ pub fn gen(f: &mut File, node: Node) {
         gen_line!(f, "  push {}\n", node.val.unwrap());
         return;
     } else if node.kind == NDLVAR {
-
+        gen_lval(f, node);
+        gen_line!(f, "  pop rax\n");
+        gen_line!(f, "  mov rax, [rax]\n");
+        gen_line!(f, "  push rax\n");
+        return;
     } else if node.kind == NDASSIGN {
-
+        gen_lval(f, *node.lhs.unwrap());
+        gen(f, *node.rhs.unwrap());
+        gen_line!(f, "  pop rdi\n");
+        gen_line!(f, "  pop rax\n");
+        gen_line!(f, "  mov [rax], rdi\n");
+        gen_line!(f, "  push rdi\n");
+        return;
     }
     
     if let Some(lhs) = node.lhs {
