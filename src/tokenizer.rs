@@ -8,6 +8,7 @@ pub enum TokenKind {
     TKRETURN,
     TKIF,
     TKELSE,
+    TKWHILE,
     TKIDENT,
     TKNUM,
     TKEOF,
@@ -114,6 +115,9 @@ impl Tokenizer {
                         }
                         "else" => {
                             self.tokens.push_back(Token::new(TKELSE));
+                        }
+                        "while" => {
+                            self.tokens.push_back(Token::new(TKWHILE));
                         }
                         _ => {
                             self.tokens.push_back(Token::new(TKIDENT).string(ident_name));
