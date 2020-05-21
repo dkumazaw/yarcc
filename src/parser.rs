@@ -128,6 +128,11 @@ impl<'a> Parser<'a> {
                         .cond(Some(Box::new(self.expr())));
             self.iter.expect(")");
             node = node.ifnode(Some(Box::new(self.stmt())));
+
+            // Else statement
+            if self.iter.consume_kind(TokenKind::TKELSE) {
+                node = node.elsenode(Some(Box::new(self.stmt())));
+            }
         } else if self.iter.consume_kind(TokenKind::TKRETURN) {
             node = Node::new(NDRETURN, Some(Box::new(self.expr())), None);
             self.iter.expect(";");
