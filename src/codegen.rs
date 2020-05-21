@@ -93,7 +93,17 @@ impl<'a> CodeGen<'a> {
             gen_line!(self.f, ".Lend{}:\n", my_label);
             return;
         } else if node.kind == NDWHILE {
-            gen_line!(self.f, ".Lbegin{}\n", self.cond_label);
+            let my_label = self.cond_label;
+            self.cond_label += 1;
+            gen_line!(self.f, ".Lbegin{}\n", my_label);
+            self.gen(*node.cond.unwrap());
+            gen_line!(self.f, "  pop rax\n");
+            gen_line!(self.f, "  cmp rax, 0\n");
+            gen_line!(self.f, "  je .Lend{}\n", my_label);
+            self.gen(*node.repnode.unwrap());
+            gen_line!(self.f, "  jmp .Lbegin{}\n", my_label);
+            gen_line!(self.f, ".Lend{}:", my_label);
+            return;
         }
         
         if let Some(lhs) = node.lhs {
