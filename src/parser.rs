@@ -43,6 +43,7 @@ pub struct Node {
     pub blockstmts: LinkedList<Node>, // Used by NDBLOCK
 
     pub funcname: Option<String>, // Used by NDCALL
+    pub funcargs: LinkedList<Node>, // Used by NDCALL
 }
 
 // Denotes the name of lvar and its stack offset
@@ -80,6 +81,7 @@ impl Node {
             stepnode: None,
             blockstmts: LinkedList::new(),
             funcname: None,
+            funcargs: LinkedList::new(),
         }
     }
 
@@ -130,6 +132,11 @@ impl Node {
 
     fn funcname(mut self, s: String) -> Self {
         self.funcname = Some(s);
+        self
+    }
+
+    fn funcarg(mut self, node: Node) -> Self {
+        self.funcargs.push_back(node);
         self
     }
 }
@@ -331,7 +338,7 @@ impl<'a> Parser<'a> {
     }
     
     // primary = num 
-    //         | ident ("(" ")")? 
+    //         | ident ("(" (expr, )* ")")? 
     //         | "(" expr ")"
     fn primary(&mut self) -> Node  {
         use NodeKind::*;
@@ -343,8 +350,18 @@ impl<'a> Parser<'a> {
         } else if let Some(ident) = self.iter.consume_ident() {
             if self.iter.consume("(") {
                 // This is a function call
-                let node = Node::new(NDCALL, None, None).funcname(ident);
-                self.iter.expect(")");
+                let mut remaining = 6;
+                let mut node = Node::new(NDCALL, None, None).funcname(ident);
+                while !self.iter.consume(")") {
+                    if remaining == 0 {
+                        panic!("Parser: Func arg exceeded the max. number of args.");
+                    }
+                    remaining -= 1;
+                    node = node.funcarg(self.expr()); 
+                    if remaining != 0 {
+                        self.iter.expect(",");
+                    }
+                } 
                 node
             } else {
                 // This is a variable
