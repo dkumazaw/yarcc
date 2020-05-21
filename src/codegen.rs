@@ -137,16 +137,33 @@ impl<'a> CodeGen<'a> {
             }
             return;
         } else if node.kind == NDCALL {
+            let my_label = self.cond_label;
+            self.cond_label += 2; // Consume 2
             let num_args = node.funcargs.len();
             let regs = ["rdi", "rsi", "rdx", "rcx", "r8", "r9"];
-            // TODO: Align RSP to multiple of 16
-
+            
             // Push args to the designated registers
             for i in 0..num_args {
                 self.gen(node.funcargs.pop_front().unwrap());
                 gen_line!(self.f, "  pop {}\n", regs[i]);
             }
+
+            // Align RSP to multiple of 16 
+            gen_line!(self.f, "  mov r12, 0\n");
+            gen_line!(self.f, "  test rsp, 8\n");
+            gen_line!(self.f, "  je .Lcond{}\n", my_label);
+            // Alignment occurs here
+            gen_line!(self.f, "  sub rsp, 8\n");
+            gen_line!(self.f, "  mov r12, 1\n"); // Flag that sub occured
+            gen_line!(self.f, ".Lcond{}:\n", my_label);
+
             gen_line!(self.f, "  call {}\n", node.funcname.unwrap());
+
+            // Rewind the alignment if needed
+            gen_line!(self.f, "  test r12, r12\n");
+            gen_line!(self.f, "  je .Lcond{}\n", my_label+1);
+            gen_line!(self.f, "  add rsp, 8\n");
+            gen_line!(self.f, ".Lcond{}:\n", my_label+1);
 
             return;
         }
