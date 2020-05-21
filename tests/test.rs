@@ -44,4 +44,6 @@ tests! {
     relational5: ("5 <= -5;", 0),
     lvar0: ("a = 1; a;", 1),
     lvar1: ("b = 1 + 3 * (4 - 2); b;", 7),
+    lvar2: ("foo = 10 + 4; foo;", 14),
+    lvar3: ("a = 1; b = 2; a + b;", 3),
 }
