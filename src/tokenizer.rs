@@ -5,6 +5,7 @@ use std::iter::Peekable;
 #[derive(Debug, PartialEq)]
 pub enum TokenKind {
     TKRESERVED,
+    TKRETURN,
     TKIDENT,
     TKNUM,
     TKEOF,
@@ -101,7 +102,14 @@ impl Tokenizer {
                         ident_name.push(_c);
                         cur += 1;
                     }
-                    self.tokens.push_back(Token::new(TKIDENT).string(ident_name));
+                    match ident_name.as_str() {
+                        "return" => {
+                            self.tokens.push_back(Token::new(TKRETURN));
+                        } 
+                        _ => {
+                            self.tokens.push_back(Token::new(TKIDENT).string(ident_name));
+                        }
+                    }
                     continue;
                 }
 
