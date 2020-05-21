@@ -139,6 +139,7 @@ impl<'a> CodeGen<'a> {
         } else if node.kind == NDCALL {
             let num_args = node.funcargs.len();
             let regs = ["rdi", "rsi", "rdx", "rcx", "r8", "r9"];
+            // TODO: Align RSP to multiple of 16
 
             // Push args to the designated registers
             for i in 0..num_args {
