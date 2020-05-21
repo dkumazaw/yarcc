@@ -95,7 +95,7 @@ impl<'a> CodeGen<'a> {
         } else if node.kind == NDWHILE {
             let my_label = self.cond_label;
             self.cond_label += 1;
-            gen_line!(self.f, ".Lbegin{}\n", my_label);
+            gen_line!(self.f, ".Lbegin{}:\n", my_label);
             self.gen(*node.cond.unwrap());
             gen_line!(self.f, "  pop rax\n");
             gen_line!(self.f, "  cmp rax, 0\n");

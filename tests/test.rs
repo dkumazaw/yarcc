@@ -56,4 +56,6 @@ tests! {
     ifelse1: ("if (1 != 1) return 1; else return 2; ", 2),
     ifelse2: ("a = 4; if (a == 4) return 1; else return 5;", 1),
     ifelse3: ("boo = 19; if (boo == 1) return 10; else return 2;", 2),
+    while0: ("a = 0; while (a != 10) a = a + 1; return a;", 10),
+    while1: ("a = 0; while (a != 10) if (a == 3) return a; else a = a + 1; return a;", 3),
 }
