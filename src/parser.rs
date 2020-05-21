@@ -23,14 +23,14 @@ pub struct Node {
     pub lhs: Option<Box<Node>>,
     pub rhs: Option<Box<Node>>,
     pub val: Option<i32>, // Used only when kind is NDNUM
-    pub offset: Option<i32>, // Used only when kind is NDLVAR
+    pub offset: Option<usize>, // Used only when kind is NDLVAR
 }
 
 // Denotes the name of lvar and its stack offset
 #[derive(Debug)]
 pub struct LVar {
     name: String, 
-    offset: i32,
+    offset: usize,
 }
 
 // Parser returns this context;
@@ -61,7 +61,7 @@ impl Node {
         self
     }
 
-    fn offset(mut self, offset: i32) -> Self {
+    fn offset(mut self, offset: usize) -> Self {
         self.offset = Some(offset);
         self
     }
@@ -216,14 +216,28 @@ impl<'a> Parser<'a> {
             self.iter.expect(")");
             node
         } else if let Some(ident) = self.iter.consume_ident() {
-            Node::new(NDLVAR, None, None).offset(8)
+            if let Some(ref lvar) = self.find_lvar(&ident) {
+                // This ident already exists! Nice!
+                Node::new(NDNUM, None, None).offset(lvar.offset)
+            } else {
+                // Add this ident and then produce a node
+                Node::new(NDNUM, None, None).offset(self.add_lvar(ident))
+            }
         } else {
             // Must be NUM at this point
             Node::new(NDNUM, None, None).val(self.iter.expect_number())
         }
     }
 
+    // Finds if the passed identitier already exists
     fn find_lvar(&mut self, ident_name: &str) -> Option<&LVar> {
         self.locals.iter().find(|x| x.name == ident_name ) 
+    }
+
+    // Adds a new ident and returns the produced offset
+    fn add_lvar(&mut self, ident_name: String) -> usize {
+        let next_ofs = (self.locals.len() + 1) * 8;
+        self.locals.push_back(LVar { name: ident_name, offset: next_ofs });
+        next_ofs
     }
 }
