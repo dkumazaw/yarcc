@@ -46,4 +46,8 @@ tests! {
     lvar1: ("b = 1 + 3 * (4 - 2); b;", 7),
     lvar2: ("foo = 10 + 4; foo;", 14),
     lvar3: ("a = 1; b = 2; a + b;", 3),
+    return0: ("return 1;", 1),
+    return1: ("return (3 + 1) *  10;", 40),
+    return2: ("a = 4 + 5; return a;", 9),
+    return3: ("return 5; return 1; 2;", 5),
 }
