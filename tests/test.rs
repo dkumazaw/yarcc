@@ -52,4 +52,8 @@ tests! {
     return3: ("return 5; return 1; 2;", 5),
     if0: ("if (1 == 1) return 1; return 2;", 1),
     if1: ("if (1 != 1) return 1; return 2;", 2),
+    ifelse0: ("if (1 == 1) return 1; else return 2;", 1),
+    ifelse1: ("if (1 != 1) return 1; else return 2; ", 2),
+    ifelse2: ("a = 4; if (a == 4) return 1; else return 5;", 1),
+    ifelse3: ("boo = 19; if (boo == 1) return 10; else return 2;", 2),
 }
