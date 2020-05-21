@@ -1,5 +1,5 @@
 use std::collections::LinkedList;
-use crate::tokenizer::TokenIter;
+use crate::tokenizer::{TokenIter, TokenKind};
 
 #[derive(Debug, PartialEq)]
 pub enum NodeKind {
@@ -12,6 +12,7 @@ pub enum NodeKind {
     NDLEQ,    // <=
     NDLT,     // <
     NDASSIGN, // =
+    NDRETURN,
     NDLVAR,   // local var
     NDNUM,
 }
@@ -91,9 +92,16 @@ impl<'a> Parser<'a> {
         nodes
     }
 
-    // stmt = expr ";"
+    // stmt = expr ";" | "return" expr ";"
     fn stmt(&mut self) -> Node {
-        let node = self.expr();
+        use NodeKind::*;
+
+        let node;
+        if self.iter.consume_kind(TokenKind::TKRETURN) {
+            node = Node::new(NDRETURN, Some(Box::new(self.expr())), None);
+        } else {
+            node = self.expr();
+        }
         self.iter.expect(";");
         node
     }
