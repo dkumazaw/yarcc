@@ -77,20 +77,23 @@ impl<'a> CodeGen<'a> {
             gen_line!(self.f, "  ret\n");
             return;
         } else if node.kind == NDIF {
+            let my_label = self.cond_label;
+            self.cond_label += 1;
             self.gen(*node.cond.unwrap());
             gen_line!(self.f, "  pop rax\n");
             gen_line!(self.f, "  cmp rax, 0\n");
-            gen_line!(self.f, "  je .Lelse{}\n", self.cond_label);
+            gen_line!(self.f, "  je .Lelse{}\n", my_label);
             self.gen(*node.ifnode.unwrap());
-            gen_line!(self.f, "  jmp .Lend{}\n", self.cond_label);
-            gen_line!(self.f, ".Lelse{}:\n", self.cond_label);
+            gen_line!(self.f, "  jmp .Lend{}\n", my_label);
+            gen_line!(self.f, ".Lelse{}:\n", my_label);
             // If else node exists, generate.
             if let Some(elsenode) = node.elsenode {
                 self.gen(*elsenode);
             }
-            gen_line!(self.f, ".Lend{}:\n", self.cond_label);
-            self.cond_label += 1;
+            gen_line!(self.f, ".Lend{}:\n", my_label);
             return;
+        } else if node.kind == NDWHILE {
+            gen_line!(self.f, ".Lbegin{}\n", self.cond_label);
         }
         
         if let Some(lhs) = node.lhs {
