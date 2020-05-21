@@ -100,7 +100,7 @@ impl Tokenizer {
                     cur += 1;
                     while cur != len {
                         let _c = in_str.chars().nth(cur).unwrap();
-                        if !_c.is_ascii_alphabetic() {
+                        if !_c.is_ascii_alphanumeric() {
                             break;
                         }
                         ident_name.push(_c);
