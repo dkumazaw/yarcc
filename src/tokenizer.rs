@@ -9,6 +9,7 @@ pub enum TokenKind {
     TKIF,
     TKELSE,
     TKWHILE,
+    TKFOR,
     TKIDENT,
     TKNUM,
     TKEOF,
@@ -118,6 +119,9 @@ impl Tokenizer {
                         }
                         "while" => {
                             self.tokens.push_back(Token::new(TKWHILE));
+                        }
+                        "for" => {
+                            self.tokens.push_back(Token::new(TKFOR));
                         }
                         _ => {
                             self.tokens.push_back(Token::new(TKIDENT).string(ident_name));
