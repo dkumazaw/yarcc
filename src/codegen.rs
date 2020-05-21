@@ -165,6 +165,9 @@ impl<'a> CodeGen<'a> {
             gen_line!(self.f, "  add rsp, 8\n");
             gen_line!(self.f, ".Lcond{}:\n", my_label+1);
 
+            // Finally, store result returned from the call:
+            gen_line!(self.f, "  push rax\n");
+
             return;
         }
         
