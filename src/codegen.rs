@@ -136,6 +136,9 @@ impl<'a> CodeGen<'a> {
                 }
             }
             return;
+        } else if node.kind == NDCALL {
+            gen_line!(self.f, "  call {}\n", node.funcname.unwrap());
+            return;
         }
         
         if let Some(lhs) = node.lhs {
