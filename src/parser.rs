@@ -16,6 +16,7 @@ pub enum NodeKind {
     NDIF, 
     NDWHILE,
     NDFOR,
+    NDBLOCK,
     NDLVAR,   // local var
     NDNUM,
 }
@@ -37,6 +38,8 @@ pub struct Node {
 
     pub initnode: Option<Box<Node>>, // Used by for
     pub stepnode: Option<Box<Node>>, // Used by for
+
+    pub blockstmts: LinkedList<Node>, // Used by NDBLOCK
 }
 
 // Denotes the name of lvar and its stack offset
@@ -72,6 +75,7 @@ impl Node {
             repnode: None,
             initnode: None,
             stepnode: None,
+            blockstmts: LinkedList::new(),
         }
     }
 
@@ -114,6 +118,11 @@ impl Node {
         self.stepnode = stepnode;
         self
     }
+
+    fn blockstmt(mut self, node: Node) -> Self {
+        self.blockstmts.push_back(node);
+        self
+    } 
 }
 
 impl<'a> Parser<'a> {
@@ -141,6 +150,7 @@ impl<'a> Parser<'a> {
     }
 
     // stmt = expr ";"
+    //      | "{" stmt* "}"
     //      | "if" "(" expr ")" stmt ("else" stmt)?
     //      | "while" "(" expr ")" stmt
     //      | "for" "(" expr? ";" expr? ";" expr? ")" stmt
@@ -149,7 +159,13 @@ impl<'a> Parser<'a> {
         use NodeKind::*;
 
         let mut node;
-        if self.iter.consume_kind(TokenKind::TKIF) {
+        if self.iter.consume("{") {
+            node = Node::new(NDBLOCK, None, None);
+            while !self.iter.consume("}") {
+                node = node.blockstmt(self.stmt());
+            }
+
+        } else if self.iter.consume_kind(TokenKind::TKIF) {
             self.iter.expect("(");
             node = Node::new(NDIF, None, None)
                         .cond(Some(Box::new(self.expr())));
