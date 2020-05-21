@@ -41,7 +41,6 @@ fn main() {
                 if let Some(node) = parsed.nodes.pop_front() {
                     codegen.gen(node);
                     codegen.pop_rax();
-                    
                 } else {
                     break;
                 }

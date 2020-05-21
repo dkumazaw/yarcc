@@ -82,7 +82,7 @@ impl<'a> CodeGen<'a> {
             gen_line!(self.f, "  cmp rax, 0\n");
             gen_line!(self.f, "  je .Lend{}\n", self.cond_label);
             self.gen(*node.ifnode.unwrap());
-            gen_line!(self.f, ".Lend{}\n", self.cond_label);
+            gen_line!(self.f, ".Lend{}:\n", self.cond_label);
             self.cond_label += 1;
             return;
         }
