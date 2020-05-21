@@ -184,6 +184,17 @@ impl<'a> TokenIter<'a> {
         ret
     }
 
+    // Consumes the specified kind 
+    pub fn consume_kind(&mut self, k: TokenKind) -> bool {
+        let t = self.peek();
+        if t.kind == k {
+            self.next();
+            true 
+        } else {
+            false
+        }
+    }
+
     // Consumes TKIDENT
     pub fn consume_ident(&mut self) -> Option<String> {
         let t = self.peek();
