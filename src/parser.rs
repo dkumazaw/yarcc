@@ -17,6 +17,7 @@ pub enum NodeKind {
     NDWHILE,
     NDFOR,
     NDBLOCK,
+    NDCALL,
     NDLVAR,   // local var
     NDNUM,
 }
@@ -40,6 +41,8 @@ pub struct Node {
     pub stepnode: Option<Box<Node>>, // Used by for
 
     pub blockstmts: LinkedList<Node>, // Used by NDBLOCK
+
+    pub funcname: Option<String>, // Used by NDCALL
 }
 
 // Denotes the name of lvar and its stack offset
@@ -76,6 +79,7 @@ impl Node {
             initnode: None,
             stepnode: None,
             blockstmts: LinkedList::new(),
+            funcname: None,
         }
     }
 
@@ -123,6 +127,11 @@ impl Node {
         self.blockstmts.push_back(node);
         self
     } 
+
+    fn funcname(mut self, s: String) -> Self {
+        self.funcname = Some(s);
+        self
+    }
 }
 
 impl<'a> Parser<'a> {
@@ -321,7 +330,9 @@ impl<'a> Parser<'a> {
         node
     }
     
-    // primary = num | ident | "(" expr ")"
+    // primary = num 
+    //         | ident ("(" ")")? 
+    //         | "(" expr ")"
     fn primary(&mut self) -> Node  {
         use NodeKind::*;
 
@@ -330,12 +341,20 @@ impl<'a> Parser<'a> {
             self.iter.expect(")");
             node
         } else if let Some(ident) = self.iter.consume_ident() {
-            if let Some(ref lvar) = self.find_lvar(&ident) {
-                // This ident already exists! Nice!
-                Node::new(NDLVAR, None, None).offset(lvar.offset)
+            if self.iter.consume("(") {
+                // This is a function call
+                let node = Node::new(NDCALL, None, None).funcname(ident);
+                self.iter.expect(")");
+                node
             } else {
-                // Add this ident and then produce a node
-                Node::new(NDLVAR, None, None).offset(self.add_lvar(ident))
+                // This is a variable
+                if let Some(ref lvar) = self.find_lvar(&ident) {
+                    // This ident already exists! Nice!
+                    Node::new(NDLVAR, None, None).offset(lvar.offset)
+                } else {
+                    // Add this ident and then produce a node
+                    Node::new(NDLVAR, None, None).offset(self.add_lvar(ident))
+                }
             }
         } else {
             // Must be NUM at this point
