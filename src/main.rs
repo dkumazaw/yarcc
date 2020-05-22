@@ -33,20 +33,16 @@ fn main() {
             let mut codegen = CodeGen::new(&mut f);
 
             // Preamble:
-            codegen.gen_preamble(parsed.locals.len());
+            codegen.gen_preamble();
 
-            // Create enough space for variables
             loop {
                 if let Some(node) = parsed.nodes.pop_front() {
                     codegen.gen(node);
-                    codegen.pop_rax();
                 } else {
                     break;
                 }
             }
 
-            // Postamble:
-            codegen.gen_postamble();
         }
         _ => {
             eprintln!("Wrong number of arguments!");
