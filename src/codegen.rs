@@ -171,6 +171,13 @@ impl<'a> CodeGen<'a> {
             return;
         }
         
+        self.gen_primitive(node);
+    }
+
+    // Generates code for primitive ops
+    fn gen_primitive(&mut self, node: Node) {
+        use crate::parser::NodeKind::*;
+
         if let Some(lhs) = node.lhs {
             self.gen(*lhs);
         }
