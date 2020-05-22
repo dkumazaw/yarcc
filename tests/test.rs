@@ -63,4 +63,16 @@ tests! {
     block0: ("main() { a = 0; while (a != 10) { a = a + 1; } return a;} ", 10),
     block1: ("main() { for (a = 0; a <= 14; a = a +1) {} return a;} ", 15),
     block2: ("main() { a = 1 * 5; if (a == 5) {a =7; return a;} else {return 10; return 11;} }", 7),
+    func0: ("main() { return foo(); } 
+             foo() { return 123; }", 123),
+    func1: ("bar () { 24; } 
+             baz () { 46; }
+             main () { 
+                 a = 10; 
+                 if (a < 12) { 
+                     return baz(); 
+                 } else {
+                    return bar();
+                 } 
+             }", 46),
 }
