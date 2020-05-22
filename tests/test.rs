@@ -94,4 +94,16 @@ tests! {
                 b = 7;
                 return proxy(1, b, 2, 3);
              }", 13),
+    func4: ("fib (a) {
+                if (a <= 1) return a;
+                return fib(a-1) + fib(a-2);
+             }
+             proxy(a, b, c, d, e, f) {
+                return fib(a + b + c - d + e * f);
+             }
+             main() {
+                b = 7;
+                hoooo = 100;
+                return proxy(1, b, 2, 3, hoooo, 0);
+             }", 13),
 }
