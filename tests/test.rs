@@ -106,4 +106,9 @@ tests! {
                 hoooo = 100;
                 return proxy(1, b, 2, 3, hoooo, 0);
              }", 21),
+    func5: ("fib (a) {
+                if (a <= 1) return a;
+                return fib(a-1) + fib(a-2);
+             }
+             main() {return fib(12);}", 144),
 }
