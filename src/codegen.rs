@@ -40,6 +40,7 @@ impl<'a> CodeGen<'a> {
         gen_line!(self.f, "  pop rax\n");
         gen_line!(self.f, "  mov rsp, rbp\n");
         gen_line!(self.f, "  pop rbp\n");
+        gen_line!(self.f, "  pop r12\n");
         gen_line!(self.f, "  ret\n");
     }
 
@@ -77,13 +78,15 @@ impl<'a> CodeGen<'a> {
                 gen_line!(self.f, "  cmp rax, 0\n");
                 gen_line!(self.f, "  je .Lelse{}\n", my_label);
 
-
                 self.gen(*node.ifnode.unwrap());
                 gen_line!(self.f, "  jmp .Lend{}\n", my_label);
                 gen_line!(self.f, ".Lelse{}:\n", my_label);
                 // If else node exists, generate.
                 if let Some(elsenode) = node.elsenode {
                     self.gen(*elsenode);
+                } else {
+                    // No else node provided. Push some bogus value to balance stack.
+                    gen_line!(self.f, "  push 0\n"); 
                 }
                 gen_line!(self.f, ".Lend{}:\n", my_label);
             } 
@@ -163,10 +166,12 @@ impl<'a> CodeGen<'a> {
                 gen_line!(self.f, "  push rax\n");
             }
             NDFUNCDEF => {
-                // Make sure to create enough space for variables
                 gen_line!(self.f, "{}:\n", node.funcname.unwrap());
 
+                // Save callee-saved regs that are used by me:
+                gen_line!(self.f, "  push r12\n");
                 gen_line!(self.f, "  push rbp\n");
+                // Make sure to create enough space for variables
                 gen_line!(self.f, "  mov rbp, rsp\n");
                 gen_line!(self.f, "  sub rsp, {}\n", node.num_locals.unwrap() * 8);
 
