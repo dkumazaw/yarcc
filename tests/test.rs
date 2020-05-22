@@ -91,9 +91,9 @@ tests! {
                 return fib(a + b + c - d);
              }
              main() {
-                b = 7;
+                b = 9;
                 return proxy(1, b, 2, 3);
-             }", 13),
+             }", 34),
     func4: ("fib (a) {
                 if (a <= 1) return a;
                 return fib(a-1) + fib(a-2);
@@ -102,8 +102,8 @@ tests! {
                 return fib(a + b + c - d + e * f);
              }
              main() {
-                b = 7;
+                b = 8;
                 hoooo = 100;
                 return proxy(1, b, 2, 3, hoooo, 0);
-             }", 13),
+             }", 21),
 }
