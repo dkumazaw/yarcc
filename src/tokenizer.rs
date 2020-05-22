@@ -74,6 +74,11 @@ impl Tokenizer {
                     continue;
                 }
 
+                '\n' => {
+                    cur += 1;
+                    continue;
+                }
+
                 '<' | '>' | '!' | '=' => {
                     cur += 1;
                     let tkstr = 
