@@ -46,7 +46,7 @@ pub struct Node {
     pub funcname: Option<String>, // Used by NDCALL & NDFUNCDEF
     pub funcargs: LinkedList<Node>, // Used by NDCALL
 
-    pub funcargnames: LinkedList<String>, // Used by NDFUNCDEF
+    pub funcarg_offsets: LinkedList<usize>, // Offsets at which args reside, used by NDFUNCDEF
 
     pub num_locals: Option<usize>, // Stores the # of local vars created; used by NDFUNCDEF & NDBLOCK(TODO)
 }
@@ -86,7 +86,7 @@ impl Node {
             blockstmts: LinkedList::new(),
             funcname: None,
             funcargs: LinkedList::new(),
-            funcargnames: LinkedList::new(),
+            funcarg_offsets: LinkedList::new(),
             num_locals: None,
         }
     }
@@ -146,8 +146,8 @@ impl Node {
         self
     }
 
-    fn funcargname(mut self, name: String) -> Self {
-        self.funcargnames.push_back(name);
+    fn funcarg_offset(mut self, ofs: usize) -> Self {
+        self.funcarg_offsets.push_back(ofs);
         self
     }
 
@@ -186,18 +186,20 @@ impl<'a> Parser<'a> {
 
         let mut node = Node::new(NDFUNCDEF, None, None)
                             .funcname(self.iter.expect_ident().unwrap());
+        // Create a new scope:
+        self.locals.push_back(LinkedList::new());
+
         // Parse arguments
         self.iter.expect("(");
         if let Some(arg0) = self.iter.consume_ident() {
-            node = node.funcargname(arg0);
+            // Register the variable to locals and remember that offset
+            node = node.funcarg_offset(self.add_lvar(arg0));
             while self.iter.consume(",") {
-                node = node.funcargname(self.iter.expect_ident().unwrap());
+                let arg = self.iter.expect_ident().unwrap();
+                node = node.funcarg_offset(self.add_lvar(arg));
             }
         }
         self.iter.expect(")");
-
-        // Create a new scope:
-        self.locals.push_back(LinkedList::new());
 
         // Parse function body
         self.iter.expect("{");

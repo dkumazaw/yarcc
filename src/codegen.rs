@@ -2,6 +2,8 @@ use std::fs::File;
 use crate::parser::{Node, NodeKind};
 use std::io::Write;
 
+static FUNC_REGS: [&str; 6] = ["rdi", "rsi", "rdx", "rcx", "r8", "r9"];
+
 #[derive(Debug)]
 pub struct CodeGen<'a> {
     f: &'a mut File,
@@ -133,12 +135,11 @@ impl<'a> CodeGen<'a> {
                 let my_label = self.cond_label;
                 self.cond_label += 2; // Consume 2
                 let num_args = node.funcargs.len();
-                let regs = ["rdi", "rsi", "rdx", "rcx", "r8", "r9"];
                 
                 // Push args to the designated registers
                 for i in 0..num_args {
                     self.gen(node.funcargs.pop_front().unwrap());
-                    gen_line!(self.f, "  pop {}\n", regs[i]);
+                    gen_line!(self.f, "  pop {}\n", FUNC_REGS[i]);
                 }
 
                 // Align RSP to multiple of 16 
@@ -168,6 +169,14 @@ impl<'a> CodeGen<'a> {
                 gen_line!(self.f, "  push rbp\n");
                 gen_line!(self.f, "  mov rbp, rsp\n");
                 gen_line!(self.f, "  sub rsp, {}\n", node.num_locals.unwrap() * 8);
+
+                // Get the arguments from the correspoinding registers
+                let num_args = node.funcarg_offsets.len();
+                for i in 0..num_args {
+                    gen_line!(self.f, "  mov rax, rbp\n");
+                    gen_line!(self.f, "  sub rax, {}\n", node.funcarg_offsets.pop_front().unwrap());
+                    gen_line!(self.f, "  mov [rax], {}\n", FUNC_REGS[i]);
+                }
 
                 // Go on to execute the stmts
                 while let Some(stmt) = node.blockstmts.pop_front() {
