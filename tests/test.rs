@@ -83,4 +83,15 @@ tests! {
                 b = 7;
                 return fib(b);
              }", 13),
+    func3: ("fib (a) {
+                if (a <= 1) return a;
+                return fib(a-1) + fib(a-2);
+             }
+             proxy(a, b, c, d) {
+                return fib(a + b + c - d);
+             }
+             main() {
+                b = 7;
+                return proxy(1, b, 2, 3);
+             }", 13),
 }
