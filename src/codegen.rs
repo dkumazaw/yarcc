@@ -163,12 +163,11 @@ impl<'a> CodeGen<'a> {
             }
             NDFUNCDEF => {
                 // Make sure to create enough space for variables
-                let num_vars = node.locals.len();
                 gen_line!(self.f, "{}:\n", node.funcname.unwrap());
 
                 gen_line!(self.f, "  push rbp\n");
                 gen_line!(self.f, "  mov rbp, rsp\n");
-                gen_line!(self.f, "  sub rsp, {}\n", num_vars * 8);
+                gen_line!(self.f, "  sub rsp, {}\n", node.num_locals.unwrap() * 8);
 
                 // Go on to execute the stmts
                 while let Some(stmt) = node.blockstmts.pop_front() {
