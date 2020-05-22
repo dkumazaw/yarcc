@@ -49,129 +49,132 @@ impl<'a> CodeGen<'a> {
         gen_line!(self.f, "  push rax\n");
     }
 
+    // Entry point into codegen
     pub fn gen(&mut self, mut node: Node) {
         use crate::parser::NodeKind::*;
-    
-        if node.kind == NDNUM {
-            gen_line!(self.f, "  push {}\n", node.val.unwrap());
-            return;
-        } else if node.kind == NDLVAR {
-            self.gen_lval(node);
-            gen_line!(self.f, "  pop rax\n");
-            gen_line!(self.f, "  mov rax, [rax]\n");
-            gen_line!(self.f, "  push rax\n");
-            return;
-        } else if node.kind == NDASSIGN {
-            self.gen_lval(*node.lhs.unwrap());
-            self.gen(*node.rhs.unwrap());
-            gen_line!(self.f, "  pop rdi\n");
-            gen_line!(self.f, "  pop rax\n");
-            gen_line!(self.f, "  mov [rax], rdi\n");
-            gen_line!(self.f, "  push rdi\n");
-            return;
-        } else if node.kind == NDRETURN {
-            self.gen(*node.lhs.unwrap());
-            gen_line!(self.f, "  pop rax\n");
-            gen_line!(self.f, "  mov rsp, rbp\n");
-            gen_line!(self.f, "  pop rbp\n");
-            gen_line!(self.f, "  ret\n");
-            return;
-        } else if node.kind == NDIF {
-            let my_label = self.cond_label;
-            self.cond_label += 1;
-            self.gen(*node.cond.unwrap());
-            gen_line!(self.f, "  pop rax\n");
-            gen_line!(self.f, "  cmp rax, 0\n");
-            gen_line!(self.f, "  je .Lelse{}\n", my_label);
-            self.gen(*node.ifnode.unwrap());
-            gen_line!(self.f, "  jmp .Lend{}\n", my_label);
-            gen_line!(self.f, ".Lelse{}:\n", my_label);
-            // If else node exists, generate.
-            if let Some(elsenode) = node.elsenode {
-                self.gen(*elsenode);
+
+        match node.kind {
+            NDNUM => {
+                gen_line!(self.f, "  push {}\n", node.val.unwrap());
+            } 
+            NDLVAR => {
+                self.gen_lval(node);
+                gen_line!(self.f, "  pop rax\n");
+                gen_line!(self.f, "  mov rax, [rax]\n");
+                gen_line!(self.f, "  push rax\n");
+            } 
+            NDASSIGN => {
+                self.gen_lval(*node.lhs.unwrap());
+                self.gen(*node.rhs.unwrap());
+                gen_line!(self.f, "  pop rdi\n");
+                gen_line!(self.f, "  pop rax\n");
+                gen_line!(self.f, "  mov [rax], rdi\n");
+                gen_line!(self.f, "  push rdi\n");
             }
-            gen_line!(self.f, ".Lend{}:\n", my_label);
-            return;
-        } else if node.kind == NDWHILE {
-            let my_label = self.cond_label;
-            self.cond_label += 1;
-            gen_line!(self.f, ".Lbegin{}:\n", my_label);
-            self.gen(*node.cond.unwrap());
-            gen_line!(self.f, "  pop rax\n");
-            gen_line!(self.f, "  cmp rax, 0\n");
-            gen_line!(self.f, "  je .Lend{}\n", my_label);
-            self.gen(*node.repnode.unwrap());
-            gen_line!(self.f, "  jmp .Lbegin{}\n", my_label);
-            gen_line!(self.f, ".Lend{}:", my_label);
-            return;
-        } else if node.kind == NDFOR {
-            let my_label = self.cond_label;
-            self.cond_label += 1;
-            if let Some(initnode) = node.initnode {
-                self.gen(*initnode);
-            }
-            gen_line!(self.f, ".Lbegin{}:\n", my_label);
-            if let Some(cond) = node.cond {
-                self.gen(*cond);
-            } else {
-                // Infinite loop: push 1 to make sure the cmp always succeeds
-                gen_line!(self.f, "push 1\n");
-            }
-            gen_line!(self.f, "  pop rax\n");
-            gen_line!(self.f, "  cmp rax, 0\n");
-            gen_line!(self.f, "  je .Lend{}\n", my_label);
-            self.gen(*node.repnode.unwrap());
-            if let Some(stepnode) = node.stepnode {
-                self.gen(*stepnode);
-            }
-            gen_line!(self.f, "  jmp .Lbegin{}\n", my_label);
-            gen_line!(self.f, ".Lend{}:", my_label);
-            return;
-        } else if node.kind == NDBLOCK {
-            while let Some(stmt) = node.blockstmts.pop_front() {
-                self.gen(stmt);
-                // pop if not the last stmt
-                if node.blockstmts.len() != 0 {
-                    self.pop_rax();
+            NDRETURN => {
+                self.gen(*node.lhs.unwrap());
+                gen_line!(self.f, "  pop rax\n");
+                gen_line!(self.f, "  mov rsp, rbp\n");
+                gen_line!(self.f, "  pop rbp\n");
+                gen_line!(self.f, "  ret\n");
+            } 
+            NDIF => {
+                let my_label = self.cond_label;
+                self.cond_label += 1;
+                self.gen(*node.cond.unwrap());
+                gen_line!(self.f, "  pop rax\n");
+                gen_line!(self.f, "  cmp rax, 0\n");
+                gen_line!(self.f, "  je .Lelse{}\n", my_label);
+                self.gen(*node.ifnode.unwrap());
+                gen_line!(self.f, "  jmp .Lend{}\n", my_label);
+                gen_line!(self.f, ".Lelse{}:\n", my_label);
+                // If else node exists, generate.
+                if let Some(elsenode) = node.elsenode {
+                    self.gen(*elsenode);
                 }
+                gen_line!(self.f, ".Lend{}:\n", my_label);
+            } 
+            NDWHILE => {
+                let my_label = self.cond_label;
+                self.cond_label += 1;
+                gen_line!(self.f, ".Lbegin{}:\n", my_label);
+                self.gen(*node.cond.unwrap());
+                gen_line!(self.f, "  pop rax\n");
+                gen_line!(self.f, "  cmp rax, 0\n");
+                gen_line!(self.f, "  je .Lend{}\n", my_label);
+                self.gen(*node.repnode.unwrap());
+                gen_line!(self.f, "  jmp .Lbegin{}\n", my_label);
+                gen_line!(self.f, ".Lend{}:", my_label);
+            } 
+            NDFOR => {
+                let my_label = self.cond_label;
+                self.cond_label += 1;
+                if let Some(initnode) = node.initnode {
+                    self.gen(*initnode);
+                }
+                gen_line!(self.f, ".Lbegin{}:\n", my_label);
+                if let Some(cond) = node.cond {
+                    self.gen(*cond);
+                } else {
+                    // Infinite loop: push 1 to make sure the cmp always succeeds
+                    gen_line!(self.f, "push 1\n");
+                }
+                gen_line!(self.f, "  pop rax\n");
+                gen_line!(self.f, "  cmp rax, 0\n");
+                gen_line!(self.f, "  je .Lend{}\n", my_label);
+                self.gen(*node.repnode.unwrap());
+                if let Some(stepnode) = node.stepnode {
+                    self.gen(*stepnode);
+                }
+                gen_line!(self.f, "  jmp .Lbegin{}\n", my_label);
+                gen_line!(self.f, ".Lend{}:", my_label);
+            } 
+            NDBLOCK => {
+                while let Some(stmt) = node.blockstmts.pop_front() {
+                    self.gen(stmt);
+                    // pop if not the last stmt
+                    if node.blockstmts.len() != 0 {
+                        self.pop_rax();
+                    }
+                }
+            } 
+            NDCALL => {
+                let my_label = self.cond_label;
+                self.cond_label += 2; // Consume 2
+                let num_args = node.funcargs.len();
+                let regs = ["rdi", "rsi", "rdx", "rcx", "r8", "r9"];
+                
+                // Push args to the designated registers
+                for i in 0..num_args {
+                    self.gen(node.funcargs.pop_front().unwrap());
+                    gen_line!(self.f, "  pop {}\n", regs[i]);
+                }
+
+                // Align RSP to multiple of 16 
+                gen_line!(self.f, "  mov r12, 0\n");
+                gen_line!(self.f, "  test rsp, 8\n");
+                gen_line!(self.f, "  je .Lcond{}\n", my_label);
+                // Alignment occurs here
+                gen_line!(self.f, "  sub rsp, 8\n");
+                gen_line!(self.f, "  mov r12, 1\n"); // Flag that sub occured
+                gen_line!(self.f, ".Lcond{}:\n", my_label);
+
+                gen_line!(self.f, "  call {}\n", node.funcname.unwrap());
+
+                // Rewind the alignment if needed
+                gen_line!(self.f, "  test r12, r12\n");
+                gen_line!(self.f, "  je .Lcond{}\n", my_label+1);
+                gen_line!(self.f, "  add rsp, 8\n");
+                gen_line!(self.f, ".Lcond{}:\n", my_label+1);
+
+                // Finally, store result returned from the call:
+                gen_line!(self.f, "  push rax\n");
             }
-            return;
-        } else if node.kind == NDCALL {
-            let my_label = self.cond_label;
-            self.cond_label += 2; // Consume 2
-            let num_args = node.funcargs.len();
-            let regs = ["rdi", "rsi", "rdx", "rcx", "r8", "r9"];
-            
-            // Push args to the designated registers
-            for i in 0..num_args {
-                self.gen(node.funcargs.pop_front().unwrap());
-                gen_line!(self.f, "  pop {}\n", regs[i]);
+            _ => {
+                // Must be a primitive node
+                self.gen_primitive(node);
             }
-
-            // Align RSP to multiple of 16 
-            gen_line!(self.f, "  mov r12, 0\n");
-            gen_line!(self.f, "  test rsp, 8\n");
-            gen_line!(self.f, "  je .Lcond{}\n", my_label);
-            // Alignment occurs here
-            gen_line!(self.f, "  sub rsp, 8\n");
-            gen_line!(self.f, "  mov r12, 1\n"); // Flag that sub occured
-            gen_line!(self.f, ".Lcond{}:\n", my_label);
-
-            gen_line!(self.f, "  call {}\n", node.funcname.unwrap());
-
-            // Rewind the alignment if needed
-            gen_line!(self.f, "  test r12, r12\n");
-            gen_line!(self.f, "  je .Lcond{}\n", my_label+1);
-            gen_line!(self.f, "  add rsp, 8\n");
-            gen_line!(self.f, ".Lcond{}:\n", my_label+1);
-
-            // Finally, store result returned from the call:
-            gen_line!(self.f, "  push rax\n");
-
-            return;
         }
-        
-        self.gen_primitive(node);
     }
 
     // Generates code for primitive ops
