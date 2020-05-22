@@ -186,6 +186,15 @@ impl<'a> TokenIter<'a> {
         t.val
     }
 
+    pub fn expect_ident(&mut self) -> Option<String> {
+        let t = self.next();
+        if t.kind != TokenKind::TKIDENT {
+            panic!("TokenIter: Expected ident.")
+        }
+
+        t.string.clone()
+    }
+
     // Consumes TKRESERVED matching s
     pub fn consume(&mut self, s: &str) -> bool {
         let t = self.peek();
