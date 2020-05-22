@@ -17,28 +17,12 @@ impl<'a> CodeGen<'a> {
         }
     }
 
-    pub fn gen_preamble(&mut self, num_vars: usize) {
+    // Generates preamble:
+    pub fn gen_preamble(&mut self) {
         gen_line!(self.f, ".intel_syntax noprefix\n");
         gen_line!(self.f, ".global main\n\n");
-        gen_line!(self.f, "main:\n");
-
-        // Create enough space for variables
-        gen_line!(self.f, "  push rbp\n");
-        gen_line!(self.f, "  mov rbp, rsp\n");
-        gen_line!(self.f, "  sub rsp, {}\n", num_vars * 8);
     }
 
-    pub fn pop_rax(&mut self) {
-        gen_line!(self.f, "  pop rax\n");
-    }
-
-    pub fn gen_postamble(&mut self) {
-        // Restore rbp and return
-        gen_line!(self.f, "  mov rsp, rbp\n");
-        gen_line!(self.f, "  pop rbp\n");
-        gen_line!(self.f, "  ret\n");
-    }
-    
     fn gen_lval(&mut self, node: Node) {
         if node.kind != NodeKind::NDLVAR {
             panic!("Expected kind NDLVAR but got {:?}", node.kind);
@@ -47,6 +31,14 @@ impl<'a> CodeGen<'a> {
         gen_line!(self.f, "  mov rax, rbp\n");
         gen_line!(self.f, "  sub rax, {}\n", node.offset.unwrap());
         gen_line!(self.f, "  push rax\n");
+    }
+
+    // Set the last result to rax, restore the rbp and return
+    fn gen_return(&mut self) {
+        gen_line!(self.f, "  pop rax\n");
+        gen_line!(self.f, "  mov rsp, rbp\n");
+        gen_line!(self.f, "  pop rbp\n");
+        gen_line!(self.f, "  ret\n");
     }
 
     // Entry point into codegen
@@ -73,10 +65,7 @@ impl<'a> CodeGen<'a> {
             }
             NDRETURN => {
                 self.gen(*node.lhs.unwrap());
-                gen_line!(self.f, "  pop rax\n");
-                gen_line!(self.f, "  mov rsp, rbp\n");
-                gen_line!(self.f, "  pop rbp\n");
-                gen_line!(self.f, "  ret\n");
+                self.gen_return();
             } 
             NDIF => {
                 let my_label = self.cond_label;
@@ -85,6 +74,8 @@ impl<'a> CodeGen<'a> {
                 gen_line!(self.f, "  pop rax\n");
                 gen_line!(self.f, "  cmp rax, 0\n");
                 gen_line!(self.f, "  je .Lelse{}\n", my_label);
+
+
                 self.gen(*node.ifnode.unwrap());
                 gen_line!(self.f, "  jmp .Lend{}\n", my_label);
                 gen_line!(self.f, ".Lelse{}:\n", my_label);
@@ -134,7 +125,7 @@ impl<'a> CodeGen<'a> {
                     self.gen(stmt);
                     // pop if not the last stmt
                     if node.blockstmts.len() != 0 {
-                        self.pop_rax();
+                        gen_line!(self.f, "  pop rax\n");
                     }
                 }
             } 
@@ -169,6 +160,27 @@ impl<'a> CodeGen<'a> {
 
                 // Finally, store result returned from the call:
                 gen_line!(self.f, "  push rax\n");
+            }
+            NDFUNCDEF => {
+                // Make sure to create enough space for variables
+                let num_vars = node.locals.len();
+                gen_line!(self.f, "{}:\n", node.funcname.unwrap());
+
+                gen_line!(self.f, "  push rbp\n");
+                gen_line!(self.f, "  mov rbp, rsp\n");
+                gen_line!(self.f, "  sub rsp, {}\n", num_vars * 8);
+
+                // Go on to execute the stmts
+                while let Some(stmt) = node.blockstmts.pop_front() {
+                    self.gen(stmt);
+                    // Pop if not the last stmt
+                    if node.blockstmts.len() != 0 {
+                        gen_line!(self.f, "  pop rax\n");
+                    }
+                }
+
+                // Restore rbp and return
+                self.gen_return();
             }
             _ => {
                 // Must be a primitive node
