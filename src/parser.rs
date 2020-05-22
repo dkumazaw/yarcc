@@ -400,16 +400,23 @@ impl<'a> Parser<'a> {
                 // This is a function call
                 let mut remaining = 6;
                 let mut node = Node::new(NDCALL, None, None).funcname(ident);
-                while !self.iter.consume(")") {
+
+                if self.iter.consume(")") {
+                    // No argument case
+                    return node;
+                }
+                remaining -= 1;
+                // Handle the 1st arg
+                node = node.funcarg(self.expr());
+
+                while self.iter.consume(",") {
                     if remaining == 0 {
-                        panic!("Parser: Func arg exceeded the max. number of args.");
+                        panic!("Parser: Func arg exceeded the max. number of args supported.");
                     }
                     remaining -= 1;
                     node = node.funcarg(self.expr()); 
-                    if remaining != 0 {
-                        self.iter.expect(",");
-                    }
                 } 
+                self.iter.expect(")");
                 node
             } else {
                 // This is a variable

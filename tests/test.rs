@@ -48,7 +48,7 @@ tests! {
     lvar3: ("main() { a = 1; b = 2; a + b;} ", 3),
     return0: ("main() { return 1;} ", 1),
     return1: ("main() { return (3 + 1) *  10;} ", 40),
-    return2: ("main() { a = 4 + 5; return a;} ", 9),
+    return2: ("main() { a = 4 + 5; return a + 1;} ", 10),
     return3: ("main() { return 5; return 1; 2;} ", 5),
     if0: ("main() { if (1 == 1) return 1; return 2;} ", 1),
     if1: ("main() { if (1 != 1) return 1; return 2;} ", 2),
@@ -75,4 +75,13 @@ tests! {
                     return bar();
                  } 
              }", 46),
+    // TODO: Fix this: currently segfault
+    func2: ("fib (a) {
+                if (a <= 1) return a;
+                return fib(a-1) + fib(a-2);
+             }
+             main() {
+                b = 7;
+                return fib(b);
+             }", 13),
 }
