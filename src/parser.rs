@@ -17,8 +17,9 @@ pub enum NodeKind {
     NDWHILE,
     NDFOR,
     NDBLOCK,
-    NDCALL,
-    NDLVAR,   // local var
+    NDCALL,    // function call
+    NDFUNCDEF, // function definition 
+    NDLVAR,    // local var
     NDNUM,
 }
 
@@ -40,10 +41,12 @@ pub struct Node {
     pub initnode: Option<Box<Node>>, // Used by for
     pub stepnode: Option<Box<Node>>, // Used by for
 
-    pub blockstmts: LinkedList<Node>, // Used by NDBLOCK
+    pub blockstmts: LinkedList<Node>, // Used by NDBLOCK & NDFUNCDEF
 
-    pub funcname: Option<String>, // Used by NDCALL
+    pub funcname: Option<String>, // Used by NDCALL & NDFUNCDEF
     pub funcargs: LinkedList<Node>, // Used by NDCALL
+
+    pub funcargnames: LinkedList<String>, // Used by NDFUNCDEF
 }
 
 // Denotes the name of lvar and its stack offset
@@ -82,6 +85,7 @@ impl Node {
             blockstmts: LinkedList::new(),
             funcname: None,
             funcargs: LinkedList::new(),
+            funcargnames: LinkedList::new(),
         }
     }
 
@@ -139,6 +143,11 @@ impl Node {
         self.funcargs.push_back(node);
         self
     }
+
+    fn funcargname(mut self, name: String) -> Self {
+        self.funcargnames.push_back(name);
+        self
+    }
 }
 
 impl<'a> Parser<'a> {
@@ -156,13 +165,38 @@ impl<'a> Parser<'a> {
         }
     }
 
-    // program = stmt*
+    // program = funcdef*
     fn program(&mut self) -> LinkedList<Node> {
         let mut nodes = LinkedList::new();
         while !self.iter.at_eof() {
             nodes.push_back(self.stmt());
         }
         nodes
+    }
+
+    // funcdef = ident "(" (ident ",")* ")" "{" stmt* "}"
+    fn funcdef(&mut self) -> Node {
+        use NodeKind::*;
+
+        let mut node = Node::new(NDFUNCDEF, None, None)
+                            .funcname(self.iter.expect_ident().unwrap());
+        // Parse arguments
+        self.iter.expect("(");
+        if let Some(arg0) = self.iter.consume_ident() {
+            node = node.funcargname(arg0);
+            while self.iter.consume(",") {
+                node = node.funcargname(self.iter.expect_ident().unwrap());
+            }
+        }
+        self.iter.expect(")");
+
+        // Parse function body
+        self.iter.expect("{");
+        while !self.iter.consume("}") {
+            node = node.blockstmt(self.stmt());
+        }
+        
+        node
     }
 
     // stmt = expr ";"
