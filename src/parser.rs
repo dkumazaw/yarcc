@@ -62,7 +62,6 @@ pub struct LVar {
 // codegen should use this context to produce code
 pub struct ParsedContext {
     pub nodes: LinkedList<Node>,
-    //pub locals: LinkedList<LVar>,
 }
 
 pub struct Parser<'a> {
@@ -169,7 +168,6 @@ impl<'a> Parser<'a> {
     pub fn parse(mut self) -> ParsedContext {
         ParsedContext {
             nodes: self.program(),
-            //locals: self.locals,
         }
     }
 
