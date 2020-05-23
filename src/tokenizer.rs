@@ -186,6 +186,13 @@ impl<'a> TokenIter<'a> {
         }
     }
 
+    pub fn expect_kind(&mut self, k: TokenKind) {
+        let t = self.next();
+        if t.kind != k {
+            panic!("TokenIter: Expected TokenKind {:?} but got {:?}", k, t.kind);
+        }
+    }
+
     pub fn expect_number(&mut self) -> i32 {
         let t = self.next();
         if t.kind != TokenKind::TKNUM {
