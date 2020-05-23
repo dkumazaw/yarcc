@@ -196,7 +196,7 @@ impl<'a> CodeGen<'a> {
                 self.gen_return();
             }
             NDADDR => {
-                self.gen(*node.lhs.unwrap());
+                self.gen_lval(*node.lhs.unwrap());
             }
             NDDEREF => {
                 self.gen(*node.lhs.unwrap());
