@@ -182,10 +182,11 @@ impl<'a> Parser<'a> {
         nodes
     }
 
-    // funcdef = ident "(" (ident ",")* ")" "{" stmt* "}"
+    // funcdef = "int" ident "(" ("int" ident ",")* ")" "{" stmt* "}"
     fn funcdef(&mut self) -> Node {
         use NodeKind::*;
 
+        self.iter.expect_kind(TokenKind::TKINT);
         let mut node = Node::new(NDFUNCDEF, None, None)
                             .funcname(self.iter.expect_ident().unwrap());
         // Create a new scope:
@@ -193,10 +194,12 @@ impl<'a> Parser<'a> {
 
         // Parse arguments
         self.iter.expect("(");
-        if let Some(arg0) = self.iter.consume_ident() {
+        if self.iter.consume_kind(TokenKind::TKINT) {
+            let arg0 = self.iter.expect_ident().unwrap(); 
             // Register the variable to locals and remember that offset
             node = node.funcarg_offset(self.add_lvar(arg0));
             while self.iter.consume(",") {
+                self.iter.expect_kind(TokenKind::TKINT);
                 let arg = self.iter.expect_ident().unwrap();
                 node = node.funcarg_offset(self.add_lvar(arg));
             }
