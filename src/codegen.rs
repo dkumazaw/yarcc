@@ -195,6 +195,15 @@ impl<'a> CodeGen<'a> {
                 // Restore rbp and return
                 self.gen_return();
             }
+            NDADDR => {
+                self.gen(*node.lhs.unwrap());
+            }
+            NDDEREF => {
+                self.gen(*node.lhs.unwrap());
+                gen_line!(self.f, "  pop rax\n");
+                gen_line!(self.f, "  mov rax, [rax]\n"); 
+                gen_line!(self.f, "  push rax\n");
+            }
             _ => {
                 // Must be a primitive node
                 self.gen_primitive(node);
