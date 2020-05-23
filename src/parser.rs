@@ -19,6 +19,8 @@ pub enum NodeKind {
     NDBLOCK,
     NDCALL,    // function call
     NDFUNCDEF, // function definition 
+    NDADDR,
+    NDDEREF,
     NDLVAR,    // local var
     NDNUM,
 }
@@ -369,11 +371,21 @@ impl<'a> Parser<'a> {
     }
 
     // unary = ("+" | "-")? primary
+    //       | "*" unary
+    //       | "&" unary
     fn unary(&mut self) -> Node {
         use NodeKind::*;
 
         let node;
-        if self.iter.consume("+") {
+        if self.iter.consume("*") {
+            node = Node::new(NDDEREF, 
+                             Some(Box::new(self.unary())),
+                             None);
+        } else if self.iter.consume("&") {
+            node = Node::new(NDADDR,
+                             Some(Box::new(self.unary())),
+                             None);
+        } else if self.iter.consume("+") {
             node = self.primary();
         } else if self.iter.consume("-") {
             node = Node::new(NDSUB, 
