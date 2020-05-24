@@ -67,8 +67,8 @@ pub enum VarKind {
 // Denotes the type of a variable
 #[derive(Debug, Clone)]
 pub struct VarType {
-    kind: VarKind,
-    ptr_to: Option<Box<VarType>>,
+    pub kind: VarKind,
+    pub ptr_to: Option<Box<VarType>>,
 }
 
 // Denotes the name of lvar and its stack offset

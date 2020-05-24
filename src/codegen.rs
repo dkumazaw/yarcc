@@ -2,7 +2,8 @@ use std::fs::File;
 use crate::parser::{Node, NodeKind};
 use std::io::Write;
 
-static FUNC_REGS: [&str; 6] = ["rdi", "rsi", "rdx", "rcx", "r8", "r9"];
+static FUNC_REGS_4: [&str; 6] = ["edi", "esi", "edx", "ecx", "r8d", "r9d"];
+static FUNC_REGS_8: [&str; 6] = ["rdi", "rsi", "rdx", "rcx", "r8", "r9"];
 
 #[derive(Debug)]
 pub struct CodeGen<'a> {
@@ -167,7 +168,7 @@ impl<'a> CodeGen<'a> {
                 // Push args to the designated registers
                 for i in 0..num_args {
                     self.gen(node.funcargs.pop_front().unwrap());
-                    gen_line!(self.f, "  pop {}\n", FUNC_REGS[i]);
+                    gen_line!(self.f, "  pop {}\n", FUNC_REGS_8[i]);
                 }
 
                 // Align RSP to multiple of 16 
@@ -200,7 +201,12 @@ impl<'a> CodeGen<'a> {
                     let lvar = node.funcarg_vars.pop_front().unwrap();
                     gen_line!(self.f, "  mov rax, rbp\n");
                     gen_line!(self.f, "  sub rax, {}\n", lvar.offset);
-                    gen_line!(self.f, "  mov [rax], {}\n", FUNC_REGS[i]);
+                    let regs = match lvar.ty.kind.size() {
+                        4 => FUNC_REGS_4,
+                        8 => FUNC_REGS_8,
+                        _ => panic!("Codegen: Invalid size for lvar!")
+                    };
+                    gen_line!(self.f, "  mov [rax], {}\n", regs[i]);
                 }
 
                 // Go on to execute the stmts
