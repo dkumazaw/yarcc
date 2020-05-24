@@ -41,7 +41,6 @@ impl<'a> CodeGen<'a> {
         }
     }
 
-    // Loads address stored on rax according to the node's VarKind
     fn gen_load(&mut self, size: usize) {
         gen_line!(self.f, "  pop rax\n");
 
@@ -57,6 +56,9 @@ impl<'a> CodeGen<'a> {
             }
         }
         gen_line!(self.f, "  push rax\n");
+    }
+
+    fn gen_store(&mut self, size: usize) {
     }
 
     // Set the last result to rax, restore the rbp and return
@@ -84,6 +86,7 @@ impl<'a> CodeGen<'a> {
             NDASSIGN => {
                 self.gen_lval(*node.lhs.unwrap());
                 self.gen(*node.rhs.unwrap());
+                
                 gen_line!(self.f, "  pop rdi\n");
                 gen_line!(self.f, "  pop rax\n");
                 gen_line!(self.f, "  mov [rax], rdi\n");
@@ -219,10 +222,10 @@ impl<'a> CodeGen<'a> {
                 self.gen_lval(*node.lhs.unwrap());
             }
             NDDEREF => {
-                self.gen(*node.lhs.unwrap());
-                gen_line!(self.f, "  pop rax\n");
-                gen_line!(self.f, "  mov rax, [rax]\n"); 
-                gen_line!(self.f, "  push rax\n");
+                let lhs = *node.lhs.unwrap();
+                let size = lhs.lvar_kind.unwrap().size();
+                self.gen(lhs);
+                self.gen_load(size);
             }
             _ => {
                 // Must be a primitive node

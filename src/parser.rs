@@ -506,7 +506,8 @@ impl<'a> Parser<'a> {
         } else if self.iter.consume("&") {
             node = Node::new(NDADDR,
                              Some(Box::new(self.unary())),
-                             None);
+                             None)
+                        .lvar_kind(VarKind::PTR); // Should act as if it's a pointer
         } else if self.iter.consume("+") {
             node = self.primary();
         } else if self.iter.consume("-") {
