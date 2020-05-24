@@ -141,7 +141,6 @@ impl<'a> CodeGen<'a> {
                 }
             } 
             NDCALL => {
-                let my_label = self.cond_label;
                 self.cond_label += 2; // Consume 2
                 let num_args = node.funcargs.len();
                 
@@ -173,7 +172,7 @@ impl<'a> CodeGen<'a> {
                 gen_line!(self.f, "  push rbp\n");
                 // Make sure to create enough space for variables
                 gen_line!(self.f, "  mov rbp, rsp\n");
-                gen_line!(self.f, "  sub rsp, {}\n", node.num_locals.unwrap() * 8);
+                gen_line!(self.f, "  sub rsp, {}\n", node.lvars_offset.unwrap());
 
                 // Get the arguments from the correspoinding registers
                 let num_args = node.funcarg_offsets.len();

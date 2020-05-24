@@ -183,6 +183,11 @@ impl Node {
         self.num_locals = Some(count);
         self
     }
+
+    fn lvars_offset(mut self, offset: usize) -> Self {
+        self.lvars_offset = Some(offset);
+        self
+    }
 }
 
 impl LVarScope {
@@ -313,8 +318,8 @@ impl<'a> Parser<'a> {
             node = node.blockstmt(self.stmt());
         }
 
-        // Remember the # of variables created & push the scope out of the stack
-        node = node.num_locals(self.locals.pop_back().unwrap().list.len());
+        // Remember the # of variables created & pop the scope out of the stack
+        node = node.lvars_offset(self.locals.pop_back().unwrap().offset);
         
         node
     }
