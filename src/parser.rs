@@ -19,6 +19,7 @@ pub enum NodeKind {
     NDBLOCK,
     NDCALL,    // function call
     NDFUNCDEF, // function definition 
+    NDVARDEF,  // Variable definition
     NDADDR,
     NDDEREF,
     NDLVAR,    // local var
@@ -219,6 +220,7 @@ impl<'a> Parser<'a> {
     }
 
     // stmt = expr ";"
+    //      | "int" ident ";"
     //      | "{" stmt* "}"
     //      | "if" "(" expr ")" stmt ("else" stmt)?
     //      | "while" "(" expr ")" stmt
@@ -228,7 +230,13 @@ impl<'a> Parser<'a> {
         use NodeKind::*;
 
         let mut node;
-        if self.iter.consume("{") {
+        if self.iter.consume_kind(TokenKind::TKINT) {
+            // Register the variable to lvars
+            let ident = self.iter.expect_ident().unwrap();
+            self.add_lvar(ident);
+            self.iter.expect(";");
+            node = Node::new(NDVARDEF, None, None);
+        } else if self.iter.consume("{") {
             node = Node::new(NDBLOCK, None, None);
             while !self.iter.consume("}") {
                 node = node.blockstmt(self.stmt());
