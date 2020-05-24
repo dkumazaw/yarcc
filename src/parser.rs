@@ -290,6 +290,7 @@ impl<'a> Parser<'a> {
         if let Some(offset) = self.lvar_def() { 
             // This was an lvar def!
             self.iter.expect(";");
+            // TODO: Maybe having NDVARDEF is not a good design...
             node = Node::new(NDVARDEF, None, None);
         } else if self.iter.consume("{") {
             node = Node::new(NDBLOCK, None, None);
