@@ -179,7 +179,7 @@ impl<'a> TokenIter<'a> {
         }
         if let Some(ref tkstr) = t.string {
             if tkstr != s {
-                panic!("TokenIter: Wrong token string.")
+                panic!("TokenIter: Wrong token string! Expected {} but got {}", s, tkstr);
             }
         } else {
             panic!("TokenIter: Expected that string exists.")
