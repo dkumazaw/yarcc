@@ -52,6 +52,9 @@ pub struct Node {
     pub funcarg_offsets: LinkedList<usize>, // Offsets at which args reside, used by NDFUNCDEF
 
     pub num_locals: Option<usize>, // Stores the # of local vars created; used by NDFUNCDEF & NDBLOCK(TODO)
+
+    pub lvars_offset: Option<usize>, // Stores the amount of space needed on stack for lvars.
+    // Used by NDFUNCDEF and NDBLOCK(TODO)
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -75,6 +78,13 @@ pub struct LVar {
     offset: usize,
 }
 
+// Stores the current level of local variables
+#[derive(Debug)]
+pub struct LVarScope {
+    list: LinkedList<LVar>,
+    offset: usize,
+}
+
 // Parser returns this context;
 // codegen should use this context to produce code
 pub struct ParsedContext {
@@ -83,7 +93,7 @@ pub struct ParsedContext {
 
 pub struct Parser<'a> {
     iter: TokenIter<'a>,
-    locals: LinkedList<LinkedList<LVar>>, // Each scope should push_back a new linked list
+    locals: LinkedList<LVarScope>, // Each scope should push_back a new linked list
 }
 
 impl Node {
@@ -105,6 +115,7 @@ impl Node {
             funcargs: LinkedList::new(),
             funcarg_offsets: LinkedList::new(),
             num_locals: None,
+            lvars_offset: None,
         }
     }
 
@@ -171,6 +182,15 @@ impl Node {
     fn num_locals(mut self, count: usize) -> Self {
         self.num_locals = Some(count);
         self
+    }
+}
+
+impl LVarScope {
+    fn new() -> Self {
+        LVarScope {
+            list: LinkedList::new(),
+            offset: 0,
+        }
     }
 }
 
@@ -253,7 +273,7 @@ impl<'a> Parser<'a> {
         let mut node = Node::new(NDFUNCDEF, None, None)
                             .funcname(self.iter.expect_ident().unwrap());
         // Create a new scope:
-        self.locals.push_back(LinkedList::new());
+        self.locals.push_back(LVarScope::new());
 
         // Parse arguments
         self.iter.expect("(");
@@ -281,7 +301,7 @@ impl<'a> Parser<'a> {
         }
 
         // Remember the # of variables created & push the scope out of the stack
-        node = node.num_locals(self.locals.pop_back().unwrap().len());
+        node = node.num_locals(self.locals.pop_back().unwrap().list.len());
         
         node
     }
@@ -526,15 +546,14 @@ impl<'a> Parser<'a> {
     // Finds if the passed identitier already exists
     fn find_lvar(&mut self, ident_name: &str) -> Option<&LVar> {
         // TODO: Support hierarchical lookup
-        self.locals.back().unwrap().iter().find(|x| x.name == ident_name ) 
+        self.locals.back().unwrap().list.iter().find(|x| x.name == ident_name ) 
     }
 
     // Adds a new ident and returns the produced offset
     fn add_lvar(&mut self, ident_name: String, ty: VarType) -> usize {
-        use VarKind::*;
-
-        let next_ofs = (self.locals.back().unwrap().len() + 1) * 8;
+        let next_ofs = (self.locals.back().unwrap().list.len() + 1) * 8;
         self.locals.back_mut().unwrap()
+                              .list
                               .push_back(LVar { 
                                   name: ident_name, 
                                   ty: ty, 
