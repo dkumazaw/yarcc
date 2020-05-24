@@ -555,10 +555,8 @@ impl<'a> Parser<'a> {
             } else {
                 // This is a variable
                 if let Some(ref lvar) = self.find_lvar(&ident) {
-                    // This ident exists! Nice!
                     Node::new(NDLVAR, None, None).offset(lvar.offset).lvar_kind(lvar.ty.kind)
                 } else {
-                    // Found an undefined variable. Panic.
                     panic!("Parser: Found an undefined variable {}\n", ident);
                 }
             }
