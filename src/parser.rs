@@ -54,10 +54,24 @@ pub struct Node {
     pub num_locals: Option<usize>, // Stores the # of local vars created; used by NDFUNCDEF & NDBLOCK(TODO)
 }
 
+#[derive(Debug)]
+pub enum VarKind {
+    INT,
+    PTR,
+}
+
+// Denotes the type of a variable
+#[derive(Debug)]
+pub struct VarType {
+    kind: VarKind,
+    ptr_to: Option<Box<VarType>>,
+}
+
 // Denotes the name of lvar and its stack offset
 #[derive(Debug)]
 pub struct LVar {
     name: String, 
+    ty: VarType,
     offset: usize,
 }
 
@@ -157,6 +171,15 @@ impl Node {
     fn num_locals(mut self, count: usize) -> Self {
         self.num_locals = Some(count);
         self
+    }
+}
+
+impl VarType {
+    pub fn new(kind: VarKind) -> Self {
+        VarType {
+            kind: kind,
+            ptr_to: None,
+        }
     }
 }
 
@@ -465,8 +488,10 @@ impl<'a> Parser<'a> {
 
     // Adds a new ident and returns the produced offset
     fn add_lvar(&mut self, ident_name: String) -> usize {
+        use VarKind::*;
+
         let next_ofs = (self.locals.back().unwrap().len() + 1) * 8;
-        self.locals.back_mut().unwrap().push_back(LVar { name: ident_name, offset: next_ofs });
+        self.locals.back_mut().unwrap().push_back(LVar { name: ident_name, ty: VarType::new(INT), offset: next_ofs });
         next_ofs
     }
 }
