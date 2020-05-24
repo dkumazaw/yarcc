@@ -192,10 +192,22 @@ impl LVarScope {
             offset: 0,
         }
     }
+
+    fn register_lvar(&mut self, ident_name: String, ty: VarType) -> usize {
+        let requested_size = VarKind::get_size(ty.kind);
+        let my_ofs = self.offset + requested_size; 
+
+        self.list.push_back(LVar {name: ident_name, ty: ty, offset: my_ofs});
+        my_ofs
+    }
+
+    fn find_lvar(&mut self, ident_name: &str) -> Option<&LVar> {
+        self.list.iter().find(|x| x.name == ident_name)
+    }
 }
 
 impl VarKind {
-    fn get_offset(kind: VarKind) -> usize {
+    fn get_size(kind: VarKind) -> usize {
         use VarKind::*;
         match kind {
             INT => 4,
@@ -551,6 +563,8 @@ impl<'a> Parser<'a> {
 
     // Adds a new ident and returns the produced offset
     fn add_lvar(&mut self, ident_name: String, ty: VarType) -> usize {
+        let requested_size = VarKind::get_size(ty.kind);
+        
         let next_ofs = (self.locals.back().unwrap().list.len() + 1) * 8;
         self.locals.back_mut().unwrap()
                               .list
