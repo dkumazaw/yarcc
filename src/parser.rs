@@ -54,7 +54,7 @@ pub struct Node {
     pub num_locals: Option<usize>, // Stores the # of local vars created; used by NDFUNCDEF & NDBLOCK(TODO)
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub enum VarKind {
     INT,
     PTR,
@@ -175,10 +175,18 @@ impl Node {
 }
 
 impl VarType {
-    pub fn new(kind: VarKind) -> Self {
+    pub fn new(kind: VarKind, ref_depth: usize) -> Self {
         VarType {
-            kind: kind,
-            ptr_to: None,
+            kind: if ref_depth == 0 {
+                kind
+            } else {
+                VarKind::PTR
+            },
+            ptr_to: if ref_depth == 0 {
+                None
+            } else {
+                Some(Box::new(VarType::new(kind, ref_depth - 1)))
+            },
         }
     }
 }
@@ -194,6 +202,27 @@ impl<'a> Parser<'a> {
     pub fn parse(mut self) -> ParsedContext {
         ParsedContext {
             nodes: self.program(),
+        }
+    }
+
+    // Parses local variable definition if possible
+    // Returns the offset of the registered lvar or None
+    fn lvar_def(&mut self) -> Option<usize> {
+        if !self.iter.consume_kind(TokenKind::TKINT) {
+            // This is not a variable definition. Return.
+            None 
+        } else {  
+            let refs = {
+                // # of times * occurs will tell us the depth of references
+                let mut tmp = 0;
+                while self.iter.consume("*") {
+                    tmp += 1;
+                }
+                tmp
+            };
+            let ident = self.iter.expect_ident().unwrap();
+            let var_type = VarType::new(VarKind::INT, refs);
+            Some(self.add_lvar(ident, var_type))
         }
     }
 
@@ -218,17 +247,22 @@ impl<'a> Parser<'a> {
 
         // Parse arguments
         self.iter.expect("(");
-        if self.iter.consume_kind(TokenKind::TKINT) {
-            let arg0 = self.iter.expect_ident().unwrap(); 
-            // Register the variable to locals and remember that offset
-            node = node.funcarg_offset(self.add_lvar(arg0));
-            while self.iter.consume(",") {
-                self.iter.expect_kind(TokenKind::TKINT);
-                let arg = self.iter.expect_ident().unwrap();
-                node = node.funcarg_offset(self.add_lvar(arg));
+        if !self.iter.consume(")") {
+            // There's at least one local variable definition.
+            if let Some(offset) = self.lvar_def() {
+                node = node.funcarg_offset(offset);
+            } else {
+                panic!("Parser: Expected local variable definition in function def.\n");
             }
+            while self.iter.consume(",") {
+                if let Some(offset) = self.lvar_def() {
+                    node = node.funcarg_offset(offset);
+                } else {
+                    panic!("Parser: Expected local variable definition in function def.\n");
+                }
+            }
+            self.iter.expect(")");
         }
-        self.iter.expect(")");
 
         // Parse function body
         self.iter.expect("{");
@@ -243,7 +277,7 @@ impl<'a> Parser<'a> {
     }
 
     // stmt = expr ";"
-    //      | "int" ident ";"
+    //      | lvar_def ";"
     //      | "{" stmt* "}"
     //      | "if" "(" expr ")" stmt ("else" stmt)?
     //      | "while" "(" expr ")" stmt
@@ -253,10 +287,8 @@ impl<'a> Parser<'a> {
         use NodeKind::*;
 
         let mut node;
-        if self.iter.consume_kind(TokenKind::TKINT) {
-            // Register the variable to lvars
-            let ident = self.iter.expect_ident().unwrap();
-            self.add_lvar(ident);
+        if let Some(offset) = self.lvar_def() { 
+            // This was an lvar def!
             self.iter.expect(";");
             node = Node::new(NDVARDEF, None, None);
         } else if self.iter.consume("{") {
@@ -487,14 +519,14 @@ impl<'a> Parser<'a> {
     }
 
     // Adds a new ident and returns the produced offset
-    fn add_lvar(&mut self, ident_name: String) -> usize {
+    fn add_lvar(&mut self, ident_name: String, ty: VarType) -> usize {
         use VarKind::*;
 
         let next_ofs = (self.locals.back().unwrap().len() + 1) * 8;
         self.locals.back_mut().unwrap()
                               .push_back(LVar { 
                                   name: ident_name, 
-                                  ty: VarType::new(INT), 
+                                  ty: ty, 
                                   offset: next_ofs 
                               });
         next_ofs
