@@ -174,6 +174,16 @@ impl Node {
     }
 }
 
+impl VarKind {
+    fn get_offset(kind: VarKind) -> usize {
+        use VarKind::*;
+        match kind {
+            INT => 4,
+            PTR => 8,
+        }
+    }
+}
+
 impl VarType {
     pub fn new(kind: VarKind, ref_depth: usize) -> Self {
         VarType {
