@@ -195,6 +195,10 @@ impl<'a> CodeGen<'a> {
                 // Restore rbp and return
                 self.gen_return();
             }
+            NDVARDEF => {
+                // For now, just push some bogus value.
+                gen_line!(self.f, "  push 12345\n");
+            }
             NDADDR => {
                 self.gen_lval(*node.lhs.unwrap());
             }
