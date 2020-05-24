@@ -35,7 +35,7 @@ pub struct Node {
     pub val: Option<i32>, // Used only when kind is NDNUM
     pub offset: Option<usize>, // Used only when kind is NDLVAR
 
-    pub lvar_ty: Option<VarKind>, // Type of this lvar 
+    pub lvar_kind: Option<VarKind>, // Kind of this lvar 
     pub multiplier: Option<usize>, // Used for pointer arithmetics; NDADD and NDSUB use this
 
     pub cond: Option<Box<Node>>, // Used for if else, for, and while
@@ -105,7 +105,7 @@ impl Node {
             rhs: rhs,
             val: None,
             offset: None,
-            lvar_ty: None,
+            lvar_kind: None,
             multiplier: None,
             cond: None,
             ifnode: None,
@@ -131,8 +131,8 @@ impl Node {
         self
     }
 
-    fn lvar_ty(mut self, ty: VarKind) -> Self {
-        self.lvar_ty = Some(ty);
+    fn lvar_kind(mut self, kind: VarKind) -> Self {
+        self.lvar_kind = Some(kind);
         self
     }
 
@@ -461,7 +461,6 @@ impl<'a> Parser<'a> {
 
         let mut node = self.mul(); 
 
-
         loop {
             if self.iter.consume("+") {
                 node = Node::new(NDADD, Some(Box::new(node)), Some(Box::new(self.mul())));
@@ -557,7 +556,7 @@ impl<'a> Parser<'a> {
                 // This is a variable
                 if let Some(ref lvar) = self.find_lvar(&ident) {
                     // This ident already exists! Nice!
-                    Node::new(NDLVAR, None, None).offset(lvar.offset)
+                    Node::new(NDLVAR, None, None).offset(lvar.offset).lvar_kind(lvar.ty.kind)
                 } else {
                     // Found an undefined variable. Panic.
                     panic!("Parser: Found an undefined variable {}\n", ident);
