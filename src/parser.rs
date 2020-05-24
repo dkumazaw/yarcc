@@ -195,13 +195,14 @@ impl LVarScope {
 
     fn register_lvar(&mut self, ident_name: String, ty: VarType) -> usize {
         let requested_size = VarKind::get_size(ty.kind);
-        let my_ofs = self.offset + requested_size; 
+        self.offset += requested_size;
+        let my_ofs = self.offset; 
 
         self.list.push_back(LVar {name: ident_name, ty: ty, offset: my_ofs});
         my_ofs
     }
 
-    fn find_lvar(&mut self, ident_name: &str) -> Option<&LVar> {
+    fn find_lvar(& self, ident_name: &str) -> Option<&LVar> {
         self.list.iter().find(|x| x.name == ident_name)
     }
 }
@@ -210,7 +211,7 @@ impl VarKind {
     fn get_size(kind: VarKind) -> usize {
         use VarKind::*;
         match kind {
-            INT => 4,
+            INT => 8, // TODO: This needs to be 4
             PTR => 8,
         }
     }
@@ -558,21 +559,11 @@ impl<'a> Parser<'a> {
     // Finds if the passed identitier already exists
     fn find_lvar(&mut self, ident_name: &str) -> Option<&LVar> {
         // TODO: Support hierarchical lookup
-        self.locals.back().unwrap().list.iter().find(|x| x.name == ident_name ) 
+        self.locals.back().unwrap().find_lvar(ident_name)
     }
 
     // Adds a new ident and returns the produced offset
     fn add_lvar(&mut self, ident_name: String, ty: VarType) -> usize {
-        let requested_size = VarKind::get_size(ty.kind);
-        
-        let next_ofs = (self.locals.back().unwrap().list.len() + 1) * 8;
-        self.locals.back_mut().unwrap()
-                              .list
-                              .push_back(LVar { 
-                                  name: ident_name, 
-                                  ty: ty, 
-                                  offset: next_ofs 
-                              });
-        next_ofs
+        self.locals.back_mut().unwrap().register_lvar(ident_name, ty)
     }
 }
