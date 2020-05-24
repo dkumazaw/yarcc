@@ -41,6 +41,24 @@ impl<'a> CodeGen<'a> {
         }
     }
 
+    // Loads address stored on rax according to the node's VarKind
+    fn gen_load(&mut self, size: usize) {
+        gen_line!(self.f, "  pop rax\n");
+
+        match size {
+            4 => {
+                gen_line!(self.f, "  movsxd rax, dword ptr [rax]\n");
+            }
+            8 => {
+                gen_line!(self.f, "  mov rax, [rax]\n");
+            }
+            _ => {
+                panic!("Codegen: LVar has an invalid size.");
+            }
+        }
+        gen_line!(self.f, "  push rax\n");
+    }
+
     // Set the last result to rax, restore the rbp and return
     fn gen_return(&mut self) {
         gen_line!(self.f, "  pop rax\n");
@@ -59,10 +77,9 @@ impl<'a> CodeGen<'a> {
                 gen_line!(self.f, "  push {}\n", node.val.unwrap());
             } 
             NDLVAR => {
+                let size = node.lvar_kind.unwrap().size();
                 self.gen_lval(node);
-                gen_line!(self.f, "  pop rax\n");
-                gen_line!(self.f, "  mov rax, [rax]\n");
-                gen_line!(self.f, "  push rax\n");
+                self.gen_load(size);
             } 
             NDASSIGN => {
                 self.gen_lval(*node.lhs.unwrap());

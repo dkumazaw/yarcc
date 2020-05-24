@@ -220,7 +220,7 @@ impl LVarScope {
 }
 
 impl VarKind {
-    fn size(&self) -> usize {
+    pub fn size(&self) -> usize {
         use VarKind::*;
         match self {
             INT => 8, // TODO: This needs to be 4
