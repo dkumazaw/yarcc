@@ -26,13 +26,19 @@ impl<'a> CodeGen<'a> {
     }
 
     fn gen_lval(&mut self, node: Node) {
-        if node.kind != NodeKind::NDLVAR {
-            panic!("Expected kind NDLVAR but got {:?}", node.kind);
+        match node.kind {
+            NodeKind::NDLVAR => {
+                gen_line!(self.f, "  mov rax, rbp\n");
+                gen_line!(self.f, "  sub rax, {}\n", node.offset.unwrap());
+                gen_line!(self.f, "  push rax\n");
+            }
+            NodeKind::NDDEREF => {
+                self.gen(*node.lhs.unwrap());
+            }
+            _ => {
+                panic!("Expected kind NDLVAR or NDDEREF but got {:?}", node.kind);
+            }
         }
-        
-        gen_line!(self.f, "  mov rax, rbp\n");
-        gen_line!(self.f, "  sub rax, {}\n", node.offset.unwrap());
-        gen_line!(self.f, "  push rax\n");
     }
 
     // Set the last result to rax, restore the rbp and return

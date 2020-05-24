@@ -64,6 +64,7 @@ tests! {
     block1: ("int main() { int a; for (a = 0; a <= 14; a = a +1) {} return a;} ", 15),
     block2: ("int main() { int a; a = 1 * 5; if (a == 5) {a =7; return a;} else {return 10; return 11;} }", 7),
     addr0: ("int main() { int x; int y; int z; x = 3; y = 5; z = &y + 8; return *z; } ", 3),
+    pointer0: ("int main() { int x; int *y; y = &x; *y = 3; return x; }", 3),
     func0: ("int main() { return foo(); } 
              int foo() { return 123; }", 123),
     func1: ("int bar () { 24; } 
