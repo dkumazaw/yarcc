@@ -195,10 +195,11 @@ impl<'a> CodeGen<'a> {
                 gen_line!(self.f, "  sub rsp, {}\n", node.lvars_offset.unwrap());
 
                 // Get the arguments from the correspoinding registers
-                let num_args = node.funcarg_offsets.len();
+                let num_args = node.funcarg_vars.len();
                 for i in 0..num_args {
+                    let lvar = node.funcarg_vars.pop_front().unwrap();
                     gen_line!(self.f, "  mov rax, rbp\n");
-                    gen_line!(self.f, "  sub rax, {}\n", node.funcarg_offsets.pop_front().unwrap());
+                    gen_line!(self.f, "  sub rax, {}\n", lvar.offset);
                     gen_line!(self.f, "  mov [rax], {}\n", FUNC_REGS[i]);
                 }
 
