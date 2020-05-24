@@ -51,8 +51,6 @@ pub struct Node {
 
     pub funcarg_offsets: LinkedList<usize>, // Offsets at which args reside, used by NDFUNCDEF
 
-    pub num_locals: Option<usize>, // Stores the # of local vars created; used by NDFUNCDEF & NDBLOCK(TODO)
-
     pub lvars_offset: Option<usize>, // Stores the amount of space needed on stack for lvars.
     // Used by NDFUNCDEF and NDBLOCK(TODO)
 }
@@ -114,7 +112,6 @@ impl Node {
             funcname: None,
             funcargs: LinkedList::new(),
             funcarg_offsets: LinkedList::new(),
-            num_locals: None,
             lvars_offset: None,
         }
     }
@@ -176,11 +173,6 @@ impl Node {
 
     fn funcarg_offset(mut self, ofs: usize) -> Self {
         self.funcarg_offsets.push_back(ofs);
-        self
-    }
-
-    fn num_locals(mut self, count: usize) -> Self {
-        self.num_locals = Some(count);
         self
     }
 
