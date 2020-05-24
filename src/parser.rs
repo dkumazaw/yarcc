@@ -131,6 +131,11 @@ impl Node {
         self
     }
 
+    fn lvar_ty(mut self, ty: VarKind) -> Self {
+        self.lvar_ty = Some(ty);
+        self
+    }
+
     fn multiplier(mut self, mult: usize) -> Self {
         self.multiplier = Some(mult);
         self
