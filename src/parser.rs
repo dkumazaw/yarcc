@@ -206,7 +206,7 @@ impl LVarScope {
     }
 
     fn register_lvar(&mut self, ident_name: String, ty: VarType) -> usize {
-        let requested_size = VarKind::get_size(ty.kind);
+        let requested_size = ty.kind.size();
         self.offset += requested_size;
         let my_ofs = self.offset; 
 
@@ -220,9 +220,9 @@ impl LVarScope {
 }
 
 impl VarKind {
-    fn get_size(kind: VarKind) -> usize {
+    fn size(&self) -> usize {
         use VarKind::*;
-        match kind {
+        match self {
             INT => 8, // TODO: This needs to be 4
             PTR => 8,
         }
