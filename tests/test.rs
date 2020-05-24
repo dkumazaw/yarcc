@@ -66,6 +66,8 @@ tests! {
     addr0: ("int main() { int x; int y; int z; x = 3; y = 5; z = &y + 8; return *z; } ", 3),
     pointer0: ("int main() { int x; int *y; y = &x; *y = 3; return x; }", 3),
     pointer1: ("int foo(int *aaa) { return *aaa; } int main() {int b; b = 120; return foo(&b); }", 120),
+    pointer2: ("int main() { int x; int *xx; int **xxx; xx = &x; xxx = &xx; **xxx = 103; return x; } ", 103),
+    pointer3: ("int main() { int x; int *y; y = &x; *y = 5; return *(&x); }", 5),
     func0: ("int main() { return foo(); } 
              int foo() { return 123; }", 123),
     func1: ("int bar () { 24; } 
