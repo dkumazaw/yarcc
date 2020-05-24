@@ -224,7 +224,7 @@ impl VarKind {
     pub fn size(&self) -> usize {
         use VarKind::*;
         match self {
-            INT => 8, // TODO: This needs to be 4
+            INT => 4, // TODO: This needs to be 4
             PTR => 8,
         }
     }
@@ -507,8 +507,7 @@ impl<'a> Parser<'a> {
         } else if self.iter.consume("&") {
             node = Node::new(NDADDR,
                              Some(Box::new(self.unary())),
-                             None)
-                        .lvar_kind(VarKind::PTR); // Should act as if it's a pointer
+                             None);
         } else if self.iter.consume("+") {
             node = self.primary();
         } else if self.iter.consume("-") {

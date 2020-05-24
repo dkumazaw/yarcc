@@ -53,13 +53,29 @@ impl<'a> CodeGen<'a> {
                 gen_line!(self.f, "  mov rax, [rax]\n");
             }
             _ => {
-                panic!("Codegen: LVar has an invalid size.");
+                panic!("Codegen: Load requested on an invalid size.");
             }
         }
         gen_line!(self.f, "  push rax\n");
     }
 
     fn gen_store(&mut self, size: usize) {
+        gen_line!(self.f, "  pop rdi\n");
+        gen_line!(self.f, "  pop rax\n");
+
+        match size {
+            4 => {
+                gen_line!(self.f, "  mov [rax], edi\n"); 
+            }
+            8 => {
+                gen_line!(self.f, "  mov [rax], rdi\n");
+            }
+            _ => {
+                panic!("Codegen: Store requested on an invalid size.");
+            }
+        }
+
+        gen_line!(self.f, "  push rdi\n");
     }
 
     // Set the last result to rax, restore the rbp and return
@@ -85,13 +101,20 @@ impl<'a> CodeGen<'a> {
                 self.gen_load(size);
             } 
             NDASSIGN => {
-                self.gen_lval(*node.lhs.unwrap());
+                let lhs = *node.lhs.unwrap();
+                let size = {
+                    if lhs.kind == NDLVAR {
+                        lhs.lvar_kind.unwrap().size()
+                    } else if lhs.kind == NDDEREF {
+                        8 
+                    } else {
+                        panic!("Codegen: Assignment to an invalid type.");
+                    }
+                };
+                self.gen_lval(lhs);
                 self.gen(*node.rhs.unwrap());
                 
-                gen_line!(self.f, "  pop rdi\n");
-                gen_line!(self.f, "  pop rax\n");
-                gen_line!(self.f, "  mov [rax], rdi\n");
-                gen_line!(self.f, "  push rdi\n");
+                self.gen_store(size);
             }
             NDRETURN => {
                 self.gen(*node.lhs.unwrap());
@@ -230,7 +253,15 @@ impl<'a> CodeGen<'a> {
             }
             NDDEREF => {
                 let lhs = *node.lhs.unwrap();
-                let size = lhs.lvar_kind.unwrap().size();
+                let size = {
+                    if lhs.kind == NDLVAR {
+                        lhs.lvar_kind.unwrap().size()
+                    } else if lhs.kind == NDADDR {
+                        8
+                    } else {
+                        panic!("Codegen: Invalid deref.");
+                    }
+                };
                 self.gen(lhs);
                 self.gen_load(size);
             }

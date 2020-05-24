@@ -63,7 +63,7 @@ tests! {
     block0: ("int main() { int a; a = 0; while (a != 10) { a = a + 1; } return a;} ", 10),
     block1: ("int main() { int a; for (a = 0; a <= 14; a = a +1) {} return a;} ", 15),
     block2: ("int main() { int a; a = 1 * 5; if (a == 5) {a =7; return a;} else {return 10; return 11;} }", 7),
-    addr0: ("int main() { int x; int y; int z; x = 3; y = 5; z = &y + 8; return *z; } ", 3),
+    addr0: ("int main() { int x; int y; int *z; x = 3; y = 5; z = &y + 4; return *z; } ", 3),
     pointer0: ("int main() { int x; int *y; y = &x; *y = 3; return x; }", 3),
     pointer1: ("int foo(int *aaa) { return *aaa; } int main() {int b; b = 120; return foo(&b); }", 120),
     pointer2: ("int main() { int x; int *xx; int **xxx; xx = &x; xxx = &xx; **xxx = 103; return x; } ", 103),
