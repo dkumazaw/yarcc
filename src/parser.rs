@@ -491,7 +491,12 @@ impl<'a> Parser<'a> {
         use VarKind::*;
 
         let next_ofs = (self.locals.back().unwrap().len() + 1) * 8;
-        self.locals.back_mut().unwrap().push_back(LVar { name: ident_name, ty: VarType::new(INT), offset: next_ofs });
+        self.locals.back_mut().unwrap()
+                              .push_back(LVar { 
+                                  name: ident_name, 
+                                  ty: VarType::new(INT), 
+                                  offset: next_ofs 
+                              });
         next_ofs
     }
 }
