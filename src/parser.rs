@@ -447,8 +447,8 @@ impl<'a> Parser<'a> {
                     // This ident already exists! Nice!
                     Node::new(NDLVAR, None, None).offset(lvar.offset)
                 } else {
-                    // Add this ident and then produce a node
-                    Node::new(NDLVAR, None, None).offset(self.add_lvar(ident))
+                    // Found an undefined variable. Panic.
+                    panic!("Parser: Found an undefined variable {}\n", ident);
                 }
             }
         } else {
