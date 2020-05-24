@@ -35,6 +35,9 @@ pub struct Node {
     pub val: Option<i32>, // Used only when kind is NDNUM
     pub offset: Option<usize>, // Used only when kind is NDLVAR
 
+    pub lvar_ty: Option<VarKind>, // Type of this lvar 
+    pub multiplier: Option<usize>, // Used for pointer arithmetics; NDADD and NDSUB use this
+
     pub cond: Option<Box<Node>>, // Used for if else, for, and while
     pub ifnode: Option<Box<Node>>, // Used when if cond is true
     pub elsenode: Option<Box<Node>>, // Used when if cond is false and else is defined
@@ -51,8 +54,8 @@ pub struct Node {
 
     pub funcarg_offsets: LinkedList<usize>, // Offsets at which args reside, used by NDFUNCDEF
 
+    // Local variable context for NDFUNCDEF and NDBLOCK(TODO)
     pub lvars_offset: Option<usize>, // Stores the amount of space needed on stack for lvars.
-    // Used by NDFUNCDEF and NDBLOCK(TODO)
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -102,6 +105,8 @@ impl Node {
             rhs: rhs,
             val: None,
             offset: None,
+            lvar_ty: None,
+            multiplier: None,
             cond: None,
             ifnode: None,
             elsenode: None,
@@ -123,6 +128,11 @@ impl Node {
 
     fn offset(mut self, offset: usize) -> Self {
         self.offset = Some(offset);
+        self
+    }
+
+    fn multiplier(mut self, mult: usize) -> Self {
+        self.multiplier = Some(mult);
         self
     }
 
@@ -445,6 +455,7 @@ impl<'a> Parser<'a> {
         use NodeKind::*;
 
         let mut node = self.mul(); 
+
 
         loop {
             if self.iter.consume("+") {
