@@ -152,21 +152,15 @@ impl<'a> CodeGen<'a> {
                 }
 
                 // Align RSP to multiple of 16 
-                gen_line!(self.f, "  mov r12, 0\n");
-                gen_line!(self.f, "  test rsp, 8\n");
-                gen_line!(self.f, "  je .Lcond{}\n", my_label);
-                // Alignment occurs here
-                gen_line!(self.f, "  sub rsp, 8\n");
-                gen_line!(self.f, "  mov r12, 1\n"); // Flag that sub occured
-                gen_line!(self.f, ".Lcond{}:\n", my_label);
-
+                gen_line!(self.f, "  mov r12, 0x10\n");
+                gen_line!(self.f, "  mov r13, rsp\n");
+                gen_line!(self.f, "  and r13, 0xf\n");
+                gen_line!(self.f, "  sub r12, r13\n"); // Need to sub rsp this much
+                // TODO: Skip alignment if its already a multiple of 16
+                gen_line!(self.f, "  sub rsp, r12\n");
                 gen_line!(self.f, "  call {}\n", node.funcname.unwrap());
-
-                // Rewind the alignment if needed
-                gen_line!(self.f, "  test r12, r12\n");
-                gen_line!(self.f, "  je .Lcond{}\n", my_label+1);
-                gen_line!(self.f, "  add rsp, 8\n");
-                gen_line!(self.f, ".Lcond{}:\n", my_label+1);
+                // Rewind the alignment 
+                gen_line!(self.f, "  add rsp, r12\n");
 
                 // Finally, store result returned from the call:
                 gen_line!(self.f, "  push rax\n");
