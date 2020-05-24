@@ -235,7 +235,7 @@ impl<'a> Parser<'a> {
         nodes
     }
 
-    // funcdef = "int" ident "(" ("int" ident ",")* ")" "{" stmt* "}"
+    // funcdef = "int" ident "(" (lvar_def ",")* ")" "{" stmt* "}"
     fn funcdef(&mut self) -> Node {
         use NodeKind::*;
 
