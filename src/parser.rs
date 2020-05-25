@@ -59,6 +59,7 @@ pub struct Node {
 #[derive(Debug, Copy, Clone)]
 pub enum TypeKind {
     INT,
+    LONG,
     PTR,
 }
 
@@ -194,20 +195,25 @@ impl Node {
             return;
         }
 
-        match self.kind {
+        self.ty = match self.kind {
+            NDADD | NDSUB | NDMUL | NDDIV => {
+                // TODO: Update this
+                Some(TypeKind::LONG)
+            }
+            NDADDR => {
+                Some(TypeKind::PTR)
+            }
             NDASSIGN | NDDEREF => {
-                self.ty = {
-                    let lhs = self.lhs.as_ref().unwrap();
-                    if lhs.kind == NDLVAR {
-                        lhs.ty 
-                    } else {
-                        // TODO: Error handling for invalid assignment
-                        Some(TypeKind::PTR)
-                    }
+                let lhs = self.lhs.as_ref().unwrap();
+                if lhs.kind == NDLVAR {
+                    lhs.ty 
+                } else {
+                    // TODO: Error handling for invalid assignment
+                    Some(TypeKind::PTR)
                 }
             }            
             _ => {
-                return;
+                None
             }
         }
     }
@@ -241,6 +247,7 @@ impl TypeKind {
         use TypeKind::*;
         match self {
             INT => 4, 
+            LONG => 8,
             PTR => 8,
         }
     }
