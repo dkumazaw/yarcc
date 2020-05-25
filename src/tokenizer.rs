@@ -11,6 +11,7 @@ pub enum TokenKind {
     TKWHILE,
     TKFOR,
     TKINT,
+    TKSIZEOF,
     TKIDENT,
     TKNUM,
     TKEOF,
@@ -131,6 +132,9 @@ impl Tokenizer {
                         }
                         "int" => {
                             self.tokens.push_back(Token::new(TKINT));
+                        }
+                        "sizeof" => {
+                            self.tokens.push_back(Token::new(TKSIZEOF));
                         }
                         _ => {
                             self.tokens.push_back(Token::new(TKIDENT).string(ident_name));
