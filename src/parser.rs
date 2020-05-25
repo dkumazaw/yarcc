@@ -517,14 +517,21 @@ impl<'a> Parser<'a> {
         node
     }
 
-    // unary = ("+" | "-")? primary
+    // unary = "sizeof" unary
+    //       | ("+" | "-")? primary
     //       | "*" unary
     //       | "&" unary
     fn unary(&mut self) -> Node {
         use NodeKind::*;
 
         let mut node;
-        if self.iter.consume("*") {
+        if self.iter.consume_kind(TokenKind::TKSIZEOF) {
+            let mut lhs = self.unary();
+            lhs.populate_ty();
+            node = Node::new(NDNUM, None, None)
+                        .val(lhs.ty.unwrap().size() as i32)
+                        .ty(TypeKind::INT); 
+        } else if self.iter.consume("*") {
             node = Node::new(NDDEREF, 
                              Some(Box::new(self.unary())),
                              None);
