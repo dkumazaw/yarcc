@@ -581,7 +581,7 @@ impl<'a> Parser<'a> {
             }
         } else {
             // Must be NUM at this point
-            Node::new(NDNUM, None, None).val(self.iter.expect_number())
+            Node::new(NDNUM, None, None).val(self.iter.expect_number()).ty(TypeKind::INT)
         }
     }
 
