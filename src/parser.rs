@@ -34,9 +34,7 @@ pub struct Node {
     pub rhs: Option<Box<Node>>,
     pub val: Option<i32>, // Used only when kind is NDNUM
     pub offset: Option<usize>, // Used only when kind is NDLVAR
-
-    pub lvar_kind: Option<VarKind>, // Kind of this lvar 
-    pub multiplier: Option<usize>, // Used for pointer arithmetics; NDADD and NDSUB use this
+    pub ty: Option<Type>, 
 
     pub cond: Option<Box<Node>>, // Used for if else, for, and while
     pub ifnode: Option<Box<Node>>, // Used when if cond is true
@@ -59,7 +57,7 @@ pub struct Node {
 }
 
 #[derive(Debug, Copy, Clone)]
-pub enum VarKind {
+pub enum Type {
     INT,
     PTR,
 }
@@ -67,7 +65,7 @@ pub enum VarKind {
 // Denotes the type of a variable
 #[derive(Debug, Clone)]
 pub struct VarType {
-    pub kind: VarKind,
+    pub kind: Type,
     pub ptr_to: Option<Box<VarType>>,
 }
 
@@ -105,8 +103,7 @@ impl Node {
             rhs: rhs,
             val: None,
             offset: None,
-            lvar_kind: None,
-            multiplier: None,
+            ty: None,
             cond: None,
             ifnode: None,
             elsenode: None,
@@ -131,13 +128,8 @@ impl Node {
         self
     }
 
-    fn lvar_kind(mut self, kind: VarKind) -> Self {
-        self.lvar_kind = Some(kind);
-        self
-    }
-
-    fn multiplier(mut self, mult: usize) -> Self {
-        self.multiplier = Some(mult);
+    fn ty(mut self, kind: Type) -> Self {
+        self.ty = Some(kind);
         self
     }
 
@@ -220,23 +212,23 @@ impl LVarScope {
     }
 }
 
-impl VarKind {
+impl Type {
     pub fn size(&self) -> usize {
-        use VarKind::*;
+        use Type::*;
         match self {
-            INT => 4, // TODO: This needs to be 4
+            INT => 4, 
             PTR => 8,
         }
     }
 }
 
 impl VarType {
-    pub fn new(kind: VarKind, ref_depth: usize) -> Self {
+    pub fn new(kind: Type, ref_depth: usize) -> Self {
         VarType {
             kind: if ref_depth == 0 {
                 kind
             } else {
-                VarKind::PTR
+                Type::PTR
             },
             ptr_to: if ref_depth == 0 {
                 None
@@ -277,7 +269,7 @@ impl<'a> Parser<'a> {
                 tmp
             };
             let ident = self.iter.expect_ident().unwrap();
-            let var_type = VarType::new(VarKind::INT, refs);
+            let var_type = VarType::new(Type::INT, refs);
             Some(self.add_lvar(ident, var_type))
         }
     }
@@ -556,7 +548,7 @@ impl<'a> Parser<'a> {
             } else {
                 // This is a variable
                 if let Some(ref lvar) = self.find_lvar(&ident) {
-                    Node::new(NDLVAR, None, None).offset(lvar.offset).lvar_kind(lvar.ty.kind)
+                    Node::new(NDLVAR, None, None).offset(lvar.offset).ty(lvar.ty.kind)
                 } else {
                     panic!("Parser: Found an undefined variable {}\n", ident);
                 }

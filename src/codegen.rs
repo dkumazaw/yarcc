@@ -96,7 +96,7 @@ impl<'a> CodeGen<'a> {
                 gen_line!(self.f, "  push {}\n", node.val.unwrap());
             } 
             NDLVAR => {
-                let size = node.lvar_kind.unwrap().size();
+                let size = node.ty.unwrap().size();
                 self.gen_lval(node);
                 self.gen_load(size);
             } 
@@ -106,7 +106,7 @@ impl<'a> CodeGen<'a> {
                 // separation of logic
                 let size = {
                     if lhs.kind == NDLVAR {
-                        lhs.lvar_kind.unwrap().size()
+                        lhs.ty.unwrap().size()
                     } else if lhs.kind == NDDEREF {
                         8 
                     } else {
@@ -257,7 +257,7 @@ impl<'a> CodeGen<'a> {
                 let lhs = *node.lhs.unwrap();
                 let size = {
                     if lhs.kind == NDLVAR {
-                        lhs.lvar_kind.unwrap().size()
+                        lhs.ty.unwrap().size()
                     } else if lhs.kind == NDADDR {
                         8
                     } else {
