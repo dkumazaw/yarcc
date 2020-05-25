@@ -186,6 +186,31 @@ impl Node {
         self.lvars_offset = Some(offset);
         self
     }
+
+    fn populate_ty(&mut self) {
+        use NodeKind::*;
+
+        if let Some(_) = self.ty {
+            return;
+        }
+
+        match self.kind {
+            NDASSIGN => {
+                self.ty = {
+                    let lhs = self.lhs.as_ref().unwrap();
+                    if lhs.kind == NDLVAR {
+                        lhs.ty 
+                    } else {
+                        // TODO: Error handling for invalid assignment
+                        Some(TypeKind::PTR)
+                    }
+                }
+            }            
+            _ => {
+                return;
+            }
+        }
+    }
 }
 
 impl LVarScope {
@@ -404,6 +429,7 @@ impl<'a> Parser<'a> {
         
         if self.iter.consume("=") {
             node = Node::new(NDASSIGN, Some(Box::new(node)), Some(Box::new(self.assign())));
+            node.populate_ty();
         }
         node 
     }

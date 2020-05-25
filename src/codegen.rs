@@ -101,22 +101,10 @@ impl<'a> CodeGen<'a> {
                 self.gen_load(size);
             } 
             NDASSIGN => {
-                let lhs = *node.lhs.unwrap();
-                // TODO: This should be handled by the parse phase for better 
-                // separation of logic
-                let size = {
-                    if lhs.kind == NDLVAR {
-                        lhs.ty.unwrap().size()
-                    } else if lhs.kind == NDDEREF {
-                        8 
-                    } else {
-                        panic!("Codegen: Assignment to an invalid type.");
-                    }
-                };
-                self.gen_lval(lhs);
+                self.gen_lval(*node.lhs.unwrap());
                 self.gen(*node.rhs.unwrap());
                 
-                self.gen_store(size);
+                self.gen_store(node.ty.unwrap().size());
             }
             NDRETURN => {
                 self.gen(*node.lhs.unwrap());
