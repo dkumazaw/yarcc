@@ -62,18 +62,17 @@ pub enum TypeKind {
     PTR,
 }
 
-// Denotes the type of a variable
 #[derive(Debug, Clone)]
-pub struct VarType {
+pub struct Type {
     pub kind: TypeKind,
-    pub ptr_to: Option<Box<VarType>>,
+    pub ptr_to: Option<Box<Type>>,
 }
 
 // Denotes the name of lvar and its stack offset
 #[derive(Debug, Clone)]
 pub struct LVar {
     pub name: String, 
-    pub ty: VarType,
+    pub ty: Type,
     pub offset: usize,
 }
 
@@ -197,7 +196,7 @@ impl LVarScope {
         }
     }
 
-    fn register_lvar(&mut self, ident_name: String, ty: VarType) -> LVar {
+    fn register_lvar(&mut self, ident_name: String, ty: Type) -> LVar {
         let requested_size = ty.kind.size();
         self.offset += requested_size;
         let my_ofs = self.offset; 
@@ -222,9 +221,9 @@ impl TypeKind {
     }
 }
 
-impl VarType {
+impl Type {
     pub fn new(kind: TypeKind, ref_depth: usize) -> Self {
-        VarType {
+        Type {
             kind: if ref_depth == 0 {
                 kind
             } else {
@@ -233,7 +232,7 @@ impl VarType {
             ptr_to: if ref_depth == 0 {
                 None
             } else {
-                Some(Box::new(VarType::new(kind, ref_depth - 1)))
+                Some(Box::new(Type::new(kind, ref_depth - 1)))
             },
         }
     }
@@ -269,7 +268,7 @@ impl<'a> Parser<'a> {
                 tmp
             };
             let ident = self.iter.expect_ident().unwrap();
-            let var_type = VarType::new(TypeKind::INT, refs);
+            let var_type = Type::new(TypeKind::INT, refs);
             Some(self.add_lvar(ident, var_type))
         }
     }
@@ -566,7 +565,7 @@ impl<'a> Parser<'a> {
     }
 
     // Adds a new ident and returns the produced offset
-    fn add_lvar(&mut self, ident_name: String, ty: VarType) -> LVar {
+    fn add_lvar(&mut self, ident_name: String, ty: Type) -> LVar {
         self.locals.back_mut().unwrap().register_lvar(ident_name, ty)
     }
 }
