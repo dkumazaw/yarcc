@@ -34,7 +34,7 @@ pub struct Node {
     pub rhs: Option<Box<Node>>,
     pub val: Option<i32>, // Used only when kind is NDNUM
     pub offset: Option<usize>, // Used only when kind is NDLVAR
-    pub ty: Option<Type>, 
+    pub ty: Option<TypeKind>, 
 
     pub cond: Option<Box<Node>>, // Used for if else, for, and while
     pub ifnode: Option<Box<Node>>, // Used when if cond is true
@@ -57,7 +57,7 @@ pub struct Node {
 }
 
 #[derive(Debug, Copy, Clone)]
-pub enum Type {
+pub enum TypeKind {
     INT,
     PTR,
 }
@@ -65,7 +65,7 @@ pub enum Type {
 // Denotes the type of a variable
 #[derive(Debug, Clone)]
 pub struct VarType {
-    pub kind: Type,
+    pub kind: TypeKind,
     pub ptr_to: Option<Box<VarType>>,
 }
 
@@ -128,7 +128,7 @@ impl Node {
         self
     }
 
-    fn ty(mut self, kind: Type) -> Self {
+    fn ty(mut self, kind: TypeKind) -> Self {
         self.ty = Some(kind);
         self
     }
@@ -212,9 +212,9 @@ impl LVarScope {
     }
 }
 
-impl Type {
+impl TypeKind {
     pub fn size(&self) -> usize {
-        use Type::*;
+        use TypeKind::*;
         match self {
             INT => 4, 
             PTR => 8,
@@ -223,12 +223,12 @@ impl Type {
 }
 
 impl VarType {
-    pub fn new(kind: Type, ref_depth: usize) -> Self {
+    pub fn new(kind: TypeKind, ref_depth: usize) -> Self {
         VarType {
             kind: if ref_depth == 0 {
                 kind
             } else {
-                Type::PTR
+                TypeKind::PTR
             },
             ptr_to: if ref_depth == 0 {
                 None
@@ -269,7 +269,7 @@ impl<'a> Parser<'a> {
                 tmp
             };
             let ident = self.iter.expect_ident().unwrap();
-            let var_type = VarType::new(Type::INT, refs);
+            let var_type = VarType::new(TypeKind::INT, refs);
             Some(self.add_lvar(ident, var_type))
         }
     }
