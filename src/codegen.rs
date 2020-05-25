@@ -102,6 +102,8 @@ impl<'a> CodeGen<'a> {
             } 
             NDASSIGN => {
                 let lhs = *node.lhs.unwrap();
+                // TODO: This should be handled by the parse phase for better 
+                // separation of logic
                 let size = {
                     if lhs.kind == NDLVAR {
                         lhs.lvar_kind.unwrap().size()
