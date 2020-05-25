@@ -242,18 +242,8 @@ impl<'a> CodeGen<'a> {
                 self.gen_lval(*node.lhs.unwrap());
             }
             NDDEREF => {
-                let lhs = *node.lhs.unwrap();
-                let size = {
-                    if lhs.kind == NDLVAR {
-                        lhs.ty.unwrap().size()
-                    } else if lhs.kind == NDADDR {
-                        8
-                    } else {
-                        panic!("Codegen: Invalid deref.");
-                    }
-                };
-                self.gen(lhs);
-                self.gen_load(size);
+                self.gen(*node.lhs.unwrap());
+                self.gen_load(node.ty.unwrap().size());
             }
             _ => {
                 // Must be a primitive node

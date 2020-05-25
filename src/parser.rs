@@ -195,7 +195,7 @@ impl Node {
         }
 
         match self.kind {
-            NDASSIGN => {
+            NDASSIGN | NDDEREF => {
                 self.ty = {
                     let lhs = self.lhs.as_ref().unwrap();
                     if lhs.kind == NDLVAR {
@@ -516,11 +516,12 @@ impl<'a> Parser<'a> {
     fn unary(&mut self) -> Node {
         use NodeKind::*;
 
-        let node;
+        let mut node;
         if self.iter.consume("*") {
             node = Node::new(NDDEREF, 
                              Some(Box::new(self.unary())),
                              None);
+            node.populate_ty();
         } else if self.iter.consume("&") {
             node = Node::new(NDADDR,
                              Some(Box::new(self.unary())),
