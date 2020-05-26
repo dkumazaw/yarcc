@@ -34,7 +34,7 @@ pub struct Node {
     pub rhs: Option<Box<Node>>,
     pub val: Option<i32>, // Used only when kind is NDNUM
     pub offset: Option<usize>, // Used only when kind is NDLVAR
-    pub ty: Option<TypeKind>, 
+    pub ty: Option<Type>, 
 
     pub cond: Option<Box<Node>>, // Used for if else, for, and while
     pub ifnode: Option<Box<Node>>, // Used when if cond is true
@@ -128,8 +128,8 @@ impl Node {
         self
     }
 
-    fn ty(mut self, kind: TypeKind) -> Self {
-        self.ty = Some(kind);
+    fn ty(mut self, ty: Type) -> Self {
+        self.ty = Some(ty);
         self
     }
 
@@ -198,19 +198,23 @@ impl Node {
         self.ty = match self.kind {
             NDADD | NDSUB | NDMUL | NDDIV => {
                 // TODO: Update this
-                Some(TypeKind::LONG)
+                Some(Type::new(TypeKind::LONG, 1))
             }
             NDADDR => {
-                Some(TypeKind::PTR)
+                let lhs = self.lhs.as_mut().unwrap();
+                lhs.populate_ty();
+                Some(lhs.ty.as_ref().unwrap().new_ptr_to())
             }
-            NDASSIGN | NDDEREF => {
-                let lhs = self.lhs.as_ref().unwrap();
-                if lhs.kind == NDLVAR {
-                    lhs.ty 
-                } else {
-                    // TODO: Error handling for invalid assignment
-                    Some(TypeKind::PTR)
-                }
+            NDASSIGN => {
+                let lhs = self.lhs.as_mut().unwrap();
+                lhs.populate_ty();
+                Some(lhs.ty.as_ref().unwrap().clone())
+            }
+            NDDEREF => {
+                let lhs = self.lhs.as_mut().unwrap();
+                lhs.populate_ty();
+                // What lhs's type points to should be my type.
+                Some(lhs.ty.as_ref().unwrap().clone_base())
             }            
             _ => {
                 None
@@ -254,7 +258,7 @@ impl TypeKind {
 }
 
 impl Type {
-    pub fn new(kind: TypeKind, ref_depth: usize) -> Self {
+    fn new(kind: TypeKind, ref_depth: usize) -> Self {
         Type {
             kind: if ref_depth == 0 {
                 kind
@@ -266,6 +270,24 @@ impl Type {
             } else {
                 Some(Box::new(Type::new(kind, ref_depth - 1)))
             },
+        }
+    }
+
+    fn clone_base(&self) -> Self {
+        if let Some(ref base) = self.ptr_to {
+            *base.clone()
+        } else {
+            panic!("Trying to clone the base of terminal types.")
+        }
+    }
+
+    // Creates a new Type that is a pointer to mas_ref()
+    fn new_ptr_to(&self) -> Self {
+        Type {
+            kind: TypeKind::PTR,
+            ptr_to: Some(Box::new(
+                self.clone()
+            ))
         }
     }
 }
@@ -529,8 +551,8 @@ impl<'a> Parser<'a> {
             let mut lhs = self.unary();
             lhs.populate_ty();
             node = Node::new(NDNUM, None, None)
-                        .val(lhs.ty.unwrap().size() as i32)
-                        .ty(TypeKind::INT); 
+                        .val(lhs.ty.unwrap().kind.size() as i32)
+                        .ty(Type::new(TypeKind::INT, 0)); 
         } else if self.iter.consume("*") {
             node = Node::new(NDDEREF, 
                              Some(Box::new(self.unary())),
@@ -588,14 +610,14 @@ impl<'a> Parser<'a> {
             } else {
                 // This is a variable
                 if let Some(ref lvar) = self.find_lvar(&ident) {
-                    Node::new(NDLVAR, None, None).offset(lvar.offset).ty(lvar.ty.kind)
+                    Node::new(NDLVAR, None, None).offset(lvar.offset).ty(lvar.ty.clone())
                 } else {
                     panic!("Parser: Found an undefined variable {}\n", ident);
                 }
             }
         } else {
             // Must be NUM at this point
-            Node::new(NDNUM, None, None).val(self.iter.expect_number()).ty(TypeKind::INT)
+            Node::new(NDNUM, None, None).val(self.iter.expect_number()).ty(Type::new(TypeKind::INT, 0))
         }
     }
 

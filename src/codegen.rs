@@ -96,7 +96,7 @@ impl<'a> CodeGen<'a> {
                 gen_line!(self.f, "  push {}\n", node.val.unwrap());
             } 
             NDLVAR => {
-                let size = node.ty.unwrap().size();
+                let size = node.ty.as_ref().unwrap().kind.size();
                 self.gen_lval(node);
                 self.gen_load(size);
             } 
@@ -104,7 +104,7 @@ impl<'a> CodeGen<'a> {
                 self.gen_lval(*node.lhs.unwrap());
                 self.gen(*node.rhs.unwrap());
                 
-                self.gen_store(node.ty.unwrap().size());
+                self.gen_store(node.ty.unwrap().kind.size());
             }
             NDRETURN => {
                 self.gen(*node.lhs.unwrap());
@@ -243,7 +243,7 @@ impl<'a> CodeGen<'a> {
             }
             NDDEREF => {
                 self.gen(*node.lhs.unwrap());
-                self.gen_load(node.ty.unwrap().size());
+                self.gen_load(node.ty.unwrap().kind.size());
             }
             _ => {
                 // Must be a primitive node
