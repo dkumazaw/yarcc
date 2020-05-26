@@ -56,17 +56,19 @@ pub struct Node {
     pub lvars_offset: Option<usize>, // Stores the amount of space needed on stack for lvars.
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum TypeKind {
     INT,
     LONG,
     PTR,
+    ARRAY,
 }
 
 #[derive(Debug, Clone)]
 pub struct Type {
     pub kind: TypeKind,
     pub ptr_to: Option<Box<Type>>,
+    pub array_size: Option<usize>,
 }
 
 // Denotes the name of lvar and its stack offset
@@ -232,7 +234,7 @@ impl LVarScope {
     }
 
     fn register_lvar(&mut self, ident_name: String, ty: Type) -> LVar {
-        let requested_size = ty.kind.size();
+        let requested_size = ty.size();
         self.offset += requested_size;
         let my_ofs = self.offset; 
 
@@ -246,19 +248,11 @@ impl LVarScope {
     }
 }
 
-impl TypeKind {
-    pub fn size(&self) -> usize {
-        use TypeKind::*;
-        match self {
-            INT => 4, 
-            LONG => 8,
-            PTR => 8,
-        }
-    }
-}
-
 impl Type {
     fn new(basekind: TypeKind, ref_depth: usize) -> Self {
+        if basekind == TypeKind::ARRAY {
+            panic!("For array, use new_array!");
+        }
         Type {
             kind: if ref_depth == 0 {
                 basekind
@@ -270,9 +264,11 @@ impl Type {
             } else {
                 Some(Box::new(Type::new(basekind, ref_depth - 1)))
             },
+            array_size: None 
         }
     }
 
+    // Clones whatever is pointed to by ptr_to
     fn clone_base(&self) -> Self {
         if let Some(ref base) = self.ptr_to {
             *base.clone()
@@ -285,9 +281,18 @@ impl Type {
     fn new_ptr_to(&self) -> Self {
         Type {
             kind: TypeKind::PTR,
-            ptr_to: Some(Box::new(
-                self.clone()
-            ))
+            ptr_to: Some(Box::new(self.clone())),
+            array_size: None
+        }
+    }
+
+    pub fn size(&self) -> usize {
+        use TypeKind::*;
+        match self.kind {
+            INT => 4, 
+            LONG => 8,
+            PTR => 8,
+            ARRAY => 0,// TODO
         }
     }
 }
@@ -322,8 +327,19 @@ impl<'a> Parser<'a> {
                 tmp
             };
             let ident = self.iter.expect_ident().unwrap();
-            let var_type = Type::new(TypeKind::INT, refs);
-            Some(self.add_lvar(ident, var_type))
+            if self.iter.consume("[") {
+                panic!("not implemented!")
+                //if refs > 0 {
+                //    panic!("Parser: Array of ptr type not implemented yet.")
+                //}
+                //let array_size = self.iter.expect_number().val;
+                //let var_type = Type::new(TypeKind::ARRAY, 0)
+                //Some(self.add_lvar)
+                //self.iter.expect("]");
+            } else {
+                let var_type = Type::new(TypeKind::INT, refs);
+                Some(self.add_lvar(ident, var_type))
+            }
         }
     }
 
@@ -551,7 +567,7 @@ impl<'a> Parser<'a> {
             let mut lhs = self.unary();
             lhs.populate_ty();
             node = Node::new(NDNUM, None, None)
-                        .val(lhs.ty.unwrap().kind.size() as i32)
+                        .val(lhs.ty.unwrap().size() as i32)
                         .ty(Type::new(TypeKind::INT, 0)); 
         } else if self.iter.consume("*") {
             node = Node::new(NDDEREF, 
@@ -617,7 +633,8 @@ impl<'a> Parser<'a> {
             }
         } else {
             // Must be NUM at this point
-            Node::new(NDNUM, None, None).val(self.iter.expect_number()).ty(Type::new(TypeKind::INT, 0))
+            Node::new(NDNUM, None, None).val(self.iter.expect_number())
+                                        .ty(Type::new(TypeKind::INT, 0))
         }
     }
 

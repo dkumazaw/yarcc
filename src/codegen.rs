@@ -96,7 +96,7 @@ impl<'a> CodeGen<'a> {
                 gen_line!(self.f, "  push {}\n", node.val.unwrap());
             } 
             NDLVAR => {
-                let size = node.ty.as_ref().unwrap().kind.size();
+                let size = node.ty.as_ref().unwrap().size();
                 self.gen_lval(node);
                 self.gen_load(size);
             } 
@@ -104,7 +104,7 @@ impl<'a> CodeGen<'a> {
                 self.gen_lval(*node.lhs.unwrap());
                 self.gen(*node.rhs.unwrap());
                 
-                self.gen_store(node.ty.unwrap().kind.size());
+                self.gen_store(node.ty.unwrap().size());
             }
             NDRETURN => {
                 self.gen(*node.lhs.unwrap());
@@ -214,7 +214,7 @@ impl<'a> CodeGen<'a> {
                     let lvar = node.funcarg_vars.pop_front().unwrap();
                     gen_line!(self.f, "  mov rax, rbp\n");
                     gen_line!(self.f, "  sub rax, {}\n", lvar.offset);
-                    let regs = match lvar.ty.kind.size() {
+                    let regs = match lvar.ty.size() {
                         4 => FUNC_REGS_4,
                         8 => FUNC_REGS_8,
                         _ => panic!("Codegen: Invalid size for lvar!")
@@ -243,7 +243,7 @@ impl<'a> CodeGen<'a> {
             }
             NDDEREF => {
                 self.gen(*node.lhs.unwrap());
-                self.gen_load(node.ty.unwrap().kind.size());
+                self.gen_load(node.ty.unwrap().size());
             }
             _ => {
                 // Must be a primitive node
