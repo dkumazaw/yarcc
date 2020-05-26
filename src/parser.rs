@@ -268,6 +268,14 @@ impl Type {
         }
     }
 
+    fn new_array(basekind: TypeKind, ref_depth: usize, array_size: usize) -> Self {
+        Type {
+            kind: TypeKind::ARRAY,
+            ptr_to: Some(Box::new(Type::new(basekind, ref_depth))),
+            array_size: Some(array_size),
+        }
+    }
+
     // Clones whatever is pointed to by ptr_to
     fn clone_base(&self) -> Self {
         if let Some(ref base) = self.ptr_to {
@@ -328,14 +336,11 @@ impl<'a> Parser<'a> {
             };
             let ident = self.iter.expect_ident().unwrap();
             if self.iter.consume("[") {
-                panic!("not implemented!")
-                //if refs > 0 {
-                //    panic!("Parser: Array of ptr type not implemented yet.")
-                //}
-                //let array_size = self.iter.expect_number().val;
-                //let var_type = Type::new(TypeKind::ARRAY, 0)
-                //Some(self.add_lvar)
-                //self.iter.expect("]");
+                // This is an array
+                let array_size = self.iter.expect_number() as usize;
+                let var_type = Type::new_array(TypeKind::INT, refs, array_size);
+                self.iter.expect("]");
+                Some(self.add_lvar(ident, var_type))
             } else {
                 let var_type = Type::new(TypeKind::INT, refs);
                 Some(self.add_lvar(ident, var_type))
