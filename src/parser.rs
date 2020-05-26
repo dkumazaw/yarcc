@@ -198,7 +198,7 @@ impl Node {
         self.ty = match self.kind {
             NDADD | NDSUB | NDMUL | NDDIV => {
                 // TODO: Update this
-                Some(Type::new(TypeKind::LONG, 1))
+                Some(Type::new(TypeKind::LONG, 0))
             }
             NDADDR => {
                 let lhs = self.lhs.as_mut().unwrap();
