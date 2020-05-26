@@ -300,7 +300,15 @@ impl Type {
             INT => 4, 
             LONG => 8,
             PTR => 8,
-            ARRAY => 0,// TODO
+            ARRAY => self.array_size.unwrap() * self.base_size(),
+        }
+    }
+
+    pub fn base_size(&self) -> usize {
+        if let Some(ref base) = self.ptr_to {
+            base.size()
+        } else {
+            panic!("Requesting a base size for a terminal type.");
         }
     }
 }
