@@ -258,17 +258,17 @@ impl TypeKind {
 }
 
 impl Type {
-    fn new(kind: TypeKind, ref_depth: usize) -> Self {
+    fn new(basekind: TypeKind, ref_depth: usize) -> Self {
         Type {
             kind: if ref_depth == 0 {
-                kind
+                basekind
             } else {
                 TypeKind::PTR
             },
             ptr_to: if ref_depth == 0 {
                 None
             } else {
-                Some(Box::new(Type::new(kind, ref_depth - 1)))
+                Some(Box::new(Type::new(basekind, ref_depth - 1)))
             },
         }
     }
