@@ -71,6 +71,7 @@ tests! {
     sizeof4: ("int main() { int *y; return sizeof (*y); }", 4),
     sizeof5: ("int main() { int x; return sizeof (&x); }", 8),
     sizeof6: ("int main() { int x; return sizeof (x + 1); }", 4),
+    array0: ("int main() { int a[10]; return 1; }", 1),
     pointer0: ("int main() { int x; int *y; y = &x; *y = 3; return x; }", 3),
     pointer1: ("int foo(int *aaa) { return *aaa; } int main() {int b; b = 120; return foo(&b); }", 120),
     pointer2: ("int main() { int x; int *xx; int **xxx; xx = &x; xxx = &xx; **xxx = 103; return x; } ", 103),
