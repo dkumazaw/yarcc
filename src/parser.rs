@@ -198,7 +198,22 @@ impl Node {
         }
 
         self.ty = match self.kind {
-            NDADD | NDSUB | NDMUL | NDDIV => {
+            NDADD | NDSUB => {
+                let lhs = self.lhs.as_mut().unwrap();
+                let rhs = self.rhs.as_mut().unwrap();
+                lhs.populate_ty();
+                rhs.populate_ty();
+                
+                if lhs.ty.as_ref().unwrap().kind == TypeKind::PTR {
+                    Some(lhs.ty.as_ref().unwrap().clone())
+                } else if rhs.ty.as_ref().unwrap().kind == TypeKind::PTR {
+                    Some(rhs.ty.as_ref().unwrap().clone())
+                } else {
+                    // TODO: Update this
+                    Some(Type::new(TypeKind::LONG, 0))
+                }
+            }
+            NDMUL | NDDIV => {
                 // TODO: Update this
                 Some(Type::new(TypeKind::LONG, 0))
             }
