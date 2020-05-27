@@ -253,7 +253,7 @@ impl LVarScope {
     }
 
     fn register_lvar(&mut self, ident_name: String, ty: Type) -> LVar {
-        let requested_size = ty.size();
+        let requested_size = ty.total_size();
         self.offset += requested_size;
         let my_ofs = self.offset; 
 
@@ -323,13 +323,23 @@ impl Type {
         }
     }
 
+    // Size of one element
     pub fn size(&self) -> usize {
         use TypeKind::*;
         match self.kind {
             INT => 4, 
             LONG => 8,
             PTR => 8,
-            ARRAY => self.array_size.unwrap() * self.base_size(),
+            ARRAY => self.base_size(),
+        }
+    }
+    
+    // Total size of this type
+    pub fn total_size(&self) -> usize {
+        use TypeKind::*;
+        match self.kind {
+            INT | LONG | PTR => self.size(), 
+            ARRAY => self.array_size.unwrap() * self.size()
         }
     }
 
@@ -612,7 +622,7 @@ impl<'a> Parser<'a> {
             let mut lhs = self.unary();
             lhs.populate_ty();
             node = Node::new(NDNUM, None, None)
-                        .val(lhs.ty.unwrap().size() as i32)
+                        .val(lhs.ty.unwrap().total_size() as i32)
                         .ty(Type::new(TypeKind::INT, 0)); 
         } else if self.iter.consume("*") {
             node = Node::new(NDDEREF, 
