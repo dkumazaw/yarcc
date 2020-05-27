@@ -83,15 +83,13 @@ impl Tokenizer {
 
                 '<' | '>' | '!' | '=' => {
                     cur += 1;
-                    let tkstr = 
-                        if cur != len && in_str.chars().nth(cur).unwrap() == '=' {
-                            cur += 1;
-                            c.to_string() + "="
-                        } else {
-                            c.to_string()
-                        };
-                    self.tokens
-                        .push_back(Token::new(TKRESERVED).string(tkstr));
+                    let tkstr = if cur != len && in_str.chars().nth(cur).unwrap() == '=' {
+                        cur += 1;
+                        c.to_string() + "="
+                    } else {
+                        c.to_string()
+                    };
+                    self.tokens.push_back(Token::new(TKRESERVED).string(tkstr));
                     continue;
                 }
 
@@ -103,7 +101,7 @@ impl Tokenizer {
                 }
 
                 c if c.is_ascii_alphabetic() => {
-                    let mut ident_name = c.to_string(); 
+                    let mut ident_name = c.to_string();
                     cur += 1;
                     while cur != len {
                         let _c = in_str.chars().nth(cur).unwrap();
@@ -117,7 +115,7 @@ impl Tokenizer {
                     match ident_name.as_str() {
                         "return" => {
                             self.tokens.push_back(Token::new(TKRETURN));
-                        } 
+                        }
                         "if" => {
                             self.tokens.push_back(Token::new(TKIF));
                         }
@@ -137,7 +135,8 @@ impl Tokenizer {
                             self.tokens.push_back(Token::new(TKSIZEOF));
                         }
                         _ => {
-                            self.tokens.push_back(Token::new(TKIDENT).string(ident_name));
+                            self.tokens
+                                .push_back(Token::new(TKIDENT).string(ident_name));
                         }
                     }
                     continue;
@@ -183,7 +182,10 @@ impl<'a> TokenIter<'a> {
         }
         if let Some(ref tkstr) = t.string {
             if tkstr != s {
-                panic!("TokenIter: Wrong token string! Expected {} but got {}", s, tkstr);
+                panic!(
+                    "TokenIter: Wrong token string! Expected {} but got {}",
+                    s, tkstr
+                );
             }
         } else {
             panic!("TokenIter: Expected that string exists.")
@@ -196,15 +198,17 @@ impl<'a> TokenIter<'a> {
             panic!("TokenIter: Expected TokenKind {:?} but got {:?}", k, t.kind);
         }
     }
-    
+
     pub fn expect_type(&mut self) -> TokenKind {
         use TokenKind::*;
 
         let t = self.next();
         match t.kind {
             TKINT => t.kind,
-            _ => { panic!("TokenIter: Expected type specifier."); }
-        }  
+            _ => {
+                panic!("TokenIter: Expected type specifier.");
+            }
+        }
     }
 
     pub fn expect_number(&mut self) -> i32 {
@@ -240,12 +244,12 @@ impl<'a> TokenIter<'a> {
         ret
     }
 
-    // Consumes the specified kind 
+    // Consumes the specified kind
     pub fn consume_kind(&mut self, k: TokenKind) -> bool {
         let t = self.peek();
         if t.kind == k {
             self.next();
-            true 
+            true
         } else {
             false
         }

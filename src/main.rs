@@ -8,13 +8,13 @@ macro_rules! gen_line {
     }
 }
 
-mod tokenizer;
-mod parser;
 mod codegen;
+mod parser;
+mod tokenizer;
 
-use tokenizer::{TokenIter, Tokenizer};
-use parser::Parser;
 use codegen::CodeGen;
+use parser::Parser;
+use tokenizer::{TokenIter, Tokenizer};
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -42,7 +42,6 @@ fn main() {
                     break;
                 }
             }
-
         }
         _ => {
             eprintln!("Wrong number of arguments!");

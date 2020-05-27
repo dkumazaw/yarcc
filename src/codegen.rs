@@ -1,5 +1,5 @@
-use std::fs::File;
 use crate::parser::{Node, NodeKind};
+use std::fs::File;
 use std::io::Write;
 
 static FUNC_REGS_4: [&str; 6] = ["edi", "esi", "edx", "ecx", "r8d", "r9d"];
@@ -10,7 +10,6 @@ pub struct CodeGen<'a> {
     f: &'a mut File,
     cond_label: usize, // Used to track conditional labels
 }
-
 
 impl<'a> CodeGen<'a> {
     pub fn new(f: &'a mut File) -> Self {
@@ -65,7 +64,7 @@ impl<'a> CodeGen<'a> {
 
         match size {
             4 => {
-                gen_line!(self.f, "  mov [rax], edi\n"); 
+                gen_line!(self.f, "  mov [rax], edi\n");
             }
             8 => {
                 gen_line!(self.f, "  mov [rax], rdi\n");
@@ -95,29 +94,27 @@ impl<'a> CodeGen<'a> {
         match node.kind {
             NDNUM => {
                 gen_line!(self.f, "  push {}\n", node.val.unwrap());
-            } 
-            NDLVAR => {
-                match node.ty.as_ref().unwrap().kind {
-                    ARRAY => {
-                        self.gen_lval(node);
-                    } 
-                    _ => {
-                        let size = node.ty.as_ref().unwrap().size();
-                        self.gen_lval(node);
-                        self.gen_load(size);
-                    }
+            }
+            NDLVAR => match node.ty.as_ref().unwrap().kind {
+                ARRAY => {
+                    self.gen_lval(node);
                 }
-            } 
+                _ => {
+                    let size = node.ty.as_ref().unwrap().size();
+                    self.gen_lval(node);
+                    self.gen_load(size);
+                }
+            },
             NDASSIGN => {
                 self.gen_lval(*node.lhs.unwrap());
                 self.gen(*node.rhs.unwrap());
-                
+
                 self.gen_store(node.ty.unwrap().size());
             }
             NDRETURN => {
                 self.gen(*node.lhs.unwrap());
                 self.gen_return();
-            } 
+            }
             NDIF => {
                 let my_label = self.cond_label;
                 self.cond_label += 1;
@@ -134,10 +131,10 @@ impl<'a> CodeGen<'a> {
                     self.gen(*elsenode);
                 } else {
                     // No else node provided. Push some bogus value to balance stack.
-                    gen_line!(self.f, "  push 0\n"); 
+                    gen_line!(self.f, "  push 0\n");
                 }
                 gen_line!(self.f, ".Lend{}:\n", my_label);
-            } 
+            }
             NDWHILE => {
                 let my_label = self.cond_label;
                 self.cond_label += 1;
@@ -149,7 +146,7 @@ impl<'a> CodeGen<'a> {
                 self.gen(*node.repnode.unwrap());
                 gen_line!(self.f, "  jmp .Lbegin{}\n", my_label);
                 gen_line!(self.f, ".Lend{}:", my_label);
-            } 
+            }
             NDFOR => {
                 let my_label = self.cond_label;
                 self.cond_label += 1;
@@ -172,7 +169,7 @@ impl<'a> CodeGen<'a> {
                 }
                 gen_line!(self.f, "  jmp .Lbegin{}\n", my_label);
                 gen_line!(self.f, ".Lend{}:", my_label);
-            } 
+            }
             NDBLOCK => {
                 while let Some(stmt) = node.blockstmts.pop_front() {
                     self.gen(stmt);
@@ -181,26 +178,26 @@ impl<'a> CodeGen<'a> {
                         gen_line!(self.f, "  pop rax\n");
                     }
                 }
-            } 
+            }
             NDCALL => {
                 self.cond_label += 2; // Consume 2
                 let num_args = node.funcargs.len();
-                
+
                 // Push args to the designated registers
                 for i in 0..num_args {
                     self.gen(node.funcargs.pop_front().unwrap());
                     gen_line!(self.f, "  pop {}\n", FUNC_REGS_8[i]);
                 }
 
-                // Align RSP to multiple of 16 
+                // Align RSP to multiple of 16
                 gen_line!(self.f, "  mov r12, 0x10\n");
                 gen_line!(self.f, "  mov r13, rsp\n");
                 gen_line!(self.f, "  and r13, 0xf\n");
                 gen_line!(self.f, "  sub r12, r13\n"); // Need to sub rsp this much
-                // TODO: Skip alignment if its already a multiple of 16
+                                                       // TODO: Skip alignment if its already a multiple of 16
                 gen_line!(self.f, "  sub rsp, r12\n");
                 gen_line!(self.f, "  call {}\n", node.funcname.unwrap());
-                // Rewind the alignment 
+                // Rewind the alignment
                 gen_line!(self.f, "  add rsp, r12\n");
 
                 // Finally, store result returned from the call:
@@ -225,7 +222,7 @@ impl<'a> CodeGen<'a> {
                     let regs = match lvar.ty.size() {
                         4 => FUNC_REGS_4,
                         8 => FUNC_REGS_8,
-                        _ => panic!("Codegen: Invalid size for lvar!")
+                        _ => panic!("Codegen: Invalid size for lvar!"),
                     };
                     gen_line!(self.f, "  mov [rax], {}\n", regs[i]);
                 }
@@ -270,15 +267,19 @@ impl<'a> CodeGen<'a> {
         if let Some(rhs) = node.rhs {
             self.gen(*rhs);
         }
-    
+
         gen_line!(self.f, "  pop rdi\n");
         gen_line!(self.f, "  pop rax\n");
-    
+
         match node.kind {
             NDADD => {
                 let ty = node.ty.unwrap();
                 if ty.kind.is_ptr_like() {
-                    let reg_to_scale = if node.scale_lhs.unwrap() { "rdi" } else { "rax" };
+                    let reg_to_scale = if node.scale_lhs.unwrap() {
+                        "rdi"
+                    } else {
+                        "rax"
+                    };
                     gen_line!(self.f, "  imul {}, {}\n", reg_to_scale, ty.base_size());
                 }
                 gen_line!(self.f, "  add rax, rdi\n");
@@ -317,11 +318,9 @@ impl<'a> CodeGen<'a> {
                 gen_line!(self.f, "  setl al\n");
                 gen_line!(self.f, "  movzb rax, al\n");
             }
-            _ => {
-                panic!("Oops, found a strange node kind.")
-            }
+            _ => panic!("Oops, found a strange node kind."),
         }
-    
+
         gen_line!(self.f, "  push rax\n");
     }
 }

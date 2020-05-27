@@ -37,7 +37,7 @@ tests! {
     unary0: ("int main() { -3*-5;} ", 15),
     unary1: ("int main() { 8*(-3)+30;} ", 6),
     relational0: ("int main() { 1 == 1;} ", 1),
-    relational1: ("int main() { 1 != 1;} ", 0), 
+    relational1: ("int main() { 1 != 1;} ", 0),
     relational2: ("int main() { 2 < 0;} ", 0),
     relational3: ("int main() { 3 > -1;} ", 1),
     relational4: ("int main() { 5 >= -5;} ", 1),
@@ -86,9 +86,9 @@ tests! {
     pointer2: ("int main() { int x; int *xx; int **xxx; xx = &x; xxx = &xx; **xxx = 103; return x; } ", 103),
     pointer3: ("int main() { int x; int *y; y = &x; *y = 5; return *(&x); }", 5),
     pointer4: ("int foo(int **x) { **x = 32; } int main() {int a; int *b; b = &a; foo(&b); return a; } ", 32),
-    func0: ("int main() { return foo(); } 
+    func0: ("int main() { return foo(); }
              int foo() { return 123; }", 123),
-    func1: ("int bar () { 24; } 
+    func1: ("int bar () { 24; }
              int baz () { 46; }
              int main () { 
                  int a;
