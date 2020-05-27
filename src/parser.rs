@@ -203,12 +203,14 @@ impl Node {
                 let rhs = self.rhs.as_mut().unwrap();
                 lhs.populate_ty();
                 rhs.populate_ty();
+
+                let l_ty = lhs.ty.as_ref().unwrap();
+                let r_ty = rhs.ty.as_ref().unwrap();
                 
-                if lhs.ty.as_ref().unwrap().kind.is_ptr_like() {
-                    Some(lhs.ty.as_ref().unwrap().clone())
-                } else if rhs.ty.as_ref().unwrap().kind.is_ptr_like() {
+                if l_ty.kind.is_ptr_like() {
+                    Some(l_ty.clone())
+                } else if r_ty.kind.is_ptr_like() {
                     panic!("TODO: Supporting ptr arith on rhs");
-                    //Some(rhs.ty.as_ref().unwrap().clone())
                 } else {
                     // TODO: Update this
                     Some(Type::new(TypeKind::LONG, 0))
