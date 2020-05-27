@@ -278,7 +278,8 @@ impl<'a> CodeGen<'a> {
             NDADD => {
                 let ty = node.ty.unwrap();
                 if ty.kind.is_ptr_like() {
-                    gen_line!(self.f, "  imul rdi, {}\n", ty.base_size());
+                    let reg_to_scale = if node.scale_lhs.unwrap() { "rdi" } else { "rax" };
+                    gen_line!(self.f, "  imul {}, {}\n", reg_to_scale, ty.base_size());
                 }
                 gen_line!(self.f, "  add rax, rdi\n");
             }

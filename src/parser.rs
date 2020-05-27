@@ -32,9 +32,10 @@ pub struct Node {
     pub kind: NodeKind,
     pub lhs: Option<Box<Node>>,
     pub rhs: Option<Box<Node>>,
-    pub val: Option<i32>, // Used only when kind is NDNUM
-    pub offset: Option<usize>, // Used only when kind is NDLVAR
+    pub val: Option<i32>, // Used by NDNUM
+    pub offset: Option<usize>, // Used by NDLVAR
     pub ty: Option<Type>, 
+    pub scale_lhs: Option<bool>, // Used by NDADD and NDSUB to perform ptr arithm. 
 
     pub cond: Option<Box<Node>>, // Used for if else, for, and while
     pub ifnode: Option<Box<Node>>, // Used when if cond is true
@@ -106,6 +107,7 @@ impl Node {
             val: None,
             offset: None,
             ty: None,
+            scale_lhs: None,
             cond: None,
             ifnode: None,
             elsenode: None,
@@ -211,9 +213,11 @@ impl Node {
                     if r_ty.kind.is_ptr_like() {
                         panic!("Parser: Both sides of add/sub are pointers...");
                     }
+                    self.scale_lhs = Some(true);
                     Some(l_ty.clone())
                 } else if r_ty.kind.is_ptr_like() {
                     // Already checked above that l_ty is not a pointer
+                    self.scale_lhs = Some(false);
                     Some(r_ty.clone())
                 } else {
                     // TODO: Update this
