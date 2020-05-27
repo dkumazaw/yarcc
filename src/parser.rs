@@ -19,10 +19,12 @@ pub enum NodeKind {
     NDBLOCK,
     NDCALL,    // function call
     NDFUNCDEF, // function definition
+    NDGVARDEF, // Global var definition
     NDVARDEF,  // Variable definition
     NDADDR,
     NDDEREF,
     NDLVAR, // local var
+    NDGVAR, // global var
     NDNUM,
 }
 
@@ -34,6 +36,7 @@ pub struct Node {
     pub rhs: Option<Box<Node>>,
     pub val: Option<i32>,      // Used by NDNUM
     pub offset: Option<usize>, // Used by NDLVAR
+    pub size: Option<usize>,   // Used by NDGVARDEF
     pub ty: Option<Type>,
     pub scale_lhs: Option<bool>, // Used by NDADD and NDSUB to perform ptr arithm.
 
@@ -51,7 +54,7 @@ pub struct Node {
     pub funcname: Option<String>,   // Used by NDCALL & NDFUNCDEF
     pub funcargs: LinkedList<Node>, // Used by NDCALL
 
-    pub funcarg_vars: LinkedList<LVar>, // Context of args; used by NDFUNCDEF
+    pub funcarg_vars: LinkedList<Var>, // Context of args; used by NDFUNCDEF
 
     // Local variable context for NDFUNCDEF and NDBLOCK(TODO)
     pub lvars_offset: Option<usize>, // Stores the amount of space needed on stack for lvars.
@@ -72,18 +75,18 @@ pub struct Type {
     pub array_size: Option<usize>,
 }
 
-// Denotes the name of lvar and its stack offset
+// Stores the name of var, its type, and stack offset if the variable is local.
 #[derive(Debug, Clone)]
-pub struct LVar {
+pub struct Var {
     pub name: String,
     pub ty: Type,
-    pub offset: usize,
+    pub offset: Option<usize>, // None if global
 }
 
 // Stores the current level of local variables
 #[derive(Debug)]
 pub struct LVarScope {
-    list: LinkedList<LVar>,
+    list: LinkedList<Var>,
     offset: usize,
 }
 
@@ -95,6 +98,7 @@ pub struct ParsedContext {
 
 pub struct Parser<'a> {
     iter: TokenIter<'a>,
+    globals: LinkedList<Var>,
     locals: LinkedList<LVarScope>, // Each scope should push_back a new linked list
 }
 
@@ -106,6 +110,7 @@ impl Node {
             rhs: rhs,
             val: None,
             offset: None,
+            size: None,
             ty: None,
             scale_lhs: None,
             cond: None,
@@ -182,7 +187,7 @@ impl Node {
         self
     }
 
-    fn funcarg_var(mut self, lvar: LVar) -> Self {
+    fn funcarg_var(mut self, lvar: Var) -> Self {
         self.funcarg_vars.push_back(lvar);
         self
     }
@@ -261,21 +266,21 @@ impl LVarScope {
         }
     }
 
-    fn register_lvar(&mut self, ident_name: String, ty: Type) -> LVar {
+    fn register_lvar(&mut self, ident_name: String, ty: Type) -> Var {
         let requested_size = ty.total_size();
         self.offset += requested_size;
         let my_ofs = self.offset;
 
-        let lvar = LVar {
+        let lvar = Var {
             name: ident_name,
             ty: ty,
-            offset: my_ofs,
+            offset: Some(my_ofs),
         };
         self.list.push_back(lvar.clone());
         lvar
     }
 
-    fn find_lvar(&self, ident_name: &str) -> Option<&LVar> {
+    fn find_lvar(&self, ident_name: &str) -> Option<&Var> {
         self.list.iter().find(|x| x.name == ident_name)
     }
 }
@@ -369,6 +374,7 @@ impl<'a> Parser<'a> {
     pub fn new(iter: TokenIter<'a>) -> Self {
         Parser {
             iter: iter,
+            globals: LinkedList::new(),
             locals: LinkedList::new(),
         }
     }
@@ -381,7 +387,7 @@ impl<'a> Parser<'a> {
 
     // Parses local variable definition if possible
     // Returns the offset of the registered lvar or None
-    fn lvar_def(&mut self) -> Option<LVar> {
+    fn lvar_def(&mut self) -> Option<Var> {
         if !self.iter.consume_kind(TokenKind::TKINT) {
             // This is not a variable definition. Return.
             None
@@ -437,11 +443,26 @@ impl<'a> Parser<'a> {
             node
         } else {
             // This is a gvar decl
-            panic!("TODO"); 
+            panic!("TODO");
+        }
+    }
+
+    fn gvar_def(&mut self, ident_name: String) -> Node {
+        use NodeKind::*;
+
+        let mut node = Node::new(NDGVARDEF, None, None);
+        if self.iter.consume("[") {
+            panic!("TODO");
+        } else {
+            let var_type = Type::new(TypeKind::INT, 0);
+            self.add_gvar(ident_name, var_type);
+            node
         }
     }
 
     // funcdef = "(" (lvar_def ",")* ")" "{" stmt* "}"
+    // This performs the rest of funcdef parsing not performed by
+    // external_decl
     fn funcdef(&mut self, ident_name: String) -> Option<Node> {
         use NodeKind::*;
 
@@ -746,7 +767,7 @@ impl<'a> Parser<'a> {
                 // This is a variable
                 if let Some(ref lvar) = self.find_lvar(&ident) {
                     Node::new(NDLVAR, None, None)
-                        .offset(lvar.offset)
+                        .offset(lvar.offset.unwrap())
                         .ty(lvar.ty.clone())
                 } else {
                     panic!("Parser: Found an undefined variable {}\n", ident);
@@ -761,16 +782,18 @@ impl<'a> Parser<'a> {
     }
 
     // Finds if the passed identitier already exists
-    fn find_lvar(&mut self, ident_name: &str) -> Option<&LVar> {
+    fn find_lvar(&mut self, ident_name: &str) -> Option<&Var> {
         // TODO: Support hierarchical lookup
         self.locals.back().unwrap().find_lvar(ident_name)
     }
 
     // Adds a new ident and returns the produced offset
-    fn add_lvar(&mut self, ident_name: String, ty: Type) -> LVar {
+    fn add_lvar(&mut self, ident_name: String, ty: Type) -> Var {
         self.locals
             .back_mut()
             .unwrap()
             .register_lvar(ident_name, ty)
     }
+
+    fn add_gvar(&mut self, ident_name: String, ty: Type) {}
 }

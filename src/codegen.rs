@@ -218,7 +218,7 @@ impl<'a> CodeGen<'a> {
                 for i in 0..num_args {
                     let lvar = node.funcarg_vars.pop_front().unwrap();
                     gen_line!(self.f, "  mov rax, rbp\n");
-                    gen_line!(self.f, "  sub rax, {}\n", lvar.offset);
+                    gen_line!(self.f, "  sub rax, {}\n", lvar.offset.unwrap());
                     let regs = match lvar.ty.size() {
                         4 => FUNC_REGS_4,
                         8 => FUNC_REGS_8,
