@@ -623,7 +623,7 @@ impl<'a> Parser<'a> {
                              Some(Box::new(self.primary())));
             node.populate_ty()
         } else {
-            node = self.primary();
+            node = self.postfix();
         }
         node
     }
