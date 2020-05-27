@@ -204,9 +204,9 @@ impl Node {
                 lhs.populate_ty();
                 rhs.populate_ty();
                 
-                if lhs.ty.as_ref().unwrap().kind == TypeKind::PTR {
+                if lhs.ty.as_ref().unwrap().kind.is_ptr_like() {
                     Some(lhs.ty.as_ref().unwrap().clone())
-                } else if rhs.ty.as_ref().unwrap().kind == TypeKind::PTR {
+                } else if rhs.ty.as_ref().unwrap().kind.is_ptr_like() {
                     Some(rhs.ty.as_ref().unwrap().clone())
                 } else {
                     // TODO: Update this
@@ -264,6 +264,16 @@ impl LVarScope {
 
     fn find_lvar(& self, ident_name: &str) -> Option<&LVar> {
         self.list.iter().find(|x| x.name == ident_name)
+    }
+}
+
+impl TypeKind {
+    fn is_ptr_like(&self) -> bool {
+        use TypeKind::*;
+        match self {
+            PTR | ARRAY => true,
+            _ => false
+        }
     }
 }
 
@@ -635,6 +645,8 @@ impl<'a> Parser<'a> {
         let mut node = self.primary();
         if self.iter.consume("[") {
             node = Node::new(NDADD, Some(Box::new(node)), Some(Box::new(self.expr()))); 
+            node = Node::new(NDDEREF, Some(Box::new(node)), None);
+            node.populate_ty();
             self.iter.expect("]");
         } 
         node
