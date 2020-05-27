@@ -208,9 +208,13 @@ impl Node {
                 let r_ty = rhs.ty.as_ref().unwrap();
                 
                 if l_ty.kind.is_ptr_like() {
+                    if r_ty.kind.is_ptr_like() {
+                        panic!("Parser: Both sides of add/sub are pointers...");
+                    }
                     Some(l_ty.clone())
                 } else if r_ty.kind.is_ptr_like() {
-                    panic!("TODO: Supporting ptr arith on rhs");
+                    // Already checked above that l_ty is not a pointer
+                    Some(r_ty.clone())
                 } else {
                     // TODO: Update this
                     Some(Type::new(TypeKind::LONG, 0))
