@@ -76,6 +76,7 @@ tests! {
     array1: ("int main() { int arr[12]; arr[1] = 4; return arr[1];}", 4),
     array2: ("int main() { int arr[10]; int b; b = 3; arr[4 * b -10] = 21; return arr[4 - 2]; }", 21),
     array3: ("int main() { int a[100]; *(a + (1 - 3 + 2 * 4)) = 22; return a[6];}", 22),
+    array4: ("int main() { int a[2]; int *p;  *a = 1; *(a + 1) = 2; p = a; return *p + *(p + 1);  }", 3),
     pointer0: ("int main() { int x; int *y; y = &x; *y = 3; return x; }", 3),
     pointer1: ("int foo(int *aaa) { return *aaa; } int main() {int b; b = 120; return foo(&b); }", 120),
     pointer2: ("int main() { int x; int *xx; int **xxx; xx = &x; xxx = &xx; **xxx = 103; return x; } ", 103),
