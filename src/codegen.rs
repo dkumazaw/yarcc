@@ -276,6 +276,10 @@ impl<'a> CodeGen<'a> {
     
         match node.kind {
             NDADD => {
+                let ty = node.ty.unwrap();
+                if ty.kind.is_ptr_like() {
+                    gen_line!(self.f, "  imul rdi, {}\n", ty.base_size());
+                }
                 gen_line!(self.f, "  add rax, rdi\n");
             }
             NDSUB => {

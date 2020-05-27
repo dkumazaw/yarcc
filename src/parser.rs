@@ -207,7 +207,8 @@ impl Node {
                 if lhs.ty.as_ref().unwrap().kind.is_ptr_like() {
                     Some(lhs.ty.as_ref().unwrap().clone())
                 } else if rhs.ty.as_ref().unwrap().kind.is_ptr_like() {
-                    Some(rhs.ty.as_ref().unwrap().clone())
+                    panic!("TODO: Supporting ptr arith on rhs");
+                    //Some(rhs.ty.as_ref().unwrap().clone())
                 } else {
                     // TODO: Update this
                     Some(Type::new(TypeKind::LONG, 0))
@@ -268,7 +269,7 @@ impl LVarScope {
 }
 
 impl TypeKind {
-    fn is_ptr_like(&self) -> bool {
+    pub fn is_ptr_like(&self) -> bool {
         use TypeKind::*;
         match self {
             PTR | ARRAY => true,
