@@ -220,13 +220,13 @@ impl<'a> TokenIter<'a> {
         t.val
     }
 
-    pub fn expect_ident(&mut self) -> Option<String> {
+    pub fn expect_ident(&mut self) -> String {
         let t = self.next();
         if t.kind != TokenKind::TKIDENT {
             panic!("TokenIter: Expected ident.")
         }
 
-        t.string.clone()
+        t.string.clone().unwrap()
     }
 
     // Consumes TKRESERVED matching s
