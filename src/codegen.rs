@@ -90,15 +90,23 @@ impl<'a> CodeGen<'a> {
     // Entry point into codegen
     pub fn gen(&mut self, mut node: Node) {
         use crate::parser::NodeKind::*;
+        use crate::parser::TypeKind::*;
 
         match node.kind {
             NDNUM => {
                 gen_line!(self.f, "  push {}\n", node.val.unwrap());
             } 
             NDLVAR => {
-                let size = node.ty.as_ref().unwrap().size();
-                self.gen_lval(node);
-                self.gen_load(size);
+                match node.ty.as_ref().unwrap().kind {
+                    ARRAY => {
+                        self.gen_lval(node);
+                    } 
+                    _ => {
+                        let size = node.ty.as_ref().unwrap().size();
+                        self.gen_lval(node);
+                        self.gen_load(size);
+                    }
+                }
             } 
             NDASSIGN => {
                 self.gen_lval(*node.lhs.unwrap());
