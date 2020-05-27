@@ -80,6 +80,7 @@ tests! {
     array5: ("int main() { int *a[5]; int c; c = 37; a[1] = &c; return *a[1]; }", 37),
     array6: ("int main() { int **a[6]; int b; int *c;b = 4; c = &b; a[b] = &c; return ***(a + b);}", 4),
     array7: ("int main() {int a[10]; a[5] = 23; return *(5 + a);}", 23),
+    array8: ("int main() { int a[12]; int *p; *(a + 2) = 4; p = a; return * (4-2 + p);}", 4),
     pointer0: ("int main() { int x; int *y; y = &x; *y = 3; return x; }", 3),
     pointer1: ("int foo(int *aaa) { return *aaa; } int main() {int b; b = 120; return foo(&b); }", 120),
     pointer2: ("int main() { int x; int *xx; int **xxx; xx = &x; xxx = &xx; **xxx = 103; return x; } ", 103),
