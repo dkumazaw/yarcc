@@ -2,7 +2,7 @@ use std::collections::linked_list::Iter;
 use std::collections::LinkedList;
 use std::iter::Peekable;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum TokenKind {
     TKRESERVED,
     TKRETURN,
@@ -195,6 +195,16 @@ impl<'a> TokenIter<'a> {
         if t.kind != k {
             panic!("TokenIter: Expected TokenKind {:?} but got {:?}", k, t.kind);
         }
+    }
+    
+    pub fn expect_type(&mut self) -> TokenKind {
+        use TokenKind::*;
+
+        let t = self.next();
+        match t.kind {
+            TKINT => t.kind,
+            _ => { panic!("TokenIter: Expected type specifier."); }
+        }  
     }
 
     pub fn expect_number(&mut self) -> i32 {

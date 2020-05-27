@@ -415,8 +415,10 @@ impl<'a> Parser<'a> {
         nodes
     }
 
-    // external_decl = funcdef | decl
+    // external_decl = "int" ident ( funcdef | decl )
     fn external_decl(&mut self) -> Node {
+        use NodeKind::*;
+
         self.funcdef()
     }
 
@@ -461,13 +463,13 @@ impl<'a> Parser<'a> {
         node
     }
 
-    // stmt = expr ";"
-    //      | lvar_def ";"
+    // stmt = lvar_def ";"
     //      | "{" stmt* "}"
     //      | "if" "(" expr ")" stmt ("else" stmt)?
     //      | "while" "(" expr ")" stmt
     //      | "for" "(" expr? ";" expr? ";" expr? ")" stmt
     //      | "return" expr ";"
+    //      | expr ";"
     fn stmt(&mut self) -> Node {
         use NodeKind::*;
 
