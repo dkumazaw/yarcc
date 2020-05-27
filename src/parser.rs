@@ -213,9 +213,13 @@ impl Node {
                     Some(Type::new(TypeKind::LONG, 0))
                 }
             }
-            NDMUL | NDDIV => {
+            NDMUL | NDDIV | NDEQ | NDNEQ | NDLEQ | NDLT => {
                 // TODO: Update this
-                Some(Type::new(TypeKind::LONG, 0))
+                Some(Type::new(TypeKind::INT, 0))
+            }
+            NDCALL => {
+                // TODO: Currently the only retval is INT
+                Some(Type::new(TypeKind::INT, 0))
             }
             NDADDR => {
                 let lhs = self.lhs.as_mut().unwrap();
@@ -555,8 +559,10 @@ impl<'a> Parser<'a> {
         loop {
             if self.iter.consume("+") {
                 node = Node::new(NDADD, Some(Box::new(node)), Some(Box::new(self.mul())));
+                node.populate_ty();
             } else if self.iter.consume("-") {
                 node = Node::new(NDSUB, Some(Box::new(node)), Some(Box::new(self.mul())));
+                node.populate_ty();
             } else {
                 break;
             }
@@ -611,8 +617,11 @@ impl<'a> Parser<'a> {
             node = self.primary();
         } else if self.iter.consume("-") {
             node = Node::new(NDSUB, 
-                             Some(Box::new(Node::new(NDNUM, None, None).val(0))),
+                             Some(Box::new(Node::new(NDNUM, None, None)
+                                                .val(0)
+                                                .ty(Type::new(TypeKind::INT, 0)))),
                              Some(Box::new(self.primary())));
+            node.populate_ty()
         } else {
             node = self.primary();
         }
