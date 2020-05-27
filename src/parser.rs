@@ -1,5 +1,5 @@
-use std::collections::LinkedList;
 use crate::tokenizer::{TokenIter, TokenKind};
+use std::collections::LinkedList;
 
 #[derive(Debug, PartialEq)]
 pub enum NodeKind {
@@ -13,16 +13,16 @@ pub enum NodeKind {
     NDLT,     // <
     NDASSIGN, // =
     NDRETURN,
-    NDIF, 
+    NDIF,
     NDWHILE,
     NDFOR,
     NDBLOCK,
     NDCALL,    // function call
-    NDFUNCDEF, // function definition 
+    NDFUNCDEF, // function definition
     NDVARDEF,  // Variable definition
     NDADDR,
     NDDEREF,
-    NDLVAR,    // local var
+    NDLVAR, // local var
     NDNUM,
 }
 
@@ -32,13 +32,13 @@ pub struct Node {
     pub kind: NodeKind,
     pub lhs: Option<Box<Node>>,
     pub rhs: Option<Box<Node>>,
-    pub val: Option<i32>, // Used by NDNUM
+    pub val: Option<i32>,      // Used by NDNUM
     pub offset: Option<usize>, // Used by NDLVAR
-    pub ty: Option<Type>, 
-    pub scale_lhs: Option<bool>, // Used by NDADD and NDSUB to perform ptr arithm. 
+    pub ty: Option<Type>,
+    pub scale_lhs: Option<bool>, // Used by NDADD and NDSUB to perform ptr arithm.
 
-    pub cond: Option<Box<Node>>, // Used for if else, for, and while
-    pub ifnode: Option<Box<Node>>, // Used when if cond is true
+    pub cond: Option<Box<Node>>,     // Used for if else, for, and while
+    pub ifnode: Option<Box<Node>>,   // Used when if cond is true
     pub elsenode: Option<Box<Node>>, // Used when if cond is false and else is defined
 
     pub repnode: Option<Box<Node>>, // Used for "for" & "while"
@@ -48,7 +48,7 @@ pub struct Node {
 
     pub blockstmts: LinkedList<Node>, // Used by NDBLOCK & NDFUNCDEF
 
-    pub funcname: Option<String>, // Used by NDCALL & NDFUNCDEF
+    pub funcname: Option<String>,   // Used by NDCALL & NDFUNCDEF
     pub funcargs: LinkedList<Node>, // Used by NDCALL
 
     pub funcarg_vars: LinkedList<LVar>, // Context of args; used by NDFUNCDEF
@@ -75,7 +75,7 @@ pub struct Type {
 // Denotes the name of lvar and its stack offset
 #[derive(Debug, Clone)]
 pub struct LVar {
-    pub name: String, 
+    pub name: String,
     pub ty: Type,
     pub offset: usize,
 }
@@ -101,7 +101,7 @@ pub struct Parser<'a> {
 impl Node {
     fn new(kind: NodeKind, lhs: Option<Box<Node>>, rhs: Option<Box<Node>>) -> Self {
         Node {
-            kind: kind, 
+            kind: kind,
             lhs: lhs,
             rhs: rhs,
             val: None,
@@ -170,7 +170,7 @@ impl Node {
     fn blockstmt(mut self, node: Node) -> Self {
         self.blockstmts.push_back(node);
         self
-    } 
+    }
 
     fn funcname(mut self, s: String) -> Self {
         self.funcname = Some(s);
@@ -208,7 +208,7 @@ impl Node {
 
                 let l_ty = lhs.ty.as_ref().unwrap();
                 let r_ty = rhs.ty.as_ref().unwrap();
-                
+
                 if l_ty.kind.is_ptr_like() {
                     if r_ty.kind.is_ptr_like() {
                         panic!("Parser: Both sides of add/sub are pointers...");
@@ -247,10 +247,8 @@ impl Node {
                 lhs.populate_ty();
                 // What lhs's type points to should be my type.
                 Some(lhs.ty.as_ref().unwrap().clone_base())
-            }            
-            _ => {
-                None
             }
+            _ => None,
         }
     }
 }
@@ -266,14 +264,18 @@ impl LVarScope {
     fn register_lvar(&mut self, ident_name: String, ty: Type) -> LVar {
         let requested_size = ty.total_size();
         self.offset += requested_size;
-        let my_ofs = self.offset; 
+        let my_ofs = self.offset;
 
-        let lvar = LVar {name: ident_name, ty: ty, offset: my_ofs};
+        let lvar = LVar {
+            name: ident_name,
+            ty: ty,
+            offset: my_ofs,
+        };
         self.list.push_back(lvar.clone());
         lvar
     }
 
-    fn find_lvar(& self, ident_name: &str) -> Option<&LVar> {
+    fn find_lvar(&self, ident_name: &str) -> Option<&LVar> {
         self.list.iter().find(|x| x.name == ident_name)
     }
 }
@@ -283,7 +285,7 @@ impl TypeKind {
         use TypeKind::*;
         match self {
             PTR | ARRAY => true,
-            _ => false
+            _ => false,
         }
     }
 }
@@ -304,7 +306,7 @@ impl Type {
             } else {
                 Some(Box::new(Type::new(basekind, ref_depth - 1)))
             },
-            array_size: None 
+            array_size: None,
         }
     }
 
@@ -330,7 +332,7 @@ impl Type {
         Type {
             kind: TypeKind::PTR,
             ptr_to: Some(Box::new(self.clone())),
-            array_size: None
+            array_size: None,
         }
     }
 
@@ -338,19 +340,19 @@ impl Type {
     pub fn size(&self) -> usize {
         use TypeKind::*;
         match self.kind {
-            INT => 4, 
+            INT => 4,
             LONG => 8,
             PTR => 8,
             ARRAY => self.base_size(),
         }
     }
-    
+
     // Total size of this type
     pub fn total_size(&self) -> usize {
         use TypeKind::*;
         match self.kind {
-            INT | LONG | PTR => self.size(), 
-            ARRAY => self.array_size.unwrap() * self.size()
+            INT | LONG | PTR => self.size(),
+            ARRAY => self.array_size.unwrap() * self.size(),
         }
     }
 
@@ -382,8 +384,8 @@ impl<'a> Parser<'a> {
     fn lvar_def(&mut self) -> Option<LVar> {
         if !self.iter.consume_kind(TokenKind::TKINT) {
             // This is not a variable definition. Return.
-            None 
-        } else {  
+            None
+        } else {
             let refs = {
                 // # of times * occurs will tell us the depth of references
                 let mut tmp = 0;
@@ -392,7 +394,7 @@ impl<'a> Parser<'a> {
                 }
                 tmp
             };
-            let ident = self.iter.expect_ident().unwrap();
+            let ident = self.iter.expect_ident();
             if self.iter.consume("[") {
                 // This is an array
                 let array_size = self.iter.expect_number() as usize;
@@ -415,25 +417,43 @@ impl<'a> Parser<'a> {
         nodes
     }
 
-    // external_decl = "int" ident ( funcdef | decl )
+    // external_decl = "int" ident ( funcdef | gvar_def )
     fn external_decl(&mut self) -> Node {
         use NodeKind::*;
+        let _tk = self.iter.expect_type(); // TODO: Only int is
+        let refs = {
+            // # of times * occurs will tell us the depth of references
+            let mut tmp = 0;
+            while self.iter.consume("*") {
+                tmp += 1;
+            }
+            tmp
+        };
 
-        self.funcdef()
+        let ident_name = self.iter.expect_ident();
+
+        if let Some(node) = self.funcdef(ident_name) {
+            // This is a funcdef
+            node
+        } else {
+            // This is a gvar decl
+            panic!("TODO"); 
+        }
     }
 
-    // funcdef = "int" ident "(" (lvar_def ",")* ")" "{" stmt* "}"
-    fn funcdef(&mut self) -> Node {
+    // funcdef = "(" (lvar_def ",")* ")" "{" stmt* "}"
+    fn funcdef(&mut self, ident_name: String) -> Option<Node> {
         use NodeKind::*;
 
-        self.iter.expect_kind(TokenKind::TKINT);
-        let mut node = Node::new(NDFUNCDEF, None, None)
-                            .funcname(self.iter.expect_ident().unwrap());
+        if !self.iter.consume("(") {
+            return None;
+        }
+
+        // Pick up from argument parsing
+        let mut node = Node::new(NDFUNCDEF, None, None).funcname(ident_name);
         // Create a new scope:
         self.locals.push_back(LVarScope::new());
 
-        // Parse arguments
-        self.iter.expect("(");
         if !self.iter.consume(")") {
             // There's at least one local variable definition.
             if let Some(lvar) = self.lvar_def() {
@@ -459,8 +479,8 @@ impl<'a> Parser<'a> {
 
         // Remember the # of variables created & pop the scope out of the stack
         node = node.lvars_offset(self.locals.pop_back().unwrap().offset);
-        
-        node
+
+        Some(node)
     }
 
     // stmt = lvar_def ";"
@@ -474,7 +494,7 @@ impl<'a> Parser<'a> {
         use NodeKind::*;
 
         let mut node;
-        if let Some(offset) = self.lvar_def() { 
+        if let Some(offset) = self.lvar_def() {
             // This was an lvar def!
             self.iter.expect(";");
             // TODO: Maybe having NDVARDEF is not a good design...
@@ -486,8 +506,7 @@ impl<'a> Parser<'a> {
             }
         } else if self.iter.consume_kind(TokenKind::TKIF) {
             self.iter.expect("(");
-            node = Node::new(NDIF, None, None)
-                        .cond(Some(Box::new(self.expr())));
+            node = Node::new(NDIF, None, None).cond(Some(Box::new(self.expr())));
             self.iter.expect(")");
             node = node.ifnode(Some(Box::new(self.stmt())));
 
@@ -497,8 +516,7 @@ impl<'a> Parser<'a> {
             }
         } else if self.iter.consume_kind(TokenKind::TKWHILE) {
             self.iter.expect("(");
-            node = Node::new(NDWHILE, None, None)
-                        .cond(Some(Box::new(self.expr())));
+            node = Node::new(NDWHILE, None, None).cond(Some(Box::new(self.expr())));
             self.iter.expect(")");
             node = node.repnode(Some(Box::new(self.stmt())));
         } else if self.iter.consume_kind(TokenKind::TKFOR) {
@@ -521,7 +539,6 @@ impl<'a> Parser<'a> {
                 self.iter.expect(")");
             }
             node = node.repnode(Some(Box::new(self.stmt())));
-
         } else if self.iter.consume_kind(TokenKind::TKRETURN) {
             node = Node::new(NDRETURN, Some(Box::new(self.expr())), None);
             self.iter.expect(";");
@@ -534,19 +551,23 @@ impl<'a> Parser<'a> {
 
     // expr = assign
     fn expr(&mut self) -> Node {
-        self.assign() 
+        self.assign()
     }
 
     // assign = equality ("=" assign)?
     fn assign(&mut self) -> Node {
         use NodeKind::*;
         let mut node = self.equality();
-        
+
         if self.iter.consume("=") {
-            node = Node::new(NDASSIGN, Some(Box::new(node)), Some(Box::new(self.assign())));
+            node = Node::new(
+                NDASSIGN,
+                Some(Box::new(node)),
+                Some(Box::new(self.assign())),
+            );
             node.populate_ty();
         }
-        node 
+        node
     }
 
     // equality = relational ("==" relational | "!=" relational)*
@@ -556,10 +577,18 @@ impl<'a> Parser<'a> {
 
         loop {
             if self.iter.consume("==") {
-                node = Node::new(NDEQ, Some(Box::new(node)), Some(Box::new(self.relational())));
+                node = Node::new(
+                    NDEQ,
+                    Some(Box::new(node)),
+                    Some(Box::new(self.relational())),
+                );
             } else if self.iter.consume("!=") {
-                node = Node::new(NDNEQ, Some(Box::new(node)), Some(Box::new(self.relational())));
-            } else{
+                node = Node::new(
+                    NDNEQ,
+                    Some(Box::new(node)),
+                    Some(Box::new(self.relational())),
+                );
+            } else {
                 break;
             }
         }
@@ -592,7 +621,7 @@ impl<'a> Parser<'a> {
     fn add(&mut self) -> Node {
         use NodeKind::*;
 
-        let mut node = self.mul(); 
+        let mut node = self.mul();
 
         loop {
             if self.iter.consume("+") {
@@ -623,7 +652,7 @@ impl<'a> Parser<'a> {
             } else {
                 break;
             }
-        } 
+        }
         node
     }
 
@@ -640,25 +669,25 @@ impl<'a> Parser<'a> {
             let mut lhs = self.unary();
             lhs.populate_ty();
             node = Node::new(NDNUM, None, None)
-                        .val(lhs.ty.unwrap().total_size() as i32)
-                        .ty(Type::new(TypeKind::INT, 0)); 
+                .val(lhs.ty.unwrap().total_size() as i32)
+                .ty(Type::new(TypeKind::INT, 0));
         } else if self.iter.consume("*") {
-            node = Node::new(NDDEREF, 
-                             Some(Box::new(self.unary())),
-                             None);
+            node = Node::new(NDDEREF, Some(Box::new(self.unary())), None);
             node.populate_ty();
         } else if self.iter.consume("&") {
-            node = Node::new(NDADDR,
-                             Some(Box::new(self.unary())),
-                             None);
+            node = Node::new(NDADDR, Some(Box::new(self.unary())), None);
         } else if self.iter.consume("+") {
             node = self.primary();
         } else if self.iter.consume("-") {
-            node = Node::new(NDSUB, 
-                             Some(Box::new(Node::new(NDNUM, None, None)
-                                                .val(0)
-                                                .ty(Type::new(TypeKind::INT, 0)))),
-                             Some(Box::new(self.primary())));
+            node = Node::new(
+                NDSUB,
+                Some(Box::new(
+                    Node::new(NDNUM, None, None)
+                        .val(0)
+                        .ty(Type::new(TypeKind::INT, 0)),
+                )),
+                Some(Box::new(self.primary())),
+            );
             node.populate_ty()
         } else {
             node = self.postfix();
@@ -672,18 +701,18 @@ impl<'a> Parser<'a> {
 
         let mut node = self.primary();
         if self.iter.consume("[") {
-            node = Node::new(NDADD, Some(Box::new(node)), Some(Box::new(self.expr()))); 
+            node = Node::new(NDADD, Some(Box::new(node)), Some(Box::new(self.expr())));
             node = Node::new(NDDEREF, Some(Box::new(node)), None);
             node.populate_ty();
             self.iter.expect("]");
-        } 
+        }
         node
     }
-    
-    // primary = num 
-    //         | ident ("(" (expr, )* ")")? 
+
+    // primary = num
+    //         | ident ("(" (expr, )* ")")?
     //         | "(" expr ")"
-    fn primary(&mut self) -> Node  {
+    fn primary(&mut self) -> Node {
         use NodeKind::*;
 
         if self.iter.consume("(") {
@@ -709,22 +738,25 @@ impl<'a> Parser<'a> {
                         panic!("Parser: Func arg exceeded the max. number of args supported.");
                     }
                     remaining -= 1;
-                    node = node.funcarg(self.expr()); 
-                } 
+                    node = node.funcarg(self.expr());
+                }
                 self.iter.expect(")");
                 node
             } else {
                 // This is a variable
                 if let Some(ref lvar) = self.find_lvar(&ident) {
-                    Node::new(NDLVAR, None, None).offset(lvar.offset).ty(lvar.ty.clone())
+                    Node::new(NDLVAR, None, None)
+                        .offset(lvar.offset)
+                        .ty(lvar.ty.clone())
                 } else {
                     panic!("Parser: Found an undefined variable {}\n", ident);
                 }
             }
         } else {
             // Must be NUM at this point
-            Node::new(NDNUM, None, None).val(self.iter.expect_number())
-                                        .ty(Type::new(TypeKind::INT, 0))
+            Node::new(NDNUM, None, None)
+                .val(self.iter.expect_number())
+                .ty(Type::new(TypeKind::INT, 0))
         }
     }
 
@@ -736,6 +768,9 @@ impl<'a> Parser<'a> {
 
     // Adds a new ident and returns the produced offset
     fn add_lvar(&mut self, ident_name: String, ty: Type) -> LVar {
-        self.locals.back_mut().unwrap().register_lvar(ident_name, ty)
+        self.locals
+            .back_mut()
+            .unwrap()
+            .register_lvar(ident_name, ty)
     }
 }
