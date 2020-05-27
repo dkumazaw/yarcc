@@ -406,13 +406,18 @@ impl<'a> Parser<'a> {
         }
     }
 
-    // program = funcdef*
+    // program = external_decl*
     fn program(&mut self) -> LinkedList<Node> {
         let mut nodes = LinkedList::new();
         while !self.iter.at_eof() {
-            nodes.push_back(self.funcdef());
+            nodes.push_back(self.external_decl());
         }
         nodes
+    }
+
+    // external_decl = funcdef | decl
+    fn external_decl(&mut self) -> Node {
+        self.funcdef()
     }
 
     // funcdef = "int" ident "(" (lvar_def ",")* ")" "{" stmt* "}"
