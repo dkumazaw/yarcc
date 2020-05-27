@@ -587,6 +587,7 @@ impl<'a> Parser<'a> {
     //       | ("+" | "-")? primary
     //       | "*" unary
     //       | "&" unary
+    //       | postfix
     fn unary(&mut self) -> Node {
         use NodeKind::*;
 
@@ -615,6 +616,18 @@ impl<'a> Parser<'a> {
         } else {
             node = self.primary();
         }
+        node
+    }
+
+    // postfix = primary ('[' expr ']')?
+    fn postfix(&mut self) -> Node {
+        use NodeKind::*;
+
+        let mut node = self.primary();
+        if self.iter.consume("[") {
+            node = Node::new(NDADD, Some(Box::new(node)), Some(Box::new(self.expr()))); 
+            self.iter.expect("]");
+        } 
         node
     }
     
