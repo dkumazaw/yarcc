@@ -196,7 +196,7 @@ impl<'a> CodeGen<'a> {
                 gen_line!(self.f, "  sub r12, r13\n"); // Need to sub rsp this much
                                                        // TODO: Skip alignment if its already a multiple of 16
                 gen_line!(self.f, "  sub rsp, r12\n");
-                gen_line!(self.f, "  call {}\n", node.funcname.unwrap());
+                gen_line!(self.f, "  call {}\n", node.name.unwrap());
                 // Rewind the alignment
                 gen_line!(self.f, "  add rsp, r12\n");
 
@@ -204,7 +204,7 @@ impl<'a> CodeGen<'a> {
                 gen_line!(self.f, "  push rax\n");
             }
             NDFUNCDEF => {
-                gen_line!(self.f, "{}:\n", node.funcname.unwrap());
+                gen_line!(self.f, "{}:\n", node.name.unwrap());
 
                 // Save callee-saved regs that are used by me:
                 gen_line!(self.f, "  push r12\n");

@@ -50,7 +50,7 @@ pub struct Node {
 
     pub blockstmts: LinkedList<Node>, // Used by NDBLOCK & NDFUNCDEF
 
-    pub funcname: Option<String>,   // Used by NDCALL & NDFUNCDEF
+    pub name: Option<String>,   // Used by NDCALL & NDFUNCDEF
     pub funcargs: LinkedList<Node>, // Used by NDCALL
 
     pub funcarg_vars: LinkedList<Var>, // Context of args; used by NDFUNCDEF
@@ -118,7 +118,7 @@ impl Node {
             initnode: None,
             stepnode: None,
             blockstmts: LinkedList::new(),
-            funcname: None,
+            name: None,
             funcargs: LinkedList::new(),
             funcarg_vars: LinkedList::new(),
             lvars_offset: None,
@@ -175,8 +175,8 @@ impl Node {
         self
     }
 
-    fn funcname(mut self, s: String) -> Self {
-        self.funcname = Some(s);
+    fn name(mut self, s: String) -> Self {
+        self.name = Some(s);
         self
     }
 
@@ -469,7 +469,7 @@ impl<'a> Parser<'a> {
         }
 
         // Pick up from argument parsing
-        let mut node = Node::new(NDFUNCDEF, None, None).funcname(ident_name);
+        let mut node = Node::new(NDFUNCDEF, None, None).name(ident_name);
         // Create a new scope:
         self.locals.push_back(LVarScope::new());
 
@@ -742,7 +742,7 @@ impl<'a> Parser<'a> {
             if self.iter.consume("(") {
                 // This is a function call
                 let mut remaining = 6;
-                let mut node = Node::new(NDCALL, None, None).funcname(ident);
+                let mut node = Node::new(NDCALL, None, None).name(ident);
 
                 if self.iter.consume(")") {
                     // No argument case
