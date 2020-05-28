@@ -414,11 +414,12 @@ impl<'a> Parser<'a> {
             if self.iter.consume("[") {
                 // This is an array
                 let array_size = self.iter.expect_number() as usize;
-                let var_type = Type::new_array(TypeKind::INT, refs, array_size);
+                let var_type = Type::new_array(TypeKind::from_token_kind(tkkind),
+                                                refs, array_size);
                 self.iter.expect("]");
                 Some(self.add_lvar(ident, var_type))
             } else {
-                let var_type = Type::new(TypeKind::INT, refs);
+                let var_type = Type::new(TypeKind::from_token_kind(tkkind), refs);
                 Some(self.add_lvar(ident, var_type))
             }
         } else {
