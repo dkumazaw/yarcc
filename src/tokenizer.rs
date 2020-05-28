@@ -6,6 +6,13 @@ static KEYWORDS: [&str; 9] = [
     "char", "short", "int", "return", "if", "else", "while", "for", "sizeof",
 ];
 
+fn is_type(s: &str) -> bool {
+    match s {
+        _s if TYPES.contains(&_s) => true,
+        _ => false,
+    }
+}
+
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum TokenKind {
     TKRESERVED,
@@ -27,7 +34,7 @@ pub struct Tokenizer {
 }
 
 pub struct TokenIter {
-    iter: LinkedList<Token>,
+    tokens: LinkedList<Token>,
 }
 
 impl Token {
@@ -167,7 +174,7 @@ impl Tokenizer {
 
 impl TokenIter {
     pub fn new(tokens: LinkedList<Token>) -> Self {
-        TokenIter { iter: tokens }
+        TokenIter { tokens: tokens }
     }
 
     pub fn expect(&mut self, s: &str) {
@@ -189,11 +196,10 @@ impl TokenIter {
 
     pub fn expect_type(&mut self) -> String {
         let t = self.next();
-        match t.string.as_ref().unwrap().as_str() {
-            _s if TYPES.contains(&_s) => t.string.as_ref().unwrap().to_string(),
-            _ => {
-                panic!("TokenIter: Expected type specifier.");
-            }
+        if is_type(t.string.as_ref().unwrap().as_str()) {
+            t.string.as_ref().unwrap().to_string()
+        } else {
+            panic!("TokenIter: Expected type specifier.");
         }
     }
 
@@ -235,12 +241,11 @@ impl TokenIter {
         if t.kind != TokenKind::TKRESERVED {
             return None;
         }
-        match t.string.as_ref().unwrap().as_str() {
-            _s if TYPES.contains(&_s) => {
-                let n = self.next();
-                Some(n.string.as_ref().unwrap().to_string())
-            }
-            _ => None,
+        if is_type(t.string.as_ref().unwrap().as_str()) {
+            let n = self.next();
+            Some(n.string.as_ref().unwrap().to_string())
+        } else {
+            None
         }
     }
 
@@ -255,17 +260,24 @@ impl TokenIter {
         ret
     }
 
+    pub fn check_func(&self) -> bool {
+        let iter = self.tokens.iter();
+
+        //let t = iter.next().unwrap();
+        true
+    }
+
     pub fn at_eof(&mut self) -> bool {
         self.peek().kind == TokenKind::TKEOF
     }
 
     // Wrapper to hide option unwrapping
     fn peek(&mut self) -> &Token {
-        self.iter.front().unwrap()
+        self.tokens.front().unwrap()
     }
 
     // Wrapper to hide option unwrapping
     fn next(&mut self) -> Token {
-        self.iter.pop_front().unwrap()
+        self.tokens.pop_front().unwrap()
     }
 }
