@@ -50,7 +50,7 @@ pub struct Node {
 
     pub blockstmts: LinkedList<Node>, // Used by NDBLOCK & NDFUNCDEF
 
-    pub name: Option<String>,   // Used by NDCALL & NDFUNCDEF
+    pub name: Option<String>,   // NDCALL, NDGVARDEF, NDFUNCDEF
     pub funcargs: LinkedList<Node>, // Used by NDCALL
 
     pub funcarg_vars: LinkedList<Var>, // Context of args; used by NDFUNCDEF
@@ -448,11 +448,12 @@ impl<'a> Parser<'a> {
     fn gvar_def(&mut self, ident_name: String) -> Node {
         use NodeKind::*;
 
-        let mut node = Node::new(NDGVARDEF, None, None);
+        let mut node = Node::new(NDGVARDEF, None, None).name(ident_name.clone());
         if self.iter.consume("[") {
             panic!("TODO");
         } else {
             let var_type = Type::new(TypeKind::INT, 0);
+            node = node.ty(var_type.clone());
             self.add_gvar(ident_name, var_type);
             node
         }
