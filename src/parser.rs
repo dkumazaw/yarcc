@@ -765,13 +765,10 @@ impl<'a> Parser<'a> {
                 node
             } else {
                 // This is a variable
-                if let Some(ref lvar) = self.find_lvar(&ident) {
-                    Node::new(NDLVAR, None, None)
-                        .offset(lvar.offset.unwrap())
-                        .ty(lvar.ty.clone())
-                } else {
-                    panic!("Parser: Found an undefined variable {}\n", ident);
-                }
+                let lvar = self.find_var(&ident);
+                Node::new(NDLVAR, None, None)
+                     .offset(lvar.offset.unwrap())
+                     .ty(lvar.ty.clone())
             }
         } else {
             // Must be NUM at this point
@@ -782,9 +779,13 @@ impl<'a> Parser<'a> {
     }
 
     // Finds if the passed identitier already exists
-    fn find_lvar(&mut self, ident_name: &str) -> Option<&Var> {
+    fn find_var(&mut self, ident_name: &str) -> &Var {
         // TODO: Support hierarchical lookup
-        self.locals.back().unwrap().find_lvar(ident_name)
+        if let Some(ref v) = self.locals.back().unwrap().find_lvar(ident_name) {
+            v
+        } else {
+            panic!("Parser: Found an undefined variable {}\n", ident_name);
+        }
     }
 
     fn add_lvar(&mut self, ident_name: String, ty: Type) -> Var {
