@@ -399,8 +399,7 @@ impl Parser {
         }
     }
 
-    // Parses local variable definition if possible
-    // Returns the offset of the registered lvar or None
+    // TODO: Currently only used by funcdef
     fn lvar_def(&mut self) -> Option<Var> {
         if let Some(tkkind) = self.iter.consume_type() {
             let refs = {
