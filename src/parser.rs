@@ -284,6 +284,14 @@ impl LVarScope {
 }
 
 impl TypeKind {
+    fn from_token_kind(kind: TokenKind) -> Self {
+        use TokenKind::*;
+        
+        match kind {
+            TKINT => TypeKind::INT,
+            _ => { panic!("Cannot convert this token to TypeKind."); }
+        }
+    }
     pub fn is_ptr_like(&self) -> bool {
         use TypeKind::*;
         match self {
@@ -427,8 +435,7 @@ impl<'a> Parser<'a> {
 
     // external_decl = "int" ident ( funcdef | gvar_def )
     fn external_decl(&mut self) -> Option<Node> {
-        use NodeKind::*;
-        let _tk = self.iter.expect_type(); // TODO: Only int is
+        let kind = TypeKind::from_token_kind(self.iter.expect_type()); 
         let refs = {
             // # of times * occurs will tell us the depth of references
             let mut tmp = 0;
@@ -445,16 +452,16 @@ impl<'a> Parser<'a> {
             Some(node)
         } else {
             // This must be a gvar decl
-            self.gvar_def(ident_name);
+            self.gvar_def(ident_name, kind, refs);
             None
         }
     }
 
-    fn gvar_def(&mut self, ident_name: String) { 
+    fn gvar_def(&mut self, ident_name: String, kind: TypeKind, refcount: usize) { 
         if self.iter.consume("[") {
             panic!("TODO");
         } else {
-            let var_type = Type::new(TypeKind::INT, 0);
+            let var_type = Type::new(kind, refcount);
             self.add_gvar(ident_name, var_type);
         }
         self.iter.expect(";");
