@@ -239,6 +239,10 @@ impl<'a> CodeGen<'a> {
                 // Restore rbp and return
                 self.gen_return();
             }
+            NDGVARDEF => {
+                gen_line!(self.f, "{}:\n", node.name.unwrap());
+                gen_line!(self.f, "  .zero {}\n", node.ty.unwrap().total_size());
+            }
             NDVARDEF => {
                 // For now, just push some bogus value.
                 gen_line!(self.f, "  push 12345\n");
