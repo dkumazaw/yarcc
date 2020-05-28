@@ -36,7 +36,6 @@ pub struct Node {
     pub rhs: Option<Box<Node>>,
     pub val: Option<i32>,      // Used by NDNUM
     pub offset: Option<usize>, // Used by NDLVAR
-    pub size: Option<usize>,   // Used by NDGVARDEF
     pub ty: Option<Type>,
     pub scale_lhs: Option<bool>, // Used by NDADD and NDSUB to perform ptr arithm.
 
@@ -110,7 +109,6 @@ impl Node {
             rhs: rhs,
             val: None,
             offset: None,
-            size: None,
             ty: None,
             scale_lhs: None,
             cond: None,
@@ -787,7 +785,6 @@ impl<'a> Parser<'a> {
         self.locals.back().unwrap().find_lvar(ident_name)
     }
 
-    // Adds a new ident and returns the produced offset
     fn add_lvar(&mut self, ident_name: String, ty: Type) -> Var {
         self.locals
             .back_mut()
@@ -795,5 +792,8 @@ impl<'a> Parser<'a> {
             .register_lvar(ident_name, ty)
     }
 
-    fn add_gvar(&mut self, ident_name: String, ty: Type) {}
+    fn add_gvar(&mut self, ident_name: String, ty: Type) {
+        self.globals
+            .push_back(Var { name: ident_name, ty: ty, offset: None });
+    }
 }
