@@ -75,6 +75,7 @@ tests! {
     gvar0: ("int a; int main() { a = 1; return a; }", 1),
     gvar1: ("int a; int b; int c; int foo (int arg) { b = arg; return 7; }int main() { c = foo(2); a = c * b; return a; }", 14),
     gvar2: ("int *a; int main() { int b; int *c; c = &b; a = c; *c = 53; return *a; }", 53),
+    gvar3: ("int a[4]; int main() { a[0] = 3; a[1] = a[0]+2; a[2] = a[1]*a[0]; return a[2]; }", 15),
     array0: ("int main() { int a[10]; return 1; }", 1),
     array1: ("int main() { int arr[12]; arr[1] = 4; return arr[1];}", 4),
     array2: ("int main() { int arr[10]; int b; b = 3; arr[4 * b -10] = 21; return arr[4 - 2]; }", 21),
