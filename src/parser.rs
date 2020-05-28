@@ -19,7 +19,8 @@ pub enum NodeKind {
     NDBLOCK,
     NDCALL,    // function call
     NDFUNCDEF, // function definition
-    NDVARDEF,  // Variable definition
+    NDDECL, // declaration 
+    NDINIT, // initializer
     NDADDR,
     NDDEREF,
     NDLVAR, // local var
@@ -44,18 +45,20 @@ pub struct Node {
 
     pub repnode: Option<Box<Node>>, // Used for "for" & "while"
 
-    pub initnode: Option<Box<Node>>, // Used by for
-    pub stepnode: Option<Box<Node>>, // Used by for
+    pub initnode: Option<Box<Node>>, // NDFOR
+    pub stepnode: Option<Box<Node>>, // NDFOR
 
-    pub blockstmts: LinkedList<Node>, // Used by NDBLOCK & NDFUNCDEF
+    pub blockstmts: LinkedList<Node>, //  NDBLOCK & NDFUNCDEF
 
     pub name: Option<String>,       // NDCALL, NDGVARDEF, NDFUNCDEF
-    pub funcargs: LinkedList<Node>, // Used by NDCALL
+    pub funcargs: LinkedList<Node>, // NDCALL
 
     pub funcarg_vars: LinkedList<Var>, // Context of args; used by NDFUNCDEF
 
     // Local variable context for NDFUNCDEF and NDBLOCK(TODO)
     pub lvars_offset: Option<usize>, // Stores the amount of space needed on stack for lvars.
+
+    pub inits: LinkedList<Node>, // NDDECL
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -124,6 +127,7 @@ impl Node {
             funcargs: LinkedList::new(),
             funcarg_vars: LinkedList::new(),
             lvars_offset: None,
+            inits: LinkedList::new(),
         }
     }
 
@@ -447,14 +451,16 @@ impl Parser {
         }
     }
 
-    // decl = "int" "*"* ident ("[" num "]")? 
-    fn decl(&mut self, is_global: bool) -> bool {
+    // decl = "int" "*"* ident ("[" num "]")? ("=" num )?
+    fn decl(&mut self, is_global: bool) -> Option<Node> {
+        use NodeKind::*;
+
         let kindstr;
         if !is_global {
             if let Some(s) = self.iter.consume_type() {
                 kindstr = s;
             } else {
-                return false;
+                return None;
             }
         } else {
             kindstr = self.iter.expect_type();
@@ -485,8 +491,9 @@ impl Parser {
         } else {
             self.add_lvar(ident_name, var_type);
         }
+
         self.iter.expect(";");
-        true
+        Some(Node::new(NDDECL, None, None))
     }
 
     // funcdef =  "int" * ident "(" (lvar_def ",")* ")" "{" stmt* "}"
@@ -551,9 +558,8 @@ impl Parser {
         use NodeKind::*;
 
         let mut node;
-        if self.decl(false) {
-            // TODO: Maybe having NDVARDEF is not a good design...
-            node = Node::new(NDVARDEF, None, None);
+        if let Some(decl) = self.decl(false) {
+            node = decl;
         } else if self.iter.consume("{") {
             node = Node::new(NDBLOCK, None, None);
             while !self.iter.consume("}") {
