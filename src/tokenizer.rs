@@ -260,11 +260,26 @@ impl TokenIter {
         ret
     }
 
-    pub fn check_func(&self) -> bool {
-        let iter = self.tokens.iter();
+    pub fn is_func(&self) -> bool {
+        let mut iter = self.tokens.iter();
 
-        //let t = iter.next().unwrap();
-        true
+        let t = iter.next().unwrap();
+        if !is_type(t.string.as_ref().unwrap().as_str()) {
+            panic!("Illegal!")
+        }
+
+        loop {
+            if iter.next().unwrap().string.as_ref().unwrap().as_str() != "*" {
+                break;
+            }
+        }
+
+        if let Some(tk) = iter.next().unwrap().string.as_ref() {
+            if tk.as_str() == "(" {
+                return true;
+            }
+        }
+        return false;
     }
 
     pub fn at_eof(&mut self) -> bool {
