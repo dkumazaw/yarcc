@@ -248,6 +248,19 @@ impl<'a> TokenIter<'a> {
         ret
     }
 
+    pub fn consume_type(&mut self) -> Option<TokenKind> {
+        use TokenKind::*;
+
+        let t = self.peek();
+        match t.kind {
+            TKINT | TKCHAR => {
+                let n = self.next();
+                Some(n.kind)
+            },
+            _ => None 
+        }
+    }
+
     // Consumes the specified kind
     pub fn consume_kind(&mut self, k: TokenKind) -> bool {
         let t = self.peek();
