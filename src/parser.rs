@@ -93,6 +93,7 @@ pub struct LVarScope {
 // codegen should use this context to produce code
 pub struct ParsedContext {
     pub nodes: LinkedList<Node>,
+    pub globals: LinkedList<Var>,
 }
 
 pub struct Parser<'a> {
@@ -378,8 +379,10 @@ impl<'a> Parser<'a> {
     }
 
     pub fn parse(mut self) -> ParsedContext {
+        let nodes = self.program();
         ParsedContext {
-            nodes: self.program(),
+            nodes: nodes,
+            globals: self.globals,
         }
     }
 
