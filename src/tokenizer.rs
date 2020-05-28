@@ -10,6 +10,7 @@ pub enum TokenKind {
     TKELSE,
     TKWHILE,
     TKFOR,
+    TKCHAR,
     TKINT,
     TKSIZEOF,
     TKIDENT,
@@ -127,6 +128,9 @@ impl Tokenizer {
                         }
                         "for" => {
                             self.tokens.push_back(Token::new(TKFOR));
+                        }
+                        "char" => {
+                            self.tokens.push_back(Token::new(TKCHAR));
                         }
                         "int" => {
                             self.tokens.push_back(Token::new(TKINT));
