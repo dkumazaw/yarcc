@@ -208,7 +208,7 @@ impl<'a> TokenIter<'a> {
 
         let t = self.next();
         match t.kind {
-            TKINT => t.kind,
+            TKCHAR | TKINT => t.kind,
             _ => {
                 panic!("TokenIter: Expected type specifier.");
             }
