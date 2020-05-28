@@ -440,6 +440,10 @@ impl Parser {
 
     // external_decl = "int" ident ( funcdef | gvar_def )
     fn external_decl(&mut self) -> Option<Node> {
+        if self.iter.is_func() {
+            return self.funcdef();  
+        } 
+
         let kind = TypeKind::from_str(self.iter.expect_type());
         let refs = {
             // # of times * occurs will tell us the depth of references
@@ -452,14 +456,13 @@ impl Parser {
 
         let ident_name = self.iter.expect_ident();
 
-        if let Some(node) = self.funcdef(&ident_name) {
-            // This is a funcdef
-            Some(node)
-        } else {
-            // This must be a gvar decl
-            self.gvar_def(ident_name, kind, refs);
-            None
-        }
+        // This must be a gvar decl
+        self.gvar_def(ident_name, kind, refs);
+        return None;
+    }
+
+    fn decl(&mut self, is_global: bool) {
+
     }
 
     fn gvar_def(&mut self, ident_name: String, kind: TypeKind, refcount: usize) {
@@ -476,17 +479,24 @@ impl Parser {
         self.iter.expect(";");
     }
 
-    // funcdef = "(" (lvar_def ",")* ")" "{" stmt* "}"
-    // This performs the rest of funcdef parsing not performed by
-    // external_decl
-    fn funcdef(&mut self, ident_name: &str) -> Option<Node> {
+    // funcdef =  "int" * ident "(" (lvar_def ",")* ")" "{" stmt* "}"
+    fn funcdef(&mut self) -> Option<Node> {
         use NodeKind::*;
 
-        if !self.iter.consume("(") {
-            return None;
-        }
+        let kind = TypeKind::from_str(self.iter.expect_type());
+        let refs = {
+            // # of times * occurs will tell us the depth of references
+            let mut tmp = 0;
+            while self.iter.consume("*") {
+                tmp += 1;
+            }
+            tmp
+        };
 
-        // Pick up from argument parsing
+        let ident_name = self.iter.expect_ident();
+
+        self.iter.expect("(");
+
         let mut node = Node::new(NDFUNCDEF, None, None).name(ident_name.to_string());
         // Create a new scope:
         self.locals.push_back(LVarScope::new());
