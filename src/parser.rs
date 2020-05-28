@@ -765,10 +765,17 @@ impl<'a> Parser<'a> {
                 node
             } else {
                 // This is a variable
-                let lvar = self.find_var(&ident);
-                Node::new(NDLVAR, None, None)
-                     .offset(lvar.offset.unwrap())
-                     .ty(lvar.ty.clone())
+                let var = self.find_var(&ident);
+                if let Some(offset) = var.offset {
+                    // This is local
+                    Node::new(NDLVAR, None, None)
+                         .offset(offset)
+                         .ty(var.ty.clone())
+                } else {
+                    Node::new(NDGVAR, None, None)
+                         .name(ident)
+                         .ty(var.ty.clone())
+                }
             }
         } else {
             // Must be NUM at this point
