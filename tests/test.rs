@@ -46,6 +46,7 @@ tests! {
     lvar1: ("int main() { int b; b = 1 + 3 * (4 - 2); b;} ", 7),
     lvar2: ("int main() { int foo; foo = 10 + 4; foo;} ", 14),
     lvar3: ("int main() { int a; int b; a = 1; b = 2; a + b;} ", 3),
+    char0: ("int main() { char a; a = 1; return a; }", 1),
     return0: ("int main() { return 1;} ", 1),
     return1: ("int main() { return (3 + 1) *  10;} ", 40),
     return2: ("int main() { int a; a = 4 + 5; return a + 1;} ", 10),
