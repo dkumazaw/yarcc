@@ -13,7 +13,7 @@ macro_rules! tests {
                                 .success();
 
                 let _obj = Command::new("cc")
-                                 .args(&["-o", "tmp", "tmp.s"])
+                                 .args(&["-no-pie", "-o", "tmp", "tmp.s"])
                                  .output()
                                  .unwrap();
 
