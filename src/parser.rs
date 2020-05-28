@@ -1,4 +1,4 @@
-use crate::tokenizer::{TokenIter, TokenKind};
+use crate::tokenizer::TokenIter;
 use std::collections::LinkedList;
 
 #[derive(Debug, PartialEq)]
@@ -285,12 +285,10 @@ impl LVarScope {
 }
 
 impl TypeKind {
-    fn from_token_kind(kind: TokenKind) -> Self {
-        use TokenKind::*;
-
-        match kind {
-            TKCHAR => TypeKind::CHAR,
-            TKINT => TypeKind::INT,
+    fn from_str(s: String) -> Self {
+        match s.as_str() {
+            "char" => TypeKind::CHAR,
+            "int" => TypeKind::INT,
             _ => {
                 panic!("Cannot convert this token to TypeKind.");
             }
@@ -414,12 +412,11 @@ impl<'a> Parser<'a> {
             if self.iter.consume("[") {
                 // This is an array
                 let array_size = self.iter.expect_number() as usize;
-                let var_type = Type::new_array(TypeKind::from_token_kind(tkkind),
-                                                refs, array_size);
+                let var_type = Type::new_array(TypeKind::from_str(tkkind), refs, array_size);
                 self.iter.expect("]");
                 Some(self.add_lvar(ident, var_type))
             } else {
-                let var_type = Type::new(TypeKind::from_token_kind(tkkind), refs);
+                let var_type = Type::new(TypeKind::from_str(tkkind), refs);
                 Some(self.add_lvar(ident, var_type))
             }
         } else {
@@ -440,7 +437,7 @@ impl<'a> Parser<'a> {
 
     // external_decl = "int" ident ( funcdef | gvar_def )
     fn external_decl(&mut self) -> Option<Node> {
-        let kind = TypeKind::from_token_kind(self.iter.expect_type());
+        let kind = TypeKind::from_str(self.iter.expect_type());
         let refs = {
             // # of times * occurs will tell us the depth of references
             let mut tmp = 0;
@@ -541,22 +538,22 @@ impl<'a> Parser<'a> {
             while !self.iter.consume("}") {
                 node = node.blockstmt(self.stmt());
             }
-        } else if self.iter.consume_kind(TokenKind::TKIF) {
+        } else if self.iter.consume("if") {
             self.iter.expect("(");
             node = Node::new(NDIF, None, None).cond(Some(Box::new(self.expr())));
             self.iter.expect(")");
             node = node.ifnode(Some(Box::new(self.stmt())));
 
             // Else statement
-            if self.iter.consume_kind(TokenKind::TKELSE) {
+            if self.iter.consume("else") {
                 node = node.elsenode(Some(Box::new(self.stmt())));
             }
-        } else if self.iter.consume_kind(TokenKind::TKWHILE) {
+        } else if self.iter.consume("while") {
             self.iter.expect("(");
             node = Node::new(NDWHILE, None, None).cond(Some(Box::new(self.expr())));
             self.iter.expect(")");
             node = node.repnode(Some(Box::new(self.stmt())));
-        } else if self.iter.consume_kind(TokenKind::TKFOR) {
+        } else if self.iter.consume("for") {
             self.iter.expect("(");
             node = Node::new(NDFOR, None, None);
 
@@ -576,7 +573,7 @@ impl<'a> Parser<'a> {
                 self.iter.expect(")");
             }
             node = node.repnode(Some(Box::new(self.stmt())));
-        } else if self.iter.consume_kind(TokenKind::TKRETURN) {
+        } else if self.iter.consume("return") {
             node = Node::new(NDRETURN, Some(Box::new(self.expr())), None);
             self.iter.expect(";");
         } else {
@@ -702,7 +699,7 @@ impl<'a> Parser<'a> {
         use NodeKind::*;
 
         let mut node;
-        if self.iter.consume_kind(TokenKind::TKSIZEOF) {
+        if self.iter.consume("sizeof") {
             let mut lhs = self.unary();
             lhs.populate_ty();
             node = Node::new(NDNUM, None, None)

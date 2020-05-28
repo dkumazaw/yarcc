@@ -2,17 +2,14 @@ use std::collections::linked_list::Iter;
 use std::collections::LinkedList;
 use std::iter::Peekable;
 
+static TYPES: [&str; 2] = ["char", "int"];
+static KEYWORDS: [&str; 8] = [
+    "char", "int", "return", "if", "else", "while", "for", "sizeof",
+];
+
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum TokenKind {
     TKRESERVED,
-    TKRETURN,
-    TKIF,
-    TKELSE,
-    TKWHILE,
-    TKFOR,
-    TKCHAR,
-    TKINT,
-    TKSIZEOF,
     TKIDENT,
     TKSTR,
     TKNUM,
@@ -49,8 +46,8 @@ impl Token {
         self
     }
 
-    fn string(mut self, s: String) -> Self {
-        self.string = Some(s);
+    fn string(mut self, s: &str) -> Self {
+        self.string = Some(s.to_string());
         self
     }
 }
@@ -94,7 +91,8 @@ impl Tokenizer {
                         }
                         str_literal.push(_c);
                     }
-                    self.tokens.push_back(Token::new(TKSTR).string(str_literal));    
+                    self.tokens
+                        .push_back(Token::new(TKSTR).string(&str_literal));
                     continue;
                 }
 
@@ -106,13 +104,13 @@ impl Tokenizer {
                     } else {
                         c.to_string()
                     };
-                    self.tokens.push_back(Token::new(TKRESERVED).string(tkstr));
+                    self.tokens.push_back(Token::new(TKRESERVED).string(&tkstr));
                     continue;
                 }
 
                 '+' | '-' | '*' | '/' | '(' | ')' | ';' | '{' | '}' | ',' | '&' | '[' | ']' => {
                     self.tokens
-                        .push_back(Token::new(TKRESERVED).string(c.to_string()));
+                        .push_back(Token::new(TKRESERVED).string(&c.to_string()));
                     cur += 1;
                     continue;
                 }
@@ -130,33 +128,13 @@ impl Tokenizer {
                     }
                     // Match keywords here
                     match ident_name.as_str() {
-                        "return" => {
-                            self.tokens.push_back(Token::new(TKRETURN));
-                        }
-                        "if" => {
-                            self.tokens.push_back(Token::new(TKIF));
-                        }
-                        "else" => {
-                            self.tokens.push_back(Token::new(TKELSE));
-                        }
-                        "while" => {
-                            self.tokens.push_back(Token::new(TKWHILE));
-                        }
-                        "for" => {
-                            self.tokens.push_back(Token::new(TKFOR));
-                        }
-                        "char" => {
-                            self.tokens.push_back(Token::new(TKCHAR));
-                        }
-                        "int" => {
-                            self.tokens.push_back(Token::new(TKINT));
-                        }
-                        "sizeof" => {
-                            self.tokens.push_back(Token::new(TKSIZEOF));
+                        ident_name if KEYWORDS.contains(&ident_name) => {
+                            self.tokens
+                                .push_back(Token::new(TKRESERVED).string(&ident_name));
                         }
                         _ => {
                             self.tokens
-                                .push_back(Token::new(TKIDENT).string(ident_name));
+                                .push_back(Token::new(TKIDENT).string(&ident_name));
                         }
                     }
                     continue;
@@ -212,19 +190,10 @@ impl<'a> TokenIter<'a> {
         }
     }
 
-    pub fn expect_kind(&mut self, k: TokenKind) {
+    pub fn expect_type(&mut self) -> String {
         let t = self.next();
-        if t.kind != k {
-            panic!("TokenIter: Expected TokenKind {:?} but got {:?}", k, t.kind);
-        }
-    }
-
-    pub fn expect_type(&mut self) -> TokenKind {
-        use TokenKind::*;
-
-        let t = self.next();
-        match t.kind {
-            TKCHAR | TKINT => t.kind,
+        match t.string.as_ref().unwrap().as_str() {
+            _s if TYPES.contains(&_s) => t.string.as_ref().unwrap().to_string(),
             _ => {
                 panic!("TokenIter: Expected type specifier.");
             }
@@ -264,27 +233,17 @@ impl<'a> TokenIter<'a> {
         ret
     }
 
-    pub fn consume_type(&mut self) -> Option<TokenKind> {
-        use TokenKind::*;
-
+    pub fn consume_type(&mut self) -> Option<String> {
         let t = self.peek();
-        match t.kind {
-            TKINT | TKCHAR => {
-                let n = self.next();
-                Some(n.kind)
-            },
-            _ => None 
+        if t.kind != TokenKind::TKRESERVED {
+            return None;
         }
-    }
-
-    // Consumes the specified kind
-    pub fn consume_kind(&mut self, k: TokenKind) -> bool {
-        let t = self.peek();
-        if t.kind == k {
-            self.next();
-            true
-        } else {
-            false
+        match t.string.as_ref().unwrap().as_str() {
+            _s if TYPES.contains(&_s) => {
+                let n = self.next();
+                Some(n.string.as_ref().unwrap().to_string())
+            }
+            _ => None,
         }
     }
 
