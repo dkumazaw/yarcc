@@ -14,7 +14,7 @@ mod tokenizer;
 
 use codegen::CodeGen;
 use parser::Parser;
-use tokenizer::{TokenIter, Tokenizer};
+use tokenizer::Tokenizer;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -26,9 +26,8 @@ fn main() {
                 Ok(f) => f,
             };
 
-            let mut tk = Tokenizer::new();
-            let tkiter = TokenIter::new(tk.tokenize(&args[1]));
-            let parser = Parser::new(tkiter);
+            let tokens = Tokenizer::new().tokenize(&args[1]);
+            let parser = Parser::new(tokens);
             let parsed_program = parser.parse();
             let mut codegen = CodeGen::new(&mut f, parsed_program);
 

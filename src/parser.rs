@@ -97,8 +97,8 @@ pub struct Program {
     pub globals: LinkedList<Var>,
 }
 
-pub struct Parser<'a> {
-    iter: TokenIter<'a>,
+pub struct Parser {
+    iter: TokenIter,
     globals: LinkedList<Var>,
     locals: LinkedList<LVarScope>, // Each scope should push_back a new linked list
 }
@@ -382,8 +382,8 @@ impl Type {
     }
 }
 
-impl<'a> Parser<'a> {
-    pub fn new(iter: TokenIter<'a>) -> Self {
+impl Parser {
+    pub fn new(iter: TokenIter) -> Self {
         Parser {
             iter: iter,
             globals: LinkedList::new(),
