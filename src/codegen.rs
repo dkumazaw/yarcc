@@ -28,7 +28,7 @@ impl<'a> CodeGen<'a> {
 
     fn gen_data(&mut self) {
         gen_line!(self.f, ".data\n");
-        
+
         loop {
             if let Some(gvar) = self.prog.globals.pop_front() {
                 gen_line!(self.f, "{}:\n", gvar.name);

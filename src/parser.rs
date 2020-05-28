@@ -286,10 +286,12 @@ impl LVarScope {
 impl TypeKind {
     fn from_token_kind(kind: TokenKind) -> Self {
         use TokenKind::*;
-        
+
         match kind {
             TKINT => TypeKind::INT,
-            _ => { panic!("Cannot convert this token to TypeKind."); }
+            _ => {
+                panic!("Cannot convert this token to TypeKind.");
+            }
         }
     }
     pub fn is_ptr_like(&self) -> bool {
@@ -435,7 +437,7 @@ impl<'a> Parser<'a> {
 
     // external_decl = "int" ident ( funcdef | gvar_def )
     fn external_decl(&mut self) -> Option<Node> {
-        let kind = TypeKind::from_token_kind(self.iter.expect_type()); 
+        let kind = TypeKind::from_token_kind(self.iter.expect_type());
         let refs = {
             // # of times * occurs will tell us the depth of references
             let mut tmp = 0;
@@ -457,13 +459,17 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn gvar_def(&mut self, ident_name: String, kind: TypeKind, refcount: usize) { 
+    fn gvar_def(&mut self, ident_name: String, kind: TypeKind, refcount: usize) {
+        let var_type;
         if self.iter.consume("[") {
-            panic!("TODO");
+            // This is an array
+            let array_size = self.iter.expect_number() as usize;
+            var_type = Type::new_array(kind, refcount, array_size);
+            self.iter.expect("]");
         } else {
-            let var_type = Type::new(kind, refcount);
-            self.add_gvar(ident_name, var_type);
+            var_type = Type::new(kind, refcount);
         }
+        self.add_gvar(ident_name, var_type);
         self.iter.expect(";");
     }
 
