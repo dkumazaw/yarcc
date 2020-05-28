@@ -438,13 +438,29 @@ impl Parser {
         nodes
     }
 
-    // external_decl = "int" ident ( funcdef | gvar_def )
+    // external_decl = funcdef | decl
     fn external_decl(&mut self) -> Option<Node> {
         if self.iter.is_func() {
             return self.funcdef();  
-        } 
+        } else {
+            self.decl(true);
+            return None;
+        }
+    }
 
-        let kind = TypeKind::from_str(self.iter.expect_type());
+    // decl = "int" "*"* ident ("[" num "]")? 
+    fn decl(&mut self, is_global: bool) -> bool {
+        let kindstr;
+        if !is_global {
+            if let Some(s) = self.iter.consume_type() {
+                kindstr = s;
+            } else {
+                return false;
+            }
+        } else {
+            kindstr = self.iter.expect_type();
+        }
+        let kind = TypeKind::from_str(kindstr);
         let refs = {
             // # of times * occurs will tell us the depth of references
             let mut tmp = 0;
@@ -455,28 +471,23 @@ impl Parser {
         };
 
         let ident_name = self.iter.expect_ident();
-
-        // This must be a gvar decl
-        self.gvar_def(ident_name, kind, refs);
-        return None;
-    }
-
-    fn decl(&mut self, is_global: bool) {
-
-    }
-
-    fn gvar_def(&mut self, ident_name: String, kind: TypeKind, refcount: usize) {
         let var_type;
         if self.iter.consume("[") {
             // This is an array
             let array_size = self.iter.expect_number() as usize;
-            var_type = Type::new_array(kind, refcount, array_size);
+            var_type = Type::new_array(kind, refs, array_size);
             self.iter.expect("]");
         } else {
-            var_type = Type::new(kind, refcount);
+            var_type = Type::new(kind, refs);
         }
-        self.add_gvar(ident_name, var_type);
+
+        if is_global {
+            self.add_gvar(ident_name, var_type);
+        } else {
+            self.add_lvar(ident_name, var_type);
+        }
         self.iter.expect(";");
+        true
     }
 
     // funcdef =  "int" * ident "(" (lvar_def ",")* ")" "{" stmt* "}"
