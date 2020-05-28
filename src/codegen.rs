@@ -1,42 +1,62 @@
-use crate::parser::{Node, NodeKind};
+use crate::parser::{Node, NodeKind, Program};
 use std::fs::File;
 use std::io::Write;
 
 static FUNC_REGS_4: [&str; 6] = ["edi", "esi", "edx", "ecx", "r8d", "r9d"];
 static FUNC_REGS_8: [&str; 6] = ["rdi", "rsi", "rdx", "rcx", "r8", "r9"];
 
-#[derive(Debug)]
 pub struct CodeGen<'a> {
     f: &'a mut File,
+    prog: Program,
     cond_label: usize, // Used to track conditional labels
 }
 
 impl<'a> CodeGen<'a> {
-    pub fn new(f: &'a mut File) -> Self {
+    pub fn new(f: &'a mut File, prog: Program) -> Self {
         CodeGen {
             f: f,
+            prog: prog,
             cond_label: 0,
         }
     }
 
-    // Generates preamble:
-    pub fn gen_preamble(&mut self) {
+    pub fn gen_all(&mut self) {
+        self.gen_preamble();
+        gen_line!(self.f, ".data\n");
+
+        gen_line!(self.f, "\n");
+        gen_line!(self.f, ".text\n");
+        loop {
+            if let Some(node) = self.prog.nodes.pop_front() {
+                self.gen(node);
+            } else {
+                break;
+            }
+        }
+    }
+
+    fn gen_preamble(&mut self) {
         gen_line!(self.f, ".intel_syntax noprefix\n");
         gen_line!(self.f, ".global main\n\n");
     }
 
     fn gen_lval(&mut self, node: Node) {
+        use NodeKind::*;
+
         match node.kind {
-            NodeKind::NDLVAR => {
+            NDLVAR => {
                 gen_line!(self.f, "  mov rax, rbp\n");
                 gen_line!(self.f, "  sub rax, {}\n", node.offset.unwrap());
                 gen_line!(self.f, "  push rax\n");
             }
-            NodeKind::NDDEREF => {
+            NDGVAR => {
+                gen_line!(self.f, "  push offset {}\n", node.name.unwrap());
+            }
+            NDDEREF => {
                 self.gen(*node.lhs.unwrap());
             }
             _ => {
-                panic!("Expected kind NDLVAR or NDDEREF but got {:?}", node.kind);
+                panic!("Unexpected node: got {:?}", node.kind);
             }
         }
     }
@@ -95,7 +115,7 @@ impl<'a> CodeGen<'a> {
             NDNUM => {
                 gen_line!(self.f, "  push {}\n", node.val.unwrap());
             }
-            NDLVAR => match node.ty.as_ref().unwrap().kind {
+            NDLVAR | NDGVAR => match node.ty.as_ref().unwrap().kind {
                 ARRAY => {
                     self.gen_lval(node);
                 }

@@ -29,19 +29,10 @@ fn main() {
             let mut tk = Tokenizer::new();
             let tkiter = TokenIter::new(tk.tokenize(&args[1]));
             let parser = Parser::new(tkiter);
-            let mut parsed = parser.parse();
-            let mut codegen = CodeGen::new(&mut f);
+            let parsed_program = parser.parse();
+            let mut codegen = CodeGen::new(&mut f, parsed_program);
 
-            // Preamble:
-            codegen.gen_preamble();
-
-            loop {
-                if let Some(node) = parsed.nodes.pop_front() {
-                    codegen.gen(node);
-                } else {
-                    break;
-                }
-            }
+            codegen.gen_all();
         }
         _ => {
             eprintln!("Wrong number of arguments!");

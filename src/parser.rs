@@ -50,7 +50,7 @@ pub struct Node {
 
     pub blockstmts: LinkedList<Node>, // Used by NDBLOCK & NDFUNCDEF
 
-    pub name: Option<String>,   // NDCALL, NDGVARDEF, NDFUNCDEF
+    pub name: Option<String>,       // NDCALL, NDGVARDEF, NDFUNCDEF
     pub funcargs: LinkedList<Node>, // Used by NDCALL
 
     pub funcarg_vars: LinkedList<Var>, // Context of args; used by NDFUNCDEF
@@ -91,7 +91,7 @@ pub struct LVarScope {
 
 // Parser returns this context;
 // codegen should use this context to produce code
-pub struct ParsedContext {
+pub struct Program {
     pub nodes: LinkedList<Node>,
     pub globals: LinkedList<Var>,
 }
@@ -378,9 +378,9 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn parse(mut self) -> ParsedContext {
+    pub fn parse(mut self) -> Program {
         let nodes = self.program();
-        ParsedContext {
+        Program {
             nodes: nodes,
             globals: self.globals,
         }
@@ -772,12 +772,10 @@ impl<'a> Parser<'a> {
                 if let Some(offset) = var.offset {
                     // This is local
                     Node::new(NDLVAR, None, None)
-                         .offset(offset)
-                         .ty(var.ty.clone())
+                        .offset(offset)
+                        .ty(var.ty.clone())
                 } else {
-                    Node::new(NDGVAR, None, None)
-                         .name(ident)
-                         .ty(var.ty.clone())
+                    Node::new(NDGVAR, None, None).name(ident).ty(var.ty.clone())
                 }
             }
         } else {
@@ -808,7 +806,10 @@ impl<'a> Parser<'a> {
     }
 
     fn add_gvar(&mut self, ident_name: String, ty: Type) {
-        self.globals
-            .push_back(Var { name: ident_name, ty: ty, offset: None });
+        self.globals.push_back(Var {
+            name: ident_name,
+            ty: ty,
+            offset: None,
+        });
     }
 }
