@@ -541,7 +541,7 @@ impl Parser {
         Some(node)
     }
 
-    // stmt = lvar_def ";"
+    // stmt = decl
     //      | "{" stmt* "}"
     //      | "if" "(" expr ")" stmt ("else" stmt)?
     //      | "while" "(" expr ")" stmt
@@ -552,9 +552,7 @@ impl Parser {
         use NodeKind::*;
 
         let mut node;
-        if let Some(offset) = self.lvar_def() {
-            // This was an lvar def!
-            self.iter.expect(";");
+        if self.decl(false) {
             // TODO: Maybe having NDVARDEF is not a good design...
             node = Node::new(NDVARDEF, None, None);
         } else if self.iter.consume("{") {
