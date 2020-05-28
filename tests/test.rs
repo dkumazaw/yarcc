@@ -72,6 +72,7 @@ tests! {
     sizeof6: ("int main() { int x; return sizeof (x + 1); }", 4),
     sizeof7: ("int main() { int array[10]; return sizeof array; } ", 40),
     sizeof8: ("int main() { int *arr[13]; return sizeof arr; }", 104),
+    gvar0: ("int a; int main() { a = 1; return a; }", 1),
     array0: ("int main() { int a[10]; return 1; }", 1),
     array1: ("int main() { int arr[12]; arr[1] = 4; return arr[1];}", 4),
     array2: ("int main() { int arr[10]; int b; b = 3; arr[4 * b -10] = 21; return arr[4 - 2]; }", 21),

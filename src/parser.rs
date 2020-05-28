@@ -436,12 +436,12 @@ impl<'a> Parser<'a> {
 
         let ident_name = self.iter.expect_ident();
 
-        if let Some(node) = self.funcdef(ident_name) {
+        if let Some(node) = self.funcdef(&ident_name) {
             // This is a funcdef
             node
         } else {
-            // This is a gvar decl
-            panic!("TODO");
+            // This must be a gvar decl
+            self.gvar_def(ident_name)
         }
     }
 
@@ -455,14 +455,15 @@ impl<'a> Parser<'a> {
             let var_type = Type::new(TypeKind::INT, 0);
             node = node.ty(var_type.clone());
             self.add_gvar(ident_name, var_type);
-            node
         }
+        self.iter.expect(";");
+        node
     }
 
     // funcdef = "(" (lvar_def ",")* ")" "{" stmt* "}"
     // This performs the rest of funcdef parsing not performed by
     // external_decl
-    fn funcdef(&mut self, ident_name: String) -> Option<Node> {
+    fn funcdef(&mut self, ident_name: &str) -> Option<Node> {
         use NodeKind::*;
 
         if !self.iter.consume("(") {
@@ -470,7 +471,7 @@ impl<'a> Parser<'a> {
         }
 
         // Pick up from argument parsing
-        let mut node = Node::new(NDFUNCDEF, None, None).name(ident_name);
+        let mut node = Node::new(NDFUNCDEF, None, None).name(ident_name.to_string());
         // Create a new scope:
         self.locals.push_back(LVarScope::new());
 
