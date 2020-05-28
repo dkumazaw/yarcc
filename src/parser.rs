@@ -783,6 +783,8 @@ impl<'a> Parser<'a> {
         // TODO: Support hierarchical lookup
         if let Some(ref v) = self.locals.back().unwrap().find_lvar(ident_name) {
             v
+        } else if let Some(ref v) = self.globals.iter().find(|x| x.name == ident_name) {
+            v
         } else {
             panic!("Parser: Found an undefined variable {}\n", ident_name);
         }
