@@ -19,7 +19,6 @@ pub enum NodeKind {
     NDBLOCK,
     NDCALL,    // function call
     NDFUNCDEF, // function definition
-    NDGVARDEF, // Global var definition
     NDVARDEF,  // Variable definition
     NDADDR,
     NDDEREF,
@@ -419,13 +418,15 @@ impl<'a> Parser<'a> {
     fn program(&mut self) -> LinkedList<Node> {
         let mut nodes = LinkedList::new();
         while !self.iter.at_eof() {
-            nodes.push_back(self.external_decl());
+            if let Some(node) = self.external_decl() {
+                nodes.push_back(node);
+            }
         }
         nodes
     }
 
     // external_decl = "int" ident ( funcdef | gvar_def )
-    fn external_decl(&mut self) -> Node {
+    fn external_decl(&mut self) -> Option<Node> {
         use NodeKind::*;
         let _tk = self.iter.expect_type(); // TODO: Only int is
         let refs = {
@@ -441,26 +442,22 @@ impl<'a> Parser<'a> {
 
         if let Some(node) = self.funcdef(&ident_name) {
             // This is a funcdef
-            node
+            Some(node)
         } else {
             // This must be a gvar decl
-            self.gvar_def(ident_name)
+            self.gvar_def(ident_name);
+            None
         }
     }
 
-    fn gvar_def(&mut self, ident_name: String) -> Node {
-        use NodeKind::*;
-
-        let mut node = Node::new(NDGVARDEF, None, None).name(ident_name.clone());
+    fn gvar_def(&mut self, ident_name: String) { 
         if self.iter.consume("[") {
             panic!("TODO");
         } else {
             let var_type = Type::new(TypeKind::INT, 0);
-            node = node.ty(var_type.clone());
             self.add_gvar(ident_name, var_type);
         }
         self.iter.expect(";");
-        node
     }
 
     // funcdef = "(" (lvar_def ",")* ")" "{" stmt* "}"

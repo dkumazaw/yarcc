@@ -22,9 +22,24 @@ impl<'a> CodeGen<'a> {
 
     pub fn gen_all(&mut self) {
         self.gen_preamble();
-        gen_line!(self.f, ".data\n");
+        self.gen_data();
+        self.gen_text();
+    }
 
-        gen_line!(self.f, "\n");
+    fn gen_data(&mut self) {
+        gen_line!(self.f, ".data\n");
+        
+        loop {
+            if let Some(gvar) = self.prog.globals.pop_front() {
+                gen_line!(self.f, "{}:\n", gvar.name);
+                gen_line!(self.f, "  .zero {}\n", gvar.ty.total_size());
+            } else {
+                break;
+            }
+        }
+    }
+
+    fn gen_text(&mut self) {
         gen_line!(self.f, ".text\n");
         loop {
             if let Some(node) = self.prog.nodes.pop_front() {
@@ -258,10 +273,6 @@ impl<'a> CodeGen<'a> {
 
                 // Restore rbp and return
                 self.gen_return();
-            }
-            NDGVARDEF => {
-                gen_line!(self.f, "{}:\n", node.name.unwrap());
-                gen_line!(self.f, "  .zero {}\n", node.ty.unwrap().total_size());
             }
             NDVARDEF => {
                 // For now, just push some bogus value.
