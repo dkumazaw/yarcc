@@ -2,9 +2,9 @@ use std::collections::linked_list::Iter;
 use std::collections::LinkedList;
 use std::iter::Peekable;
 
-static TYPES: [&str; 2] = ["char", "int"];
-static KEYWORDS: [&str; 8] = [
-    "char", "int", "return", "if", "else", "while", "for", "sizeof",
+static TYPES: [&str; 3] = ["char", "short", "int"];
+static KEYWORDS: [&str; 9] = [
+    "char", "short", "int", "return", "if", "else", "while", "for", "sizeof",
 ];
 
 #[derive(Debug, Copy, Clone, PartialEq)]

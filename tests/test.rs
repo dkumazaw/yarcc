@@ -49,6 +49,7 @@ tests! {
     char0: ("int main() { char a; a = 1; return a; }", 1),
     char1: ("int y; int main() { char a[10]; a[0] = -4; a[5] = 19; y = a[0] + a[5]; return y; }", 15),
     char2: ("char a[10]; int main() { a[3]= 4; return a[3]; }", 4),
+    short0: ("int main() { short a; a = 2; return a; }", 2),
     return0: ("int main() { return 1;} ", 1),
     return1: ("int main() { return (3 + 1) *  10;} ", 40),
     return2: ("int main() { int a; a = 4 + 5; return a + 1;} ", 10),

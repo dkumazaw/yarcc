@@ -61,6 +61,7 @@ pub struct Node {
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum TypeKind {
     CHAR,
+    SHORT,
     INT,
     LONG,
     PTR,
@@ -289,6 +290,7 @@ impl TypeKind {
         match s.as_str() {
             "char" => TypeKind::CHAR,
             "int" => TypeKind::INT,
+            "short" => TypeKind::SHORT,
             _ => {
                 panic!("Cannot convert this token to TypeKind.");
             }
@@ -354,6 +356,7 @@ impl Type {
         use TypeKind::*;
         match self.kind {
             CHAR => 1,
+            SHORT => 2,
             INT => 4,
             LONG => 8,
             PTR => 8,
@@ -365,7 +368,7 @@ impl Type {
     pub fn total_size(&self) -> usize {
         use TypeKind::*;
         match self.kind {
-            CHAR | INT | LONG | PTR => self.size(),
+            CHAR | SHORT | INT | LONG | PTR => self.size(),
             ARRAY => self.array_size.unwrap() * self.size(),
         }
     }

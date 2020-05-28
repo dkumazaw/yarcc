@@ -83,6 +83,9 @@ impl<'a> CodeGen<'a> {
             1 => {
                 gen_line!(self.f, "  movsx rax, byte ptr [rax]\n");
             }
+            2 => {
+                gen_line!(self.f, "  movsx rax, word ptr [rax]\n");
+            }
             4 => {
                 gen_line!(self.f, "  movsxd rax, dword ptr [rax]\n");
             }
@@ -103,6 +106,9 @@ impl<'a> CodeGen<'a> {
         match size {
             1 => {
                 gen_line!(self.f, "  mov [rax], dil\n");
+            }
+            2 => {
+                gen_line!(self.f, "  mov [rax], di\n");
             }
             4 => {
                 gen_line!(self.f, "  mov [rax], edi\n");
