@@ -60,6 +60,7 @@ pub struct Node {
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum TypeKind {
+    CHAR,
     INT,
     LONG,
     PTR,
@@ -288,6 +289,7 @@ impl TypeKind {
         use TokenKind::*;
 
         match kind {
+            TKCHAR => TypeKind::CHAR,
             TKINT => TypeKind::INT,
             _ => {
                 panic!("Cannot convert this token to TypeKind.");
@@ -353,6 +355,7 @@ impl Type {
     pub fn size(&self) -> usize {
         use TypeKind::*;
         match self.kind {
+            CHAR => 1,
             INT => 4,
             LONG => 8,
             PTR => 8,
@@ -364,7 +367,7 @@ impl Type {
     pub fn total_size(&self) -> usize {
         use TypeKind::*;
         match self.kind {
-            INT | LONG | PTR => self.size(),
+            CHAR | INT | LONG | PTR => self.size(),
             ARRAY => self.array_size.unwrap() * self.size(),
         }
     }
@@ -398,10 +401,7 @@ impl<'a> Parser<'a> {
     // Parses local variable definition if possible
     // Returns the offset of the registered lvar or None
     fn lvar_def(&mut self) -> Option<Var> {
-        if !self.iter.consume_kind(TokenKind::TKINT) {
-            // This is not a variable definition. Return.
-            None
-        } else {
+        if let Some(tkkind) = self.iter.consume_type() {
             let refs = {
                 // # of times * occurs will tell us the depth of references
                 let mut tmp = 0;
@@ -421,6 +421,8 @@ impl<'a> Parser<'a> {
                 let var_type = Type::new(TypeKind::INT, refs);
                 Some(self.add_lvar(ident, var_type))
             }
+        } else {
+            None
         }
     }
 
