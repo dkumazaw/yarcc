@@ -14,6 +14,7 @@ pub enum TokenKind {
     TKINT,
     TKSIZEOF,
     TKIDENT,
+    TKSTR,
     TKNUM,
     TKEOF,
 }
@@ -79,6 +80,21 @@ impl Tokenizer {
 
                 '\n' => {
                     cur += 1;
+                    continue;
+                }
+
+                '"' => {
+                    let mut str_literal = String::new();
+                    cur += 1;
+                    while cur != len {
+                        let _c = in_str.chars().nth(cur).unwrap();
+                        cur += 1;
+                        if _c == '"' {
+                            break;
+                        }
+                        str_literal.push(_c);
+                    }
+                    self.tokens.push_back(Token::new(TKSTR).string(str_literal));    
                     continue;
                 }
 
