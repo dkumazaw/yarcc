@@ -19,8 +19,8 @@ pub enum NodeKind {
     NDBLOCK,
     NDCALL,    // function call
     NDFUNCDEF, // function definition
-    NDDECL, // declaration 
-    NDINIT, // initializer
+    NDDECL,    // declaration
+    NDINIT,    // initializer
     NDADDR,
     NDDEREF,
     NDLVAR, // local var
@@ -444,14 +444,14 @@ impl Parser {
     // external_decl = funcdef | decl
     fn external_decl(&mut self) -> Option<Node> {
         if self.iter.is_func() {
-            return self.funcdef();  
+            return self.funcdef();
         } else {
             self.decl(true);
             return None;
         }
     }
 
-    // decl = "int" "*"* ident ("[" num "]")? ("=" num )?
+    // decl = "int" "*"* ident ("[" num "]")? ("=" assign )?
     fn decl(&mut self, is_global: bool) -> Option<Node> {
         use NodeKind::*;
 
@@ -486,14 +486,28 @@ impl Parser {
             var_type = Type::new(kind, refs);
         }
 
+        let offset;
         if is_global {
-            self.add_gvar(ident_name, var_type);
+            self.add_gvar(ident_name, var_type.clone());
+            offset = 0;
         } else {
-            self.add_lvar(ident_name, var_type);
+            offset = self.add_lvar(ident_name, var_type.clone()).offset.unwrap();
+        }
+
+        let mut node = Node::new(NDDECL, None, None);
+
+        if self.iter.consume("=") {
+            // TODO SUpport init for global
+            let lhs = Node::new(NDLVAR, None, None)
+                .offset(offset)
+                .ty(var_type.clone());
+            let mut init = Node::new(NDASSIGN, Some(Box::new(lhs)), Some(Box::new(self.assign())));
+            init.populate_ty();
+            node.inits.push_back(init);
         }
 
         self.iter.expect(";");
-        Some(Node::new(NDDECL, None, None))
+        Some(node)
     }
 
     // funcdef =  "int" * ident "(" (lvar_def ",")* ")" "{" stmt* "}"

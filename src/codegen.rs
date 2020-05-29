@@ -287,7 +287,16 @@ impl<'a> CodeGen<'a> {
                 self.gen_return();
             }
             NDDECL => {
+                loop {
+                    if let Some(init) = node.inits.pop_front() {
+                        self.gen(init);
+                        gen_line!(self.f, "  pop rax\n");
+                    } else {
+                        break;
+                    }
+                }
                 // For now, just push some bogus value.
+                // TODO: Fix this
                 gen_line!(self.f, "  push 12345\n");
             }
             NDADDR => {
