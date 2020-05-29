@@ -5,6 +5,12 @@ use std::io::Write;
 static FUNC_REGS_4: [&str; 6] = ["edi", "esi", "edx", "ecx", "r8d", "r9d"];
 static FUNC_REGS_8: [&str; 6] = ["rdi", "rsi", "rdx", "rcx", "r8", "r9"];
 
+enum StoreMode {
+    MOV,
+    ADD,
+    SUB,
+}
+
 pub struct CodeGen<'a> {
     f: &'a mut File,
     prog: Program,
@@ -99,28 +105,29 @@ impl<'a> CodeGen<'a> {
         gen_line!(self.f, "  push rax\n");
     }
 
-    fn gen_store(&mut self, size: usize) {
+    fn gen_store(&mut self, size: usize, mode: StoreMode) {
+        use StoreMode::*;
+
         gen_line!(self.f, "  pop rdi\n");
         gen_line!(self.f, "  pop rax\n");
 
-        match size {
-            1 => {
-                gen_line!(self.f, "  mov [rax], dil\n");
-            }
-            2 => {
-                gen_line!(self.f, "  mov [rax], di\n");
-            }
-            4 => {
-                gen_line!(self.f, "  mov [rax], edi\n");
-            }
-            8 => {
-                gen_line!(self.f, "  mov [rax], rdi\n");
-            }
+        let instr = match mode {
+            MOV => "mov",
+            ADD => "add",
+            SUB => "sub",
+        };
+
+        let src = match size {
+            1 => "dil",
+            2 => "di",
+            4 => "edi",
+            8 => "rdi",
             _ => {
                 panic!("Codegen: Store requested on an invalid size.");
             }
-        }
+        };
 
+        gen_line!(self.f, "  {} [rax], {}\n", instr, src);
         gen_line!(self.f, "  push rdi\n");
     }
 
@@ -137,6 +144,7 @@ impl<'a> CodeGen<'a> {
     pub fn gen(&mut self, mut node: Node) {
         use crate::parser::NodeKind::*;
         use crate::parser::TypeKind::*;
+        use StoreMode::*;
 
         match node.kind {
             NDNUM => {
@@ -152,11 +160,19 @@ impl<'a> CodeGen<'a> {
                     self.gen_load(size);
                 }
             },
-            NDASSIGN => {
+            NDASSIGN | NDADD_ASSIGN | NDSUB_ASSIGN => {
+                let mode = match node.kind {
+                    NDASSIGN => MOV,
+                    NDADD_ASSIGN => ADD,
+                    NDSUB_ASSIGN => SUB,
+                    _ => {
+                        panic!("Unreacheable");
+                    }
+                };
                 self.gen_lval(*node.lhs.unwrap());
                 self.gen(*node.rhs.unwrap());
 
-                self.gen_store(node.ty.unwrap().size());
+                self.gen_store(node.ty.unwrap().size(), mode);
             }
             NDRETURN => {
                 self.gen(*node.lhs.unwrap());

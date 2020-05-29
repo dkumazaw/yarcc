@@ -276,7 +276,7 @@ impl TokenIter {
                     let n = self.next();
                     ret = n.string;
                 }
-            } 
+            }
         }
         ret
     }

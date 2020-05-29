@@ -3,15 +3,19 @@ use std::collections::LinkedList;
 
 #[derive(Debug, PartialEq)]
 pub enum NodeKind {
-    NDADD,    // +
-    NDSUB,    // -
-    NDMUL,    // *
-    NDDIV,    // /
-    NDEQ,     // ==
-    NDNEQ,    // !=
-    NDLEQ,    // <=
-    NDLT,     // <
-    NDASSIGN, // =
+    NDADD,        // +
+    NDSUB,        // -
+    NDMUL,        // *
+    NDDIV,        // /
+    NDEQ,         // ==
+    NDNEQ,        // !=
+    NDLEQ,        // <=
+    NDLT,         // <
+    NDASSIGN,     // =
+    NDADD_ASSIGN, // +=
+    NDSUB_ASSIGN, // -=
+    NDMUL_ASSIGN, // *=
+    NDDIV_ASSIGN, // /=
     NDRETURN,
     NDIF,
     NDWHILE,
@@ -246,7 +250,7 @@ impl Node {
                 lhs.populate_ty();
                 Some(lhs.ty.as_ref().unwrap().new_ptr_to())
             }
-            NDASSIGN => {
+            NDADD_ASSIGN | NDSUB_ASSIGN | NDASSIGN => {
                 let lhs = self.lhs.as_mut().unwrap();
                 lhs.populate_ty();
                 Some(lhs.ty.as_ref().unwrap().clone())
@@ -553,7 +557,7 @@ impl Parser {
             declnode.inits.push_back(init);
             pos += 1;
         }
-        
+
         self.iter.expect("}");
     }
 
@@ -676,17 +680,21 @@ impl Parser {
         self.assign()
     }
 
-    // assign = equality ("=" assign)?
+    // assign = equality (assign_op assign)?
     fn assign(&mut self) -> Node {
         use NodeKind::*;
         let mut node = self.equality();
 
-        if self.iter.consume("=") {
-            node = Node::new(
-                NDASSIGN,
-                Some(Box::new(node)),
-                Some(Box::new(self.assign())),
-            );
+        if let Some(op_str) = self.iter.consume_assign_op() {
+            let kind = match op_str.as_str() {
+                "=" => NDASSIGN,
+                "+=" => NDADD_ASSIGN,
+                "-=" => NDSUB_ASSIGN,
+                "*=" => NDMUL_ASSIGN,
+                "/=" => NDDIV_ASSIGN,
+                _ => panic!("Assign op should be passed."),
+            };
+            node = Node::new(kind, Some(Box::new(node)), Some(Box::new(self.assign())));
             node.populate_ty();
         }
         node
