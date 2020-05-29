@@ -1,6 +1,6 @@
-use std::collections::linked_list::Iter;
 use std::collections::LinkedList;
 
+static ASSIGN_OPS: [&str; 5] = ["=", "+=", "-=", "*=", "/="];
 static TYPES: [&str; 3] = ["char", "short", "int"];
 static KEYWORDS: [&str; 9] = [
     "char", "short", "int", "return", "if", "else", "while", "for", "sizeof",
@@ -9,6 +9,13 @@ static KEYWORDS: [&str; 9] = [
 fn is_type(s: &str) -> bool {
     match s {
         _s if TYPES.contains(&_s) => true,
+        _ => false,
+    }
+}
+
+fn is_assign_op(s: &str) -> bool {
+    match s {
+        _s if ASSIGN_OPS.contains(&_s) => true,
         _ => false,
     }
 }
@@ -256,6 +263,20 @@ impl TokenIter {
         if t.kind == TokenKind::TKIDENT {
             ret = t.string.clone();
             self.next();
+        }
+        ret
+    }
+
+    pub fn consume_assign_op(&mut self) -> Option<String> {
+        let t = self.peek();
+        let mut ret: Option<String> = None;
+        if t.kind == TokenKind::TKRESERVED {
+            if let Some(ref s) = t.string {
+                if is_assign_op(s) {
+                    let n = self.next();
+                    ret = n.string;
+                }
+            } 
         }
         ret
     }
