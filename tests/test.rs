@@ -46,6 +46,8 @@ tests! {
     assign1: ("int main() { int b = 13; b -= 6; return b; }", 7),
     assign2: ("int main() { int *p; int a[2]; p = a; p += 1; *p = 23; return a[1]; }", 23),
     assign3: ("int main() { int a[20]; int *p; a[7] = 27; int c = 9; int d = 2; p = a; p += c; p -= d; return *p;}", 27),
+    assign4: ("int main() { int f = 6; f *= 4; return f; }", 24),
+    assign5: ("int main() { int g = 12; int h = 4; g *= h; return g; }", 48),
     lvar0: ("int main() { int a; a = 1; a;} ", 1),
     lvar1: ("int main() { int b; b = 1 + 3 * (4 - 2); b;} ", 7),
     lvar2: ("int main() { int foo; foo = 10 + 4; foo;} ", 14),

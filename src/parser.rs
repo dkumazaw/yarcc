@@ -262,7 +262,7 @@ impl Node {
                 lhs.populate_ty();
                 Some(lhs.ty.as_ref().unwrap().new_ptr_to())
             }
-            NDASSIGN => {
+            NDMUL_ASSIGN | NDDIV_ASSIGN | NDASSIGN => {
                 let lhs = self.lhs.as_mut().unwrap();
                 lhs.populate_ty();
                 Some(lhs.ty.as_ref().unwrap().clone())

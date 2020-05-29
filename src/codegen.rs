@@ -160,6 +160,24 @@ impl<'a> CodeGen<'a> {
                     self.gen_load(size);
                 }
             },
+            NDMUL_ASSIGN | NDDIV_ASSIGN => {
+                // Needs to be done on a register
+                let size = node.lhs.as_ref().unwrap().ty.as_ref().unwrap().size();
+                self.gen_lval(*node.lhs.unwrap());
+                // Duplicate the address for later store
+                gen_line!(self.f, "  pop rax\n");
+                gen_line!(self.f, "  push rax\n");
+                gen_line!(self.f, "  push rax\n");
+                self.gen_load(size);
+                self.gen(*node.rhs.unwrap());
+                
+                gen_line!(self.f, "  pop rdi\n");
+                gen_line!(self.f, "  pop rax\n");
+                gen_line!(self.f, "  imul rax, rdi\n");
+                gen_line!(self.f, "  push rax\n");
+                
+                self.gen_store(node.ty.unwrap().size(), MOV);
+            }
             NDASSIGN | NDADD_ASSIGN | NDSUB_ASSIGN => {
                 let mode = match node.kind {
                     NDASSIGN => MOV,
