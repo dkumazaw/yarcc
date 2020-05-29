@@ -451,7 +451,7 @@ impl Parser {
         }
     }
 
-    // decl = "int" "*"* ident ("[" num "]")? ("=" assign )?
+    // decl = "int" "*"* ident ("[" num "]")? ("=" initializer )?
     fn decl(&mut self, is_global: bool) -> Option<Node> {
         use NodeKind::*;
 
@@ -497,17 +497,24 @@ impl Parser {
         let mut node = Node::new(NDDECL, None, None);
 
         if self.iter.consume("=") {
-            // TODO SUpport init for global
-            let lhs = Node::new(NDLVAR, None, None)
-                .offset(offset)
-                .ty(var_type.clone());
-            let mut init = Node::new(NDASSIGN, Some(Box::new(lhs)), Some(Box::new(self.assign())));
-            init.populate_ty();
-            node.inits.push_back(init);
+            self.initializer(&mut node, offset, var_type.clone());
         }
 
         self.iter.expect(";");
         Some(node)
+    }
+
+    // initializer = assign     
+    fn initializer(&mut self, declnode: &mut Node, offset: usize, var_type: Type) {
+        use NodeKind::*;
+
+        // TODO Support init for global
+        let lhs = Node::new(NDLVAR, None, None)
+                        .offset(offset)
+                        .ty(var_type);
+        let mut init = Node::new(NDASSIGN, Some(Box::new(lhs)), Some(Box::new(self.assign())));
+        init.populate_ty();
+        declnode.inits.push_back(init);
     }
 
     // funcdef =  "int" * ident "(" (lvar_def ",")* ")" "{" stmt* "}"
