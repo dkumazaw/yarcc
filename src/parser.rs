@@ -3,19 +3,19 @@ use std::collections::LinkedList;
 
 #[derive(Debug, PartialEq)]
 pub enum NodeKind {
-    NDADD,        // +
-    NDSUB,        // -
-    NDMUL,        // *
-    NDDIV,        // /
-    NDEQ,         // ==
-    NDNEQ,        // !=
-    NDLEQ,        // <=
-    NDLT,         // <
-    NDASSIGN,     // =
-    NDADD_ASSIGN, // +=
-    NDSUB_ASSIGN, // -=
-    NDMUL_ASSIGN, // *=
-    NDDIV_ASSIGN, // /=
+    NDADD,       // +
+    NDSUB,       // -
+    NDMUL,       // *
+    NDDIV,       // /
+    NDEQ,        // ==
+    NDNEQ,       // !=
+    NDLEQ,       // <=
+    NDLT,        // <
+    NDASSIGN,    // =
+    NDADDASSIGN, // +=
+    NDSUBASSIGN, // -=
+    NDMULASSIGN, // *=
+    NDDIVASSIGN, // /=
     NDRETURN,
     NDIF,
     NDWHILE,
@@ -237,7 +237,7 @@ impl Node {
                     Some(Type::new(TypeKind::LONG, 0))
                 }
             }
-            NDADD_ASSIGN | NDSUB_ASSIGN => {
+            NDADDASSIGN | NDSUBASSIGN => {
                 let lhs = self.lhs.as_mut().unwrap();
                 let rhs = self.rhs.as_mut().unwrap();
                 lhs.populate_ty();
@@ -262,7 +262,7 @@ impl Node {
                 lhs.populate_ty();
                 Some(lhs.ty.as_ref().unwrap().new_ptr_to())
             }
-            NDMUL_ASSIGN | NDDIV_ASSIGN | NDASSIGN => {
+            NDMULASSIGN | NDDIVASSIGN | NDASSIGN => {
                 let lhs = self.lhs.as_mut().unwrap();
                 lhs.populate_ty();
                 Some(lhs.ty.as_ref().unwrap().clone())
@@ -700,10 +700,10 @@ impl Parser {
         if let Some(op_str) = self.iter.consume_assign_op() {
             let kind = match op_str.as_str() {
                 "=" => NDASSIGN,
-                "+=" => NDADD_ASSIGN,
-                "-=" => NDSUB_ASSIGN,
-                "*=" => NDMUL_ASSIGN,
-                "/=" => NDDIV_ASSIGN,
+                "+=" => NDADDASSIGN,
+                "-=" => NDSUBASSIGN,
+                "*=" => NDMULASSIGN,
+                "/=" => NDDIVASSIGN,
                 _ => panic!("Assign op should be passed."),
             };
             node = Node::new(kind, Some(Box::new(node)), Some(Box::new(self.assign())));
