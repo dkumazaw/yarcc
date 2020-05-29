@@ -486,35 +486,75 @@ impl Parser {
             var_type = Type::new(kind, refs);
         }
 
-        let offset;
-        if is_global {
-            self.add_gvar(ident_name, var_type.clone());
-            offset = 0;
-        } else {
-            offset = self.add_lvar(ident_name, var_type.clone()).offset.unwrap();
-        }
-
         let mut node = Node::new(NDDECL, None, None);
 
-        if self.iter.consume("=") {
-            self.initializer(&mut node, offset, var_type.clone());
+        if is_global {
+            self.add_gvar(ident_name, var_type.clone());
+        } else {
+            let var = self.add_lvar(ident_name, var_type.clone());
+            if self.iter.consume("=") {
+                self.initializer(&mut node, var);
+            }
         }
 
         self.iter.expect(";");
         Some(node)
     }
 
-    // initializer = assign     
-    fn initializer(&mut self, declnode: &mut Node, offset: usize, var_type: Type) {
+    fn init_array_lhs(pos: usize, var: &Var) -> Node {
         use NodeKind::*;
 
-        // TODO Support init for global
-        let lhs = Node::new(NDLVAR, None, None)
-                        .offset(offset)
-                        .ty(var_type);
+        let mut lhs = Node::new(NDLVAR, None, None)
+            .offset(var.offset.unwrap())
+            .ty(var.ty.clone());
+        let rhs = Node::new(NDNUM, None, None)
+            .val(pos as i32)
+            .ty(Type::new(TypeKind::INT, 0));
+        lhs = Node::new(NDADD, Some(Box::new(lhs)), Some(Box::new(rhs)));
+        lhs = Node::new(NDDEREF, Some(Box::new(lhs)), None);
+        lhs
+    }
+
+    // initializer = assign | "{" ( assign "," )* "}"
+    fn initializer(&mut self, declnode: &mut Node, var: Var) {
+        use NodeKind::*;
+
+        let is_init_list = self.iter.consume("{");
+        let mut pos: usize = 0;
+
+        let lhs = if var.ty.kind == TypeKind::ARRAY {
+            Parser::init_array_lhs(pos, &var)
+        } else {
+            Node::new(NDLVAR, None, None)
+                .offset(var.offset.unwrap())
+                .ty(var.ty.clone())
+        };
         let mut init = Node::new(NDASSIGN, Some(Box::new(lhs)), Some(Box::new(self.assign())));
         init.populate_ty();
         declnode.inits.push_back(init);
+
+        if !is_init_list {
+            return;
+        }
+
+        pos += 1;
+        while self.iter.consume(",") {
+            if var.ty.kind != TypeKind::ARRAY || pos * var.ty.base_size() >= var.ty.total_size() {
+                Parser::print_warn("Excess elements in initializer will be ignored.");
+                self.assign();
+                continue;
+            }
+            let mut init = Node::new(
+                NDASSIGN,
+                Some(Box::new(Parser::init_array_lhs(pos, &var))),
+                Some(Box::new(self.assign())),
+            );
+            init.populate_ty();
+            declnode.inits.push_back(init);
+            pos += 1;
+        }
+        
+        self.iter.expect("}");
     }
 
     // funcdef =  "int" * ident "(" (lvar_def ",")* ")" "{" stmt* "}"
@@ -869,5 +909,11 @@ impl Parser {
             ty: ty,
             offset: None,
         });
+    }
+
+    fn print_warn(s: &str) {
+        let mut msg = "Parser: Warning: ".to_string();
+        msg.push_str(s);
+        println!("{}", msg);
     }
 }
