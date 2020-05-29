@@ -44,6 +44,8 @@ tests! {
     relational5: ("int main() { 5 <= -5;} ", 0),
     assign0: ("int main() { int a; a = 0; a += 4; return a; }", 4),
     assign1: ("int main() { int b = 13; b -= 6; return b; }", 7),
+    assign2: ("int main() { int *p; int a[2]; p = a; p += 1; *p = 23; return a[1]; }", 23),
+    assign3: ("int main() { int a[20]; int *p; a[7] = 27; int c = 9; int d = 2; p = a; p += c; p -= d; return *p;}", 27),
     lvar0: ("int main() { int a; a = 1; a;} ", 1),
     lvar1: ("int main() { int b; b = 1 + 3 * (4 - 2); b;} ", 7),
     lvar2: ("int main() { int foo; foo = 10 + 4; foo;} ", 14),

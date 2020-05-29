@@ -237,6 +237,18 @@ impl Node {
                     Some(Type::new(TypeKind::LONG, 0))
                 }
             }
+            NDADD_ASSIGN | NDSUB_ASSIGN => {
+                let lhs = self.lhs.as_mut().unwrap();
+                let rhs = self.rhs.as_mut().unwrap();
+                lhs.populate_ty();
+                rhs.populate_ty();
+
+                let l_ty = lhs.ty.as_ref().unwrap();
+                if l_ty.kind.is_ptr_like() {
+                    self.scale_lhs = Some(true);
+                }
+                Some(l_ty.clone())
+            }
             NDMUL | NDDIV | NDEQ | NDNEQ | NDLEQ | NDLT => {
                 // TODO: Update this
                 Some(Type::new(TypeKind::INT, 0))
@@ -250,7 +262,7 @@ impl Node {
                 lhs.populate_ty();
                 Some(lhs.ty.as_ref().unwrap().new_ptr_to())
             }
-            NDADD_ASSIGN | NDSUB_ASSIGN | NDASSIGN => {
+            NDASSIGN => {
                 let lhs = self.lhs.as_mut().unwrap();
                 lhs.populate_ty();
                 Some(lhs.ty.as_ref().unwrap().clone())

@@ -172,6 +172,18 @@ impl<'a> CodeGen<'a> {
                 self.gen_lval(*node.lhs.unwrap());
                 self.gen(*node.rhs.unwrap());
 
+                if let Some(to_scale) = node.scale_lhs {
+                    if to_scale {
+                        gen_line!(self.f, "  pop rax\n");
+                        gen_line!(
+                            self.f,
+                            "  imul rax, {}\n",
+                            node.ty.as_ref().unwrap().base_size()
+                        );
+                        gen_line!(self.f, "  push rax\n");
+                    }
+                }
+
                 self.gen_store(node.ty.unwrap().size(), mode);
             }
             NDRETURN => {
