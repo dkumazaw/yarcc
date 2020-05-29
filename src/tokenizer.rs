@@ -102,7 +102,7 @@ impl Tokenizer {
                     continue;
                 }
 
-                '<' | '>' | '!' | '=' => {
+                '+' | '-' | '*' | '/' | '<' | '>' | '!' | '=' => {
                     cur += 1;
                     let tkstr = if cur != len && in_str.chars().nth(cur).unwrap() == '=' {
                         cur += 1;
@@ -114,7 +114,7 @@ impl Tokenizer {
                     continue;
                 }
 
-                '+' | '-' | '*' | '/' | '(' | ')' | ';' | '{' | '}' | ',' | '&' | '[' | ']' => {
+                '(' | ')' | ';' | '{' | '}' | ',' | '&' | '[' | ']' => {
                     self.tokens
                         .push_back(Token::new(TKRESERVED).string(&c.to_string()));
                     cur += 1;
