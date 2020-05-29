@@ -83,6 +83,7 @@ tests! {
     init0: ("int main() { int a = 4; return a; }", 4),
     init1: ("int main() { short b = 3; return b; }", 3),
     init2: ("int main() { char c = 23; return c;  }", 23),
+    init3: ("int main() { int a=19; int *b = &a; return *b; }", 19),
     array0: ("int main() { int a[10]; return 1; }", 1),
     array1: ("int main() { int arr[12]; arr[1] = 4; return arr[1];}", 4),
     array2: ("int main() { int arr[10]; int b; b = 3; arr[4 * b -10] = 21; return arr[4 - 2]; }", 21),
