@@ -17,6 +17,7 @@ pub enum NodeKind {
     NDMULASSIGN, // *=
     NDDIVASSIGN, // /=
     NDBITAND,
+    NDBITXOR,
     NDRETURN,
     NDIF,
     NDWHILE,
@@ -693,10 +694,10 @@ impl Parser {
         self.assign()
     }
 
-    // assign = bit_and (assign_op assign)?
+    // assign = bit_xor (assign_op assign)?
     fn assign(&mut self) -> Node {
         use NodeKind::*;
-        let mut node = self.bit_and();
+        let mut node = self.bit_xor();
 
         if let Some(op_str) = self.iter.consume_assign_op() {
             let kind = match op_str.as_str() {
@@ -713,6 +714,22 @@ impl Parser {
         node
     }
 
+    // bit_xor = bit_and ('^' bit_xor)?
+    fn bit_xor(&mut self) -> Node {
+        use NodeKind::*;
+
+        let mut node = self.bit_and();
+
+        if self.iter.consume("^") {
+            node = Node::new(
+                NDBITXOR,
+                Some(Box::new(node)),
+                Some(Box::new(self.bit_xor())),
+            );
+        }
+        node
+    }
+
     // bit_and = equality ('&' bit_and)?
     fn bit_and(&mut self) -> Node {
         use NodeKind::*;
@@ -720,7 +737,11 @@ impl Parser {
         let mut node = self.equality();
 
         if self.iter.consume("&") {
-            node = Node::new(NDBITAND, Some(Box::new(node)), Some(Box::new(self.bit_and())));
+            node = Node::new(
+                NDBITAND,
+                Some(Box::new(node)),
+                Some(Box::new(self.bit_and())),
+            );
         }
         node
     }

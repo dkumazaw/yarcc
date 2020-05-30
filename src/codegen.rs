@@ -428,6 +428,9 @@ impl<'a> CodeGen<'a> {
             NDBITAND => {
                 gen_line!(self.f, "  and rax, rdi\n");
             }
+            NDBITXOR => {
+                gen_line!(self.f, "  xor rax, rdi\n");
+            }
             _ => panic!("Oops, found a strange node kind."),
         }
 
