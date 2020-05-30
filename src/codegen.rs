@@ -357,6 +357,26 @@ impl<'a> CodeGen<'a> {
                 self.gen(*node.lhs.unwrap());
                 self.gen_load(node.ty.unwrap().size());
             }
+            NDLOGAND => {
+                // Only evaluate the rhs if the lhs evaluates to 1
+                // as per C89 6.3.13
+                let my_label = self.cond_label;
+                self.cond_label += 1; // TODO: need issue_label method
+                self.gen(*node.lhs.unwrap());
+                gen_line!(self.f, "  pop rax\n");
+                gen_line!(self.f, "  cmp rax, 0\n");
+                gen_line!(self.f, "  setne al\n");
+                gen_line!(self.f, "  movzb rax, al\n");
+                gen_line!(self.f, "  je .Lend{}\n", my_label);
+                self.gen(*node.rhs.unwrap());
+                gen_line!(self.f, "  pop rax\n");
+                gen_line!(self.f, "  cmp rax, 0\n");
+                gen_line!(self.f, "  setne al\n");
+                gen_line!(self.f, "  movzb rax, al\n");
+
+                gen_line!(self.f, ".Lend{}:\n", my_label);
+                gen_line!(self.f, "  push rax\n");
+            }
             _ => {
                 // Must be a primitive node
                 self.gen_primitive(node);
