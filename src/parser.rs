@@ -21,6 +21,8 @@ pub enum NodeKind {
     NDBITOR,     // |
     NDLOGAND,    // &&
     NDLOGOR,     // ||
+    NDSHL,       // <<
+    NDSHR,       // >>
     NDRETURN,
     NDIF,
     NDWHILE,
@@ -842,21 +844,41 @@ impl Parser {
         node
     }
 
-    // relational = add ("<" add | "<=" add | ">" add | ">=" add)*
+    // relational = shift ("<" shift | "<=" shift | ">" shift | ">=" shift)*
     fn relational(&mut self) -> Node {
+        use NodeKind::*;
+        let mut node = self.shift();
+
+        loop {
+            if self.iter.consume("<") {
+                node = Node::new(NDLT, Some(Box::new(node)), Some(Box::new(self.shift())));
+            } else if self.iter.consume("<=") {
+                node = Node::new(NDLEQ, Some(Box::new(node)), Some(Box::new(self.shift())));
+            } else if self.iter.consume(">") {
+                // HACK: Simply flip lhs and rhs
+                node = Node::new(NDLT, Some(Box::new(self.shift())), Some(Box::new(node)));
+            } else if self.iter.consume(">=") {
+                node = Node::new(NDLEQ, Some(Box::new(self.shift())), Some(Box::new(node)));
+            } else {
+                break;
+            }
+        }
+        node
+    }
+
+    // shift = add ("<<" add | ">>" add)*
+    fn shift(&mut self) -> Node {
         use NodeKind::*;
         let mut node = self.add();
 
         loop {
-            if self.iter.consume("<") {
-                node = Node::new(NDLT, Some(Box::new(node)), Some(Box::new(self.add())));
-            } else if self.iter.consume("<=") {
-                node = Node::new(NDLEQ, Some(Box::new(node)), Some(Box::new(self.add())));
-            } else if self.iter.consume(">") {
-                // HACK: Simply flip lhs and rhs
-                node = Node::new(NDLT, Some(Box::new(self.add())), Some(Box::new(node)));
-            } else if self.iter.consume(">=") {
-                node = Node::new(NDLEQ, Some(Box::new(self.add())), Some(Box::new(node)));
+            if self.iter.consume("<<") {
+                node = Node::new(NDSHL, Some(Box::new(node)), Some(Box::new(self.add())));
+            } else if self.iter.consume(">>") {
+                // As per C89 6.3.7, simply performing logical right shift
+                // for both signed and unsigned should be deemed comformant
+                // with the standard... (Correct me if I'm wrong!)
+                node = Node::new(NDSHR, Some(Box::new(node)), Some(Box::new(self.add())));
             } else {
                 break;
             }

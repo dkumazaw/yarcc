@@ -381,6 +381,17 @@ impl<'a> CodeGen<'a> {
                 gen_line!(self.f, ".Lend{}:\n", my_label);
                 gen_line!(self.f, "  push rax\n");
             }
+            NDSHL | NDSHR => {
+                self.gen(*node.lhs.unwrap());
+                self.gen(*node.rhs.unwrap());
+                gen_line!(self.f, "  pop rcx\n");
+                gen_line!(self.f, "  pop rax\n");
+
+                // Also read my comments in parser
+                let instr = if node.kind == NDSHL { "shl" } else { "shr" };
+                gen_line!(self.f, "  {} rax, cl\n", instr);
+                gen_line!(self.f, "  push rax\n");
+            }
             _ => {
                 // Must be a primitive node
                 self.gen_primitive(node);
