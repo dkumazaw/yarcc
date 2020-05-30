@@ -357,9 +357,9 @@ impl<'a> CodeGen<'a> {
                 self.gen(*node.lhs.unwrap());
                 self.gen_load(node.ty.unwrap().size());
             }
-            NDLOGAND => {
+            NDLOGAND | NDLOGOR => {
                 // Only evaluate the rhs if the lhs evaluates to 1
-                // as per C89 6.3.13
+                // as per C89 6.3.13 and 6.3.14
                 let my_label = self.cond_label;
                 self.cond_label += 1; // TODO: need issue_label method
                 self.gen(*node.lhs.unwrap());
@@ -367,7 +367,11 @@ impl<'a> CodeGen<'a> {
                 gen_line!(self.f, "  cmp rax, 0\n");
                 gen_line!(self.f, "  setne al\n");
                 gen_line!(self.f, "  movzb rax, al\n");
-                gen_line!(self.f, "  je .Lend{}\n", my_label);
+                if node.kind == NDLOGAND {
+                    gen_line!(self.f, "  je .Lend{}\n", my_label);
+                } else {
+                    gen_line!(self.f, "  jne .Lend{}\n", my_label);
+                }
                 self.gen(*node.rhs.unwrap());
                 gen_line!(self.f, "  pop rax\n");
                 gen_line!(self.f, "  cmp rax, 0\n");

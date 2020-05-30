@@ -697,10 +697,10 @@ impl Parser {
         self.assign()
     }
 
-    // assign = logical_and (assign_op assign)?
+    // assign = logical_or (assign_op assign)?
     fn assign(&mut self) -> Node {
         use NodeKind::*;
-        let mut node = self.logical_and();
+        let mut node = self.logical_or();
 
         if let Some(op_str) = self.iter.consume_assign_op() {
             let kind = match op_str.as_str() {
@@ -713,6 +713,22 @@ impl Parser {
             };
             node = Node::new(kind, Some(Box::new(node)), Some(Box::new(self.assign())));
             node.populate_ty();
+        }
+        node
+    }
+
+    // logical_or = logical_and ("||" logical_or)?
+    fn logical_or(&mut self) -> Node {
+        use NodeKind::*;
+
+        let mut node = self.logical_and();
+
+        if self.iter.consume("||") {
+            node = Node::new(
+                NDLOGOR,
+                Some(Box::new(node)),
+                Some(Box::new(self.logical_or())),
+            );
         }
         node
     }
