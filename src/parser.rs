@@ -18,6 +18,7 @@ pub enum NodeKind {
     NDDIVASSIGN, // /=
     NDBITAND,
     NDBITXOR,
+    NDBITOR,
     NDRETURN,
     NDIF,
     NDWHILE,
@@ -694,10 +695,10 @@ impl Parser {
         self.assign()
     }
 
-    // assign = bit_xor (assign_op assign)?
+    // assign = bit_or (assign_op assign)?
     fn assign(&mut self) -> Node {
         use NodeKind::*;
-        let mut node = self.bit_xor();
+        let mut node = self.bit_or();
 
         if let Some(op_str) = self.iter.consume_assign_op() {
             let kind = match op_str.as_str() {
@@ -710,6 +711,18 @@ impl Parser {
             };
             node = Node::new(kind, Some(Box::new(node)), Some(Box::new(self.assign())));
             node.populate_ty();
+        }
+        node
+    }
+
+    // bit_or = bit_xor ('|' bit_or)?
+    fn bit_or(&mut self) -> Node {
+        use NodeKind::*;
+
+        let mut node = self.bit_xor();
+
+        if self.iter.consume("|") {
+            node = Node::new(NDBITOR, Some(Box::new(node)), Some(Box::new(self.bit_or())));
         }
         node
     }
