@@ -425,6 +425,9 @@ impl<'a> CodeGen<'a> {
                 gen_line!(self.f, "  setl al\n");
                 gen_line!(self.f, "  movzb rax, al\n");
             }
+            NDBITAND => {
+                gen_line!(self.f, "  and rax, rdi\n");
+            }
             _ => panic!("Oops, found a strange node kind."),
         }
 
