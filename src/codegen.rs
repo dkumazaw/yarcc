@@ -357,6 +357,12 @@ impl<'a> CodeGen<'a> {
                 self.gen(*node.lhs.unwrap());
                 self.gen_load(node.ty.unwrap().size());
             }
+            NDBITNOT => {
+                self.gen(*node.lhs.unwrap());
+                gen_line!(self.f, "  pop rax\n");
+                gen_line!(self.f, "  not rax\n");
+                gen_line!(self.f, "  push rax\n");
+            }
             NDLOGAND | NDLOGOR => {
                 // Only evaluate the rhs if the lhs evaluates to 1
                 // as per C89 6.3.13 and 6.3.14

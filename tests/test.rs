@@ -68,6 +68,8 @@ tests! {
     bitwise8: ("int main() { return 8 | 4 | 3; }", 15),
     bitwise9: ("int main() { return 7 | 4 & 3; }", 7),
     bitwise10: ("int main() { return (7 | 4) & 3; }", 3),
+    bitwise11: ("int main() { char a = 240; a = ~a; return a; }", 15),
+    bitwise12: ("int main() { int a = 340123; if (a & ~a) { return 4; } else {return 33;} }", 33),
     shift0: ("int main() { return 1 << 2; }", 4),
     shift1: ("int main() { return 17 >> 3;  }", 2),
     shift2: ("int main() { return 6 >> 2 << 2; }", 4),

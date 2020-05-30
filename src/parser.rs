@@ -23,6 +23,7 @@ pub enum NodeKind {
     NDLOGOR,     // ||
     NDSHL,       // <<
     NDSHR,       // >>
+    NDBITNOT,    // ~
     NDRETURN,
     NDIF,
     NDWHILE,
@@ -926,7 +927,7 @@ impl Parser {
     }
 
     // unary = "sizeof" unary
-    //       | ("+" | "-" | "*" | "&") unary
+    //       | ("+" | "-" | "*" | "&" | "~") unary
     //       | postfix
     fn unary(&mut self) -> Node {
         use NodeKind::*;
@@ -938,13 +939,15 @@ impl Parser {
             node = Node::new(NDNUM, None, None)
                 .val(lhs.ty.unwrap().total_size() as i32)
                 .ty(Type::new(TypeKind::INT, 0));
+        } else if self.iter.consume("~") {
+            node = Node::new(NDBITNOT, Some(Box::new(self.unary())), None);
         } else if self.iter.consume("*") {
             node = Node::new(NDDEREF, Some(Box::new(self.unary())), None);
             node.populate_ty();
         } else if self.iter.consume("&") {
             node = Node::new(NDADDR, Some(Box::new(self.unary())), None);
         } else if self.iter.consume("+") {
-            node = self.primary();
+            node = self.unary();
         } else if self.iter.consume("-") {
             node = Node::new(
                 NDSUB,
