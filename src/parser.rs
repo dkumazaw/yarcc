@@ -926,9 +926,7 @@ impl Parser {
     }
 
     // unary = "sizeof" unary
-    //       | ("+" | "-")? primary
-    //       | "*" unary
-    //       | "&" unary
+    //       | ("+" | "-" | "*" | "&") unary
     //       | postfix
     fn unary(&mut self) -> Node {
         use NodeKind::*;
@@ -955,7 +953,7 @@ impl Parser {
                         .val(0)
                         .ty(Type::new(TypeKind::INT, 0)),
                 )),
-                Some(Box::new(self.primary())),
+                Some(Box::new(self.unary())),
             );
             node.populate_ty()
         } else {
