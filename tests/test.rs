@@ -27,6 +27,12 @@ macro_rules! tests {
     }
 }
 
+// Test cases from external files
+tests! {
+    file_check: ("examples/test.c", 1),
+}
+
+// Unit tests:
 tests! {
     simple0: ("int main() {  0;} ", 0),
     simple1: ("int main() { 42;} ", 42),

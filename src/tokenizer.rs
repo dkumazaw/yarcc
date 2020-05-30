@@ -74,7 +74,7 @@ impl Tokenizer {
     }
 
     // Tokenizes the passed str
-    pub fn tokenize(mut self, in_str: &str) -> TokenIter {
+    pub fn tokenize(mut self, in_str: String) -> TokenIter {
         use TokenKind::*;
 
         let len = in_str.len();

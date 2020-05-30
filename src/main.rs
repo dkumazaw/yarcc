@@ -1,5 +1,6 @@
 use std::env;
-use std::fs::File;
+use std::fs::{self, File};
+use std::path::Path;
 
 #[macro_use]
 macro_rules! gen_line {
@@ -22,11 +23,21 @@ fn main() {
     match args.len() {
         2 => {
             let mut f = match File::create("tmp.s") {
-                Err(why) => panic!("Couldn't create tmp.s because {}", why.to_string()),
+                Err(why) => panic!("yarcc: Couldn't create tmp.s because {}", why.to_string()),
                 Ok(f) => f,
             };
 
-            let tokens = Tokenizer::new().tokenize(&args[1]);
+            let in_str = if Path::new(&args[1]).exists() {
+                if let Ok(text) = fs::read_to_string(&args[1]) {
+                    text
+                } else {
+                    panic!("yarcc: Cannot read the provided file.");
+                }
+            } else {
+                args[1].to_string()
+            };
+
+            let tokens = Tokenizer::new().tokenize(in_str);
             let parser = Parser::new(tokens);
             let parsed_program = parser.parse();
             let mut codegen = CodeGen::new(&mut f, parsed_program);
@@ -34,7 +45,7 @@ fn main() {
             codegen.gen_all();
         }
         _ => {
-            eprintln!("Wrong number of arguments!");
+            eprintln!("yarcc: Wrong number of arguments!");
         }
     }
 }
