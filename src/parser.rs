@@ -717,82 +717,102 @@ impl Parser {
         node
     }
 
-    // logical_or = logical_and ("||" logical_or)?
+    // logical_or = logical_and ("||" logical_and)*
     fn logical_or(&mut self) -> Node {
         use NodeKind::*;
 
         let mut node = self.logical_and();
 
-        if self.iter.consume("||") {
-            node = Node::new(
-                NDLOGOR,
-                Some(Box::new(node)),
-                Some(Box::new(self.logical_or())),
-            );
+        loop {
+            if self.iter.consume("||") {
+                node = Node::new(
+                    NDLOGOR,
+                    Some(Box::new(node)),
+                    Some(Box::new(self.logical_and())),
+                );
+            } else {
+                break;
+            }
         }
         node
     }
 
-    // logical_and = bitwise_or ("&&" logical_and)?
+    // logical_and = bitwise_or ("&&" bitwise_or)*
     fn logical_and(&mut self) -> Node {
         use NodeKind::*;
 
         let mut node = self.bitwise_or();
 
-        if self.iter.consume("&&") {
-            node = Node::new(
-                NDLOGAND,
-                Some(Box::new(node)),
-                Some(Box::new(self.bitwise_or())),
-            );
+        loop {
+            if self.iter.consume("&&") {
+                node = Node::new(
+                    NDLOGAND,
+                    Some(Box::new(node)),
+                    Some(Box::new(self.bitwise_or())),
+                );
+            } else {
+                break;
+            }
         }
         node
     }
 
-    // bitwise_or = bitwise_xor ('|' bitwise_or)?
+    // bitwise_or = bitwise_xor ('|' bitwise_xor)*
     fn bitwise_or(&mut self) -> Node {
         use NodeKind::*;
 
         let mut node = self.bitwise_xor();
 
-        if self.iter.consume("|") {
-            node = Node::new(
-                NDBITOR,
-                Some(Box::new(node)),
-                Some(Box::new(self.bitwise_or())),
-            );
+        loop {
+            if self.iter.consume("|") {
+                node = Node::new(
+                    NDBITOR,
+                    Some(Box::new(node)),
+                    Some(Box::new(self.bitwise_xor())),
+                );
+            } else {
+                break;
+            }
         }
         node
     }
 
-    // bitwise_xor = bitwise_and ('^' bitwise_xor)?
+    // bitwise_xor = bitwise_and ('^' bitwise_and)*
     fn bitwise_xor(&mut self) -> Node {
         use NodeKind::*;
 
         let mut node = self.bitwise_and();
 
-        if self.iter.consume("^") {
-            node = Node::new(
-                NDBITXOR,
-                Some(Box::new(node)),
-                Some(Box::new(self.bitwise_xor())),
-            );
+        loop {
+            if self.iter.consume("^") {
+                node = Node::new(
+                    NDBITXOR,
+                    Some(Box::new(node)),
+                    Some(Box::new(self.bitwise_and())),
+                );
+            } else {
+                break;
+            }
         }
         node
     }
 
-    // bitwise_and = equality ('&' bitwise_and)?
+    // bitwise_and = equality ('&' equality)*
     fn bitwise_and(&mut self) -> Node {
         use NodeKind::*;
 
         let mut node = self.equality();
 
-        if self.iter.consume("&") {
-            node = Node::new(
-                NDBITAND,
-                Some(Box::new(node)),
-                Some(Box::new(self.bitwise_and())),
-            );
+        loop {
+            if self.iter.consume("&") {
+                node = Node::new(
+                    NDBITAND,
+                    Some(Box::new(node)),
+                    Some(Box::new(self.equality())),
+                );
+            } else {
+                break;
+            }
         }
         node
     }
