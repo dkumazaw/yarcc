@@ -65,6 +65,8 @@ tests! {
     assign8: ("int a[23]; int main() { a[5]= 59; a[5] -= 4; return *(a + 5); }", 55),
     assing9: ("int main() { int a; int b; a = b = 5; return a + b; }", 10),
     assing10: ("int main() { int a = 0; int b = 3; a = b += 4; return a; }", 7),
+    assing11: ("int main() { int a = 0; int b = 5; a = b *= 3; return a;  }", 15),
+    assing12: ("int main() { int a = 0; int b = 9; int c; c =  a = b /= 3; return c; }", 3),
     bitwise0: ("int main() { return 0 & 1; }", 0),
     bitwise1: ("int main() { return 2 & 3 > 0; }", 0),
     bitwise2: ("int main() { return (2 & 3) > 0; }", 1),
