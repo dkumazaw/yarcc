@@ -41,6 +41,7 @@ tests! {
     simple4: ("int main() { 5*(9-6);} ", 15),
     simple5: ("int main() { (3+5)/2;} ", 4),
     comment0: ("// Hey I am just a line comment! \n int main() { return 3; }", 3),
+    comment1: ("examples/comment.c", 4),
     unary0: ("int main() { -3*-5;} ", 15),
     unary1: ("int main() { 8*(-3)+30;} ", 6),
     incr0: ("int main() { int a = 5; a++; return a; }", 6),
