@@ -30,6 +30,7 @@ macro_rules! tests {
 // Test cases from external files
 tests! {
     file_check: ("examples/test.c", 1),
+    singlenum: ("examples/singlenum.c", 94),
 }
 
 // Unit tests:
