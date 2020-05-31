@@ -43,6 +43,8 @@ tests! {
     comment0: ("// Hey I am just a line comment! \n int main() { return 3; }", 3),
     unary0: ("int main() { -3*-5;} ", 15),
     unary1: ("int main() { 8*(-3)+30;} ", 6),
+    incr0: ("int main() { int a = 5; a++; return a; }", 6),
+    incr1: ("int main() { int a = 0; int i = 0; for (i=0; i < 10; i++) { a += i; } return a; }", 45),
     relational0: ("int main() { 1 == 1;} ", 1),
     relational1: ("int main() { 1 != 1;} ", 0),
     relational2: ("int main() { 2 < 0;} ", 0),
