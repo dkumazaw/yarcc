@@ -259,7 +259,7 @@ impl Tokenizer {
                     continue;
                 }
 
-                _ => panic!("Unexpected char."),
+                unmatched => panic!("Unexpected char: {}.", unmatched),
             }
         }
 
