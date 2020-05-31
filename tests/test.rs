@@ -40,6 +40,7 @@ tests! {
     simple3: ("int main() { 5+6*7;} ", 47),
     simple4: ("int main() { 5*(9-6);} ", 15),
     simple5: ("int main() { (3+5)/2;} ", 4),
+    comment0: ("// Hey I am just a line comment! \n int main() { return 3; }", 3),
     unary0: ("int main() { -3*-5;} ", 15),
     unary1: ("int main() { 8*(-3)+30;} ", 6),
     relational0: ("int main() { 1 == 1;} ", 1),
