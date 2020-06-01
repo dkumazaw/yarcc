@@ -26,6 +26,12 @@ impl<'a> CodeGen<'a> {
         self.gen_text();
     }
 
+    fn issue_label(&mut self) -> usize {
+        let issued = self.cond_label;
+        self.cond_label += 1;
+        issued
+    }
+
     fn gen_data(&mut self) {
         gen_line!(self.f, ".data\n");
 
@@ -198,8 +204,7 @@ impl<'a> CodeGen<'a> {
                 self.gen_return();
             }
             NDIF => {
-                let my_label = self.cond_label;
-                self.cond_label += 1;
+                let my_label = self.issue_label();
                 self.gen(*node.cond.unwrap());
                 gen_line!(self.f, "  pop rax\n");
                 gen_line!(self.f, "  cmp rax, 0\n");
@@ -218,8 +223,7 @@ impl<'a> CodeGen<'a> {
                 gen_line!(self.f, ".Lend{}:\n", my_label);
             }
             NDWHILE => {
-                let my_label = self.cond_label;
-                self.cond_label += 1;
+                let my_label = self.issue_label();
                 gen_line!(self.f, ".Lbegin{}:\n", my_label);
                 self.gen(*node.cond.unwrap());
                 gen_line!(self.f, "  pop rax\n");
@@ -230,8 +234,7 @@ impl<'a> CodeGen<'a> {
                 gen_line!(self.f, ".Lend{}:", my_label);
             }
             NDFOR => {
-                let my_label = self.cond_label;
-                self.cond_label += 1;
+                let my_label = self.issue_label();
                 if let Some(initnode) = node.initnode {
                     self.gen(*initnode);
                 }
@@ -350,8 +353,7 @@ impl<'a> CodeGen<'a> {
             NDLOGAND | NDLOGOR => {
                 // Only evaluate the rhs if the lhs evaluates to 1
                 // as per C89 6.3.13 and 6.3.14
-                let my_label = self.cond_label;
-                self.cond_label += 1; // TODO: need issue_label method
+                let my_label = self.issue_label();
                 self.gen(*node.lhs.unwrap());
                 gen_line!(self.f, "  pop rax\n");
                 gen_line!(self.f, "  cmp rax, 0\n");

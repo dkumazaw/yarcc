@@ -227,7 +227,7 @@ impl Tokenizer {
                     continue;
                 }
 
-                '(' | ')' | ';' | '{' | '}' | ',' | '[' | ']' | '^' | '~' => {
+                '(' | ')' | ':' | ';' | '{' | '}' | ',' | '[' | ']' | '^' | '~' | '?' => {
                     self.tokens
                         .push_back(Token::new(TKRESERVED).string(&c.to_string()));
                     cur += 1;

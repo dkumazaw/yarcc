@@ -24,6 +24,7 @@ pub enum NodeKind {
     NDSHL,       // <<
     NDSHR,       // >>
     NDBITNOT,    // ~
+    NDTERNARY,
     NDRETURN,
     NDIF,
     NDWHILE,
@@ -51,9 +52,9 @@ pub struct Node {
     pub ty: Option<Type>,
     pub scale_lhs: Option<bool>, // Used by NDADD and NDSUB to perform ptr arithm.
 
-    pub cond: Option<Box<Node>>,     // Used for if else, for, and while
+    pub cond: Option<Box<Node>>,     // NDIF, NDFOR, NDWHILE, NDTERNARY
     pub ifnode: Option<Box<Node>>,   // Used when if cond is true
-    pub elsenode: Option<Box<Node>>, // Used when if cond is false and else is defined
+    pub elsenode: Option<Box<Node>>, // Used when if cond is false
 
     pub repnode: Option<Box<Node>>, // Used for "for" & "while"
 
@@ -700,10 +701,10 @@ impl Parser {
         self.assign()
     }
 
-    // assign = logical_or (assign_op assign)?
+    // assign = conditional (assign_op assign)?
     fn assign(&mut self) -> Node {
         use NodeKind::*;
-        let mut node = self.logical_or();
+        let mut node = self.conditional();
 
         if let Some(op_str) = self.iter.consume_assign_op() {
             let kind = match op_str.as_str() {
@@ -716,6 +717,24 @@ impl Parser {
             };
             node = Node::new(kind, Some(Box::new(node)), Some(Box::new(self.assign())));
             node.populate_ty();
+        }
+        node
+    }
+
+    // conditional = logical_or ("?" expr ":" conditional)?
+    fn conditional(&mut self) -> Node {
+        use NodeKind::*;
+
+        let mut node = self.logical_or();
+
+        if self.iter.consume("?") {
+            let truenode = self.expr();
+            self.iter.expect(":");
+            let falsenode = self.conditional();
+            node = Node::new(NDTERNARY, None, None)
+                .cond(Some(Box::new(node)))
+                .ifnode(Some(Box::new(truenode)))
+                .elsenode(Some(Box::new(falsenode)));
         }
         node
     }
