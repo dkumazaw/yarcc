@@ -13,7 +13,7 @@ pub enum NodeKind {
     NDLT,        // <
     NDASSIGN,    // =
     NDADDASSIGN, // +=, ++(post)
-    NDSUBASSIGN, // -=
+    NDSUBASSIGN, // -=, --(post)
     NDMULASSIGN, // *=
     NDDIVASSIGN, // /=
     NDBITAND,    // &
@@ -968,6 +968,7 @@ impl Parser {
     // postfix = primary
     //         | primary '[' expr ']'
     //         | primary "++"
+    //         | primary "--"
     fn postfix(&mut self) -> Node {
         use NodeKind::*;
 
@@ -988,7 +989,18 @@ impl Parser {
                 )),
             );
             node.populate_ty();
-            // TODO: Check lvalue
+        // TODO: Check lvalue
+        } else if self.iter.consume("--") {
+            node = Node::new(
+                NDSUBASSIGN,
+                Some(Box::new(node)),
+                Some(Box::new(
+                    Node::new(NDNUM, None, None)
+                        .val(1)
+                        .ty(Type::new(TypeKind::INT, 0)),
+                )),
+            );
+            node.populate_ty();
         }
         node
     }
