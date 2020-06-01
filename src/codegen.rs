@@ -179,6 +179,10 @@ impl<'a> CodeGen<'a> {
 
                 gen_line!(self.f, "  pop rdi\n");
                 gen_line!(self.f, "  pop rax\n");
+                if !node.eval_pre.unwrap() {
+                    // This is post incr/decr
+                    gen_line!(self.f, "  mov r12, rax\n");
+                }
                 if node.kind == NDADDASSIGN {
                     gen_line!(self.f, "  add rax, rdi\n");
                 } else if node.kind == NDSUBASSIGN {
@@ -192,6 +196,10 @@ impl<'a> CodeGen<'a> {
                 gen_line!(self.f, "  push rax\n");
 
                 self.gen_store(node.ty.unwrap().size());
+                if !node.eval_pre.unwrap() {
+                    gen_line!(self.f, "  pop rax\n");
+                    gen_line!(self.f, "  push r12\n");
+                }
             }
             NDASSIGN => {
                 self.gen_lval(*node.lhs.unwrap());

@@ -72,6 +72,8 @@ pub struct Node {
     pub lvars_offset: Option<usize>, // Stores the amount of space needed on stack for lvars.
 
     pub inits: LinkedList<Node>, // NDDECL
+
+    pub eval_pre: Option<bool>, // ND*ASSIGN; Pre-evaluate the result and return that value
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -141,6 +143,7 @@ impl Node {
             funcarg_vars: LinkedList::new(),
             lvars_offset: None,
             inits: LinkedList::new(),
+            eval_pre: None,
         }
     }
 
@@ -211,6 +214,11 @@ impl Node {
 
     fn lvars_offset(mut self, offset: usize) -> Self {
         self.lvars_offset = Some(offset);
+        self
+    }
+
+    fn eval_pre(mut self, is_pre: bool) -> Self {
+        self.eval_pre = Some(is_pre);
         self
     }
 
@@ -715,7 +723,8 @@ impl Parser {
                 "/=" => NDDIVASSIGN,
                 _ => panic!("Assign op should be passed."),
             };
-            node = Node::new(kind, Some(Box::new(node)), Some(Box::new(self.assign())));
+            node =
+                Node::new(kind, Some(Box::new(node)), Some(Box::new(self.assign()))).eval_pre(true);
             node.populate_ty();
         }
         node
@@ -1006,7 +1015,8 @@ impl Parser {
                         .val(1)
                         .ty(Type::new(TypeKind::INT, 0)),
                 )),
-            );
+            )
+            .eval_pre(false);
             node.populate_ty();
         // TODO: Check lvalue
         } else if self.iter.consume("--") {
@@ -1018,7 +1028,8 @@ impl Parser {
                         .val(1)
                         .ty(Type::new(TypeKind::INT, 0)),
                 )),
-            );
+            )
+            .eval_pre(false);
             node.populate_ty();
         }
         node
