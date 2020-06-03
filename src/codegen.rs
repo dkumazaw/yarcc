@@ -440,6 +440,11 @@ impl<'a> CodeGen<'a> {
                 gen_line!(self.f, "  cqo\n");
                 gen_line!(self.f, "  idiv rdi\n");
             }
+            NDMOD => {
+                gen_line!(self.f, "  cqo\n");
+                gen_line!(self.f, "  idiv rdi\n");
+                gen_line!(self.f, "  mov rax, rdx\n");
+            }
             NDEQ => {
                 gen_line!(self.f, "  cmp rax, rdi\n");
                 gen_line!(self.f, "  sete al\n");

@@ -7,6 +7,7 @@ pub enum NodeKind {
     NDSUB,       // -
     NDMUL,       // *
     NDDIV,       // /
+    NDMOD,       // %
     NDEQ,        // ==
     NDNEQ,       // !=
     NDLEQ,       // <=
@@ -936,7 +937,7 @@ impl Parser {
         node
     }
 
-    // mul = unary ("*" unary | "/" unary)*
+    // mul = unary ("*" unary | "/" unary | "%" unary)*
     fn mul(&mut self) -> Node {
         use NodeKind::*;
 
@@ -947,6 +948,8 @@ impl Parser {
                 node = Node::new(NDMUL, Some(Box::new(node)), Some(Box::new(self.unary())));
             } else if self.iter.consume("/") {
                 node = Node::new(NDDIV, Some(Box::new(node)), Some(Box::new(self.unary())));
+            } else if self.iter.consume("%") {
+                node = Node::new(NDMOD, Some(Box::new(node)), Some(Box::new(self.unary())));
             } else {
                 break;
             }
