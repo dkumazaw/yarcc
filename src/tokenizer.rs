@@ -117,9 +117,14 @@ impl Tokenizer {
                     let tkstr = if cur != len && in_str.chars().nth(cur).unwrap() == '=' {
                         cur += 1;
                         c.to_string() + "="
-                    } else if in_str.chars().nth(cur).unwrap() == '<' {
+                    } else if cur != len && in_str.chars().nth(cur).unwrap() == '<' {
                         cur += 1;
-                        c.to_string() + "<"
+                        if cur != len && in_str.chars().nth(cur).unwrap() == '=' {
+                            cur += 1;
+                            c.to_string() + "<="
+                        } else {
+                            c.to_string() + "<"
+                        }
                     } else {
                         c.to_string()
                     };
@@ -133,9 +138,14 @@ impl Tokenizer {
                     let tkstr = if cur != len && in_str.chars().nth(cur).unwrap() == '=' {
                         cur += 1;
                         c.to_string() + "="
-                    } else if in_str.chars().nth(cur).unwrap() == '>' {
+                    } else if cur != len && in_str.chars().nth(cur).unwrap() == '>' {
                         cur += 1;
-                        c.to_string() + ">"
+                        if cur != len && in_str.chars().nth(cur).unwrap() == '=' {
+                            cur += 1;
+                            c.to_string() + ">="
+                        } else {
+                            c.to_string() + ">"
+                        }
                     } else {
                         c.to_string()
                     };

@@ -75,6 +75,8 @@ tests! {
     assign14: ("int main() { int a = 5; int b = 3; a &= b; return a; }", 1),
     assign15: ("int main() { int a = 4; int b = 3; a |= b; return a; }", 7),
     assign16: ("int main() { int a = 5; int b = 3; a ^= b; return a; }", 6),
+    assign17: ("int main() { int a = 4; int b = 3; a <<= b; return a; }", 32),
+    assign18: ("int main() { int a = 18; int b = 2; a >>= b; return a; }", 4),
     bitwise0: ("int main() { return 0 & 1; }", 0),
     bitwise1: ("int main() { return 2 & 3 > 0; }", 0),
     bitwise2: ("int main() { return (2 & 3) > 0; }", 1),

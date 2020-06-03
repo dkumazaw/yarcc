@@ -220,7 +220,16 @@ impl<'a> CodeGen<'a> {
                     XOR => {
                         gen_line!(self.f, "  xor rax, rdi\n");
                     }
-                    _ => panic!("TODO"),
+                    SHL => {
+                        // TODO: Not pretty moving around vals on registers:(
+                        gen_line!(self.f, "  mov rcx, rdi\n");
+                        gen_line!(self.f, "  shl rax, cl\n");
+                    }
+                    SHR => {
+                        gen_line!(self.f, "  mov rcx, rdi\n");
+                        gen_line!(self.f, "  shr rax, cl\n");
+                    }
+                    DEFAULT => panic!("Default assignment shouldn't reach here."),
                 }
                 gen_line!(self.f, "  push rax\n");
 
