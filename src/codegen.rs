@@ -192,15 +192,35 @@ impl<'a> CodeGen<'a> {
                     // This is post incr/decr
                     gen_line!(self.f, "  mov r12, rax\n");
                 }
-                if mode == ADD {
-                    gen_line!(self.f, "  add rax, rdi\n");
-                } else if mode == SUB {
-                    gen_line!(self.f, "  sub rax, rdi\n");
-                } else if mode == MUL {
-                    gen_line!(self.f, "  imul rax, rdi\n");
-                } else {
-                    gen_line!(self.f, "  cqo\n");
-                    gen_line!(self.f, "  idiv rdi\n");
+                match mode {
+                    ADD => {
+                        gen_line!(self.f, "  add rax, rdi\n");
+                    }
+                    SUB => {
+                        gen_line!(self.f, "  sub rax, rdi\n");
+                    }
+                    MUL => {
+                        gen_line!(self.f, "  imul rax, rdi\n");
+                    }
+                    DIV => {
+                        gen_line!(self.f, "  cqo\n");
+                        gen_line!(self.f, "  idiv rdi\n");
+                    }
+                    MOD => {
+                        gen_line!(self.f, "  cqo\n");
+                        gen_line!(self.f, "  idiv rdi\n");
+                        gen_line!(self.f, "  mov rax, rdx\n");
+                    }
+                    AND => {
+                        gen_line!(self.f, "  and rax, rdi\n");
+                    }
+                    OR => {
+                        gen_line!(self.f, "  or rax, rdi\n");
+                    }
+                    XOR => {
+                        gen_line!(self.f, "  xor rax, rdi\n");
+                    }
+                    _ => panic!("TODO"),
                 }
                 gen_line!(self.f, "  push rax\n");
 

@@ -1,6 +1,8 @@
 use std::collections::LinkedList;
 
-static ASSIGN_OPS: [&str; 6] = ["=", "+=", "-=", "*=", "/=", "%="];
+static ASSIGN_OPS: [&str; 11] = [
+    "=", "+=", "-=", "*=", "/=", "%=", "<<=", ">>=", "&=", "|=", "^=",
+];
 static TYPES: [&str; 3] = ["char", "short", "int"];
 static KEYWORDS: [&str; 9] = [
     "char", "short", "int", "return", "if", "else", "while", "for", "sizeof",
@@ -171,7 +173,7 @@ impl Tokenizer {
                     continue;
                 }
 
-                '%' | '*' | '!' | '=' => {
+                '%' | '*' | '!' | '=' | '^' => {
                     cur += 1;
                     let tkstr = if cur != len && in_str.chars().nth(cur).unwrap() == '=' {
                         cur += 1;
@@ -208,6 +210,9 @@ impl Tokenizer {
                     let tkstr = if cur != len && in_str.chars().nth(cur).unwrap() == '&' {
                         cur += 1;
                         c.to_string() + "&"
+                    } else if cur != len && in_str.chars().nth(cur).unwrap() == '=' {
+                        cur += 1;
+                        c.to_string() + "="
                     } else {
                         c.to_string()
                     };
@@ -220,6 +225,9 @@ impl Tokenizer {
                     let tkstr = if cur != len && in_str.chars().nth(cur).unwrap() == '|' {
                         cur += 1;
                         c.to_string() + "|"
+                    } else if cur != len && in_str.chars().nth(cur).unwrap() == '=' {
+                        cur += 1;
+                        c.to_string() + "="
                     } else {
                         c.to_string()
                     };
@@ -227,7 +235,7 @@ impl Tokenizer {
                     continue;
                 }
 
-                '(' | ')' | ':' | ';' | '{' | '}' | ',' | '[' | ']' | '^' | '~' | '?' => {
+                '(' | ')' | ':' | ';' | '{' | '}' | ',' | '[' | ']' | '~' | '?' => {
                     self.tokens
                         .push_back(Token::new(TKRESERVED).string(&c.to_string()));
                     cur += 1;

@@ -98,6 +98,12 @@ impl AssignMode {
             "-=" => SUB,
             "*=" => MUL,
             "/=" => DIV,
+            "%=" => MOD,
+            "<<=" => SHL,
+            ">>=" => SHR,
+            "&=" => AND,
+            "|=" => OR,
+            "^=" => XOR,
             _ => panic!("Assign op should be passed."),
         }
     }
