@@ -3,28 +3,24 @@ use std::collections::LinkedList;
 
 #[derive(Debug, PartialEq)]
 pub enum NodeKind {
-    NDADD,       // +
-    NDSUB,       // -
-    NDMUL,       // *
-    NDDIV,       // /
-    NDMOD,       // %
-    NDEQ,        // ==
-    NDNEQ,       // !=
-    NDLEQ,       // <=
-    NDLT,        // <
-    NDASSIGN,    // =
-    NDADDASSIGN, // +=, ++(post)
-    NDSUBASSIGN, // -=, --(post)
-    NDMULASSIGN, // *=
-    NDDIVASSIGN, // /=
-    NDBITAND,    // &
-    NDBITXOR,    // ^
-    NDBITOR,     // |
-    NDLOGAND,    // &&
-    NDLOGOR,     // ||
-    NDSHL,       // <<
-    NDSHR,       // >>
-    NDBITNOT,    // ~
+    NDADD,    // +
+    NDSUB,    // -
+    NDMUL,    // *
+    NDDIV,    // /
+    NDMOD,    // %
+    NDEQ,     // ==
+    NDNEQ,    // !=
+    NDLEQ,    // <=
+    NDLT,     // <
+    NDASSIGN, // See AssignMode for more details
+    NDBITAND, // &
+    NDBITXOR, // ^
+    NDBITOR,  // |
+    NDLOGAND, // &&
+    NDLOGOR,  // ||
+    NDSHL,    // <<
+    NDSHR,    // >>
+    NDBITNOT, // ~
     NDTERNARY,
     NDRETURN,
     NDIF,
@@ -74,7 +70,37 @@ pub struct Node {
 
     pub inits: LinkedList<Node>, // NDDECL
 
-    pub eval_pre: Option<bool>, // ND*ASSIGN; Pre-evaluate the result and return that value
+    pub eval_pre: Option<bool>, // NDASSIGN; Pre-evaluate the result and return that value
+    pub assign_mode: Option<AssignMode>, // NDASSIGN
+}
+
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub enum AssignMode {
+    DEFAULT, // =
+    ADD,     // +=, ++(post)
+    SUB,     // -=, --(post)
+    MUL,     // *=
+    DIV,     // /=
+    MOD,     // %=
+    SHL,     // <<=
+    SHR,     // >>=
+    AND,     // &=
+    OR,      // |=
+    XOR,     // ^=
+}
+
+impl AssignMode {
+    fn from_str(s: &str) -> Self {
+        use AssignMode::*;
+        match s {
+            "=" => DEFAULT,
+            "+=" => ADD,
+            "-=" => SUB,
+            "*=" => MUL,
+            "/=" => DIV,
+            _ => panic!("Assign op should be passed."),
+        }
+    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -145,7 +171,12 @@ impl Node {
             lvars_offset: None,
             inits: LinkedList::new(),
             eval_pre: None,
+            assign_mode: None,
         }
+    }
+
+    fn new_assign(mode: AssignMode, lhs: Option<Box<Node>>, rhs: Option<Box<Node>>) -> Self {
+        Node::new(NodeKind::NDASSIGN, lhs, rhs).assign_mode(mode)
     }
 
     fn val(mut self, value: i32) -> Self {
@@ -223,6 +254,11 @@ impl Node {
         self
     }
 
+    fn assign_mode(mut self, mode: AssignMode) -> Self {
+        self.assign_mode = Some(mode);
+        self
+    }
+
     fn populate_ty(&mut self) {
         use NodeKind::*;
 
@@ -255,18 +291,6 @@ impl Node {
                     Some(Type::new(TypeKind::LONG, 0))
                 }
             }
-            NDADDASSIGN | NDSUBASSIGN => {
-                let lhs = self.lhs.as_mut().unwrap();
-                let rhs = self.rhs.as_mut().unwrap();
-                lhs.populate_ty();
-                rhs.populate_ty();
-
-                let l_ty = lhs.ty.as_ref().unwrap();
-                if l_ty.kind.is_ptr_like() {
-                    self.scale_lhs = Some(true);
-                }
-                Some(l_ty.clone())
-            }
             NDMUL | NDDIV | NDEQ | NDNEQ | NDLEQ | NDLT => {
                 // TODO: Update this
                 Some(Type::new(TypeKind::INT, 0))
@@ -280,10 +304,22 @@ impl Node {
                 lhs.populate_ty();
                 Some(lhs.ty.as_ref().unwrap().new_ptr_to())
             }
-            NDMULASSIGN | NDDIVASSIGN | NDASSIGN => {
+            NDASSIGN => {
+                use AssignMode::*;
+                let mode = self.assign_mode.unwrap();
+
                 let lhs = self.lhs.as_mut().unwrap();
+                let rhs = self.rhs.as_mut().unwrap();
                 lhs.populate_ty();
-                Some(lhs.ty.as_ref().unwrap().clone())
+                rhs.populate_ty();
+
+                let l_ty = lhs.ty.as_ref().unwrap();
+                if mode == ADD || mode == SUB {
+                    if l_ty.kind.is_ptr_like() {
+                        self.scale_lhs = Some(true);
+                    }
+                }
+                Some(l_ty.clone())
             }
             NDDEREF => {
                 let lhs = self.lhs.as_mut().unwrap();
@@ -563,7 +599,11 @@ impl Parser {
                 .offset(var.offset.unwrap())
                 .ty(var.ty.clone())
         };
-        let mut init = Node::new(NDASSIGN, Some(Box::new(lhs)), Some(Box::new(self.assign())));
+        let mut init = Node::new_assign(
+            AssignMode::DEFAULT,
+            Some(Box::new(lhs)),
+            Some(Box::new(self.assign())),
+        );
         init.populate_ty();
         declnode.inits.push_back(init);
 
@@ -578,8 +618,8 @@ impl Parser {
                 self.assign();
                 continue;
             }
-            let mut init = Node::new(
-                NDASSIGN,
+            let mut init = Node::new_assign(
+                AssignMode::DEFAULT,
                 Some(Box::new(Parser::init_array_lhs(pos, &var))),
                 Some(Box::new(self.assign())),
             );
@@ -716,16 +756,9 @@ impl Parser {
         let mut node = self.conditional();
 
         if let Some(op_str) = self.iter.consume_assign_op() {
-            let kind = match op_str.as_str() {
-                "=" => NDASSIGN,
-                "+=" => NDADDASSIGN,
-                "-=" => NDSUBASSIGN,
-                "*=" => NDMULASSIGN,
-                "/=" => NDDIVASSIGN,
-                _ => panic!("Assign op should be passed."),
-            };
-            node =
-                Node::new(kind, Some(Box::new(node)), Some(Box::new(self.assign()))).eval_pre(true);
+            let mode = AssignMode::from_str(&op_str);
+            node = Node::new_assign(mode, Some(Box::new(node)), Some(Box::new(self.assign())))
+                .eval_pre(true);
             node.populate_ty();
         }
         node
@@ -1010,8 +1043,8 @@ impl Parser {
             node.populate_ty();
             self.iter.expect("]");
         } else if self.iter.consume("++") {
-            node = Node::new(
-                NDADDASSIGN,
+            node = Node::new_assign(
+                AssignMode::ADD,
                 Some(Box::new(node)),
                 Some(Box::new(
                     Node::new(NDNUM, None, None)
@@ -1023,8 +1056,8 @@ impl Parser {
             node.populate_ty();
         // TODO: Check lvalue
         } else if self.iter.consume("--") {
-            node = Node::new(
-                NDSUBASSIGN,
+            node = Node::new_assign(
+                AssignMode::SUB,
                 Some(Box::new(node)),
                 Some(Box::new(
                     Node::new(NDNUM, None, None)

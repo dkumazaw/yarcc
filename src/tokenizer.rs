@@ -1,6 +1,6 @@
 use std::collections::LinkedList;
 
-static ASSIGN_OPS: [&str; 5] = ["=", "+=", "-=", "*=", "/="];
+static ASSIGN_OPS: [&str; 6] = ["=", "+=", "-=", "*=", "/=", "%="];
 static TYPES: [&str; 3] = ["char", "short", "int"];
 static KEYWORDS: [&str; 9] = [
     "char", "short", "int", "return", "if", "else", "while", "for", "sizeof",

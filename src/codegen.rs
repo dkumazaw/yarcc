@@ -1,4 +1,4 @@
-use crate::parser::{Node, NodeKind, Program};
+use crate::parser::{AssignMode, Node, NodeKind, Program};
 use std::fs::File;
 use std::io::Write;
 
@@ -151,7 +151,16 @@ impl<'a> CodeGen<'a> {
                     self.gen_load(size);
                 }
             },
-            NDADDASSIGN | NDSUBASSIGN | NDMULASSIGN | NDDIVASSIGN => {
+            NDASSIGN => {
+                use AssignMode::*;
+                let mode = node.assign_mode.unwrap();
+                if mode == DEFAULT {
+                    self.gen_lval(*node.lhs.unwrap());
+                    self.gen(*node.rhs.unwrap());
+                    self.gen_store(node.ty.unwrap().size());
+                    return;
+                }
+
                 // Needs to be done on a register
                 let size = node.lhs.as_ref().unwrap().ty.as_ref().unwrap().size();
                 self.gen_lval(*node.lhs.unwrap());
@@ -164,7 +173,7 @@ impl<'a> CodeGen<'a> {
 
                 if let Some(to_scale) = node.scale_lhs {
                     if to_scale {
-                        if node.kind == NDMULASSIGN || node.kind == NDDIVASSIGN {
+                        if mode == MUL || mode == DIV {
                             panic!("Scaling should not be allowed for this node.");
                         }
                         gen_line!(self.f, "  pop rax\n");
@@ -183,11 +192,11 @@ impl<'a> CodeGen<'a> {
                     // This is post incr/decr
                     gen_line!(self.f, "  mov r12, rax\n");
                 }
-                if node.kind == NDADDASSIGN {
+                if mode == ADD {
                     gen_line!(self.f, "  add rax, rdi\n");
-                } else if node.kind == NDSUBASSIGN {
+                } else if mode == SUB {
                     gen_line!(self.f, "  sub rax, rdi\n");
-                } else if node.kind == NDMULASSIGN {
+                } else if mode == MUL {
                     gen_line!(self.f, "  imul rax, rdi\n");
                 } else {
                     gen_line!(self.f, "  cqo\n");
@@ -200,12 +209,6 @@ impl<'a> CodeGen<'a> {
                     gen_line!(self.f, "  pop rax\n");
                     gen_line!(self.f, "  push r12\n");
                 }
-            }
-            NDASSIGN => {
-                self.gen_lval(*node.lhs.unwrap());
-                self.gen(*node.rhs.unwrap());
-
-                self.gen_store(node.ty.unwrap().size());
             }
             NDRETURN => {
                 self.gen(*node.lhs.unwrap());
