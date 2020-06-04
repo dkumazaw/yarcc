@@ -586,6 +586,9 @@ impl Parser {
         }
     }
 
+    // declarator: "*"*
+    fn declarator(&mut self) {}
+
     fn init_array_lhs(pos: usize, var: &Var) -> Node {
         use NodeKind::*;
 

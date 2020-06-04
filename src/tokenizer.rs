@@ -257,7 +257,7 @@ impl Tokenizer {
                     cur += 1;
                     while cur != len {
                         let _c = in_str.chars().nth(cur).unwrap();
-                        if !_c.is_ascii_alphanumeric() {
+                        if !_c.is_ascii_alphanumeric() && _c != '_' {
                             break;
                         }
                         ident_name.push(_c);
