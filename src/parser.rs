@@ -132,12 +132,13 @@ pub struct Var {
     pub name: String,
     pub ty: Type,
     pub offset: Option<usize>, // None if global
+    pub scope: Option<usize>,  // None if global
 }
 
-// Stores the current level of local variables
 #[derive(Debug)]
-pub struct LVarScope {
+pub struct LVarScopes {
     list: LinkedList<Var>,
+    level: usize, // Current scope's level
     offset: usize,
 }
 
@@ -151,7 +152,7 @@ pub struct Program {
 pub struct Parser {
     iter: TokenIter,
     globals: LinkedList<Var>,
-    locals: LinkedList<LVarScope>, // Each scope should push_back a new linked list
+    locals: LVarScopes,
 }
 
 impl Node {
@@ -338,12 +339,28 @@ impl Node {
     }
 }
 
-impl LVarScope {
+impl LVarScopes {
     fn new() -> Self {
-        LVarScope {
+        LVarScopes {
             list: LinkedList::new(),
+            level: 0,
             offset: 0,
         }
+    }
+
+    fn add_scope(&mut self) {
+        self.level += 1;
+    }
+
+    fn remove_scope(&mut self) {
+        // Pop everything in this scope
+        while let Some(ref var) = self.list.front() {
+            if var.scope.unwrap() != self.level {
+                break;
+            }
+            self.list.pop_front();
+        }
+        self.level -= 1;
     }
 
     fn register_lvar(&mut self, ident_name: String, ty: Type) -> Var {
@@ -355,12 +372,14 @@ impl LVarScope {
             name: ident_name,
             ty: ty,
             offset: Some(my_ofs),
+            scope: Some(self.level),
         };
-        self.list.push_back(lvar.clone());
+        self.list.push_front(lvar.clone());
         lvar
     }
 
     fn find_lvar(&self, ident_name: &str) -> Option<&Var> {
+        // Notice that this finds the ident of the closest scope
         self.list.iter().find(|x| x.name == ident_name)
     }
 }
@@ -467,7 +486,7 @@ impl Parser {
         Parser {
             iter: iter,
             globals: LinkedList::new(),
-            locals: LinkedList::new(),
+            locals: LVarScopes::new(),
         }
     }
 
@@ -669,7 +688,7 @@ impl Parser {
 
         let mut node = Node::new(NDFUNCDEF, None, None).name(ident_name.to_string());
         // Create a new scope:
-        self.locals.push_back(LVarScope::new());
+        self.locals = LVarScopes::new();
 
         if !self.iter.consume(")") {
             // There's at least one local variable definition.
@@ -695,7 +714,7 @@ impl Parser {
         }
 
         // Remember the # of variables created & pop the scope out of the stack
-        node = node.lvars_offset(self.locals.pop_back().unwrap().offset);
+        node = node.lvars_offset(self.locals.offset);
 
         Some(node)
     }
@@ -715,9 +734,12 @@ impl Parser {
             node = decl;
         } else if self.iter.consume("{") {
             node = Node::new(NDBLOCK, None, None);
+
+            self.locals.add_scope();
             while !self.iter.consume("}") {
                 node = node.blockstmt(self.stmt());
             }
+            self.locals.remove_scope();
         } else if self.iter.consume("if") {
             self.iter.expect("(");
             node = Node::new(NDIF, None, None).cond(Some(Box::new(self.expr())));
@@ -1144,21 +1166,20 @@ impl Parser {
 
     // Finds if the passed identitier already exists
     fn find_var(&mut self, ident_name: &str) -> &Var {
-        // TODO: Support hierarchical lookup
-        if let Some(ref v) = self.locals.back().unwrap().find_lvar(ident_name) {
-            v
-        } else if let Some(ref v) = self.globals.iter().find(|x| x.name == ident_name) {
-            v
-        } else {
-            panic!("Parser: Found an undefined variable {}\n", ident_name);
+        // Check locals
+        if let Some(ref v) = self.locals.find_lvar(ident_name) {
+            return v;
         }
+        // Check globals
+        if let Some(ref v) = self.globals.iter().find(|x| x.name == ident_name) {
+            return v;
+        }
+
+        panic!("Parser: Found an undefined variable {}\n", ident_name);
     }
 
     fn add_lvar(&mut self, ident_name: String, ty: Type) -> Var {
-        self.locals
-            .back_mut()
-            .unwrap()
-            .register_lvar(ident_name, ty)
+        self.locals.register_lvar(ident_name, ty)
     }
 
     fn add_gvar(&mut self, ident_name: String, ty: Type) {
@@ -1166,6 +1187,7 @@ impl Parser {
             name: ident_name,
             ty: ty,
             offset: None,
+            scope: None,
         });
     }
 

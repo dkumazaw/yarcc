@@ -296,6 +296,10 @@ impl<'a> CodeGen<'a> {
                 gen_line!(self.f, ".Lend{}:", my_label);
             }
             NDBLOCK => {
+                // Let empty block evaluate to 0
+                if node.blockstmts.len() == 0 {
+                    gen_line!(self.f, "  push 0\n");
+                }
                 while let Some(stmt) = node.blockstmts.pop_front() {
                     self.gen(stmt);
                     // pop if not the last stmt
