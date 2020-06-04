@@ -252,7 +252,7 @@ impl Tokenizer {
                     continue;
                 }
 
-                c if c.is_ascii_alphabetic() => {
+                c if c.is_ascii_alphabetic() || c == '_' => {
                     let mut ident_name = c.to_string();
                     cur += 1;
                     while cur != len {

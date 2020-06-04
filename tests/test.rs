@@ -77,7 +77,7 @@ tests! {
     assign16: ("int main() { int a = 5; int b = 3; a ^= b; return a; }", 6),
     assign17: ("int main() { int a = 4; int b = 3; a <<= b; return a; }", 32),
     assign18: ("int main() { int a = 18; int b = 2; a >>= b; return a; }", 4),
-    assing19: ("int main() { int ident_with_underscore;  ident_with_underscore=12; return ident_with_underscore;  }", 12),
+    assing19: ("int main() { int _ident_with_underscore123;  _ident_with_underscore123=12; return _ident_with_underscore123;  }", 12),
     bitwise0: ("int main() { return 0 & 1; }", 0),
     bitwise1: ("int main() { return 2 & 3 > 0; }", 0),
     bitwise2: ("int main() { return (2 & 3) > 0; }", 1),
