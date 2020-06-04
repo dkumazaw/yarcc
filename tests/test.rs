@@ -33,7 +33,6 @@ tests! {
     singlenum: ("examples/singlenum.c", 94),
 }
 
-// Unit tests:
 tests! {
     simple0: ("int main() {  0;} ", 0),
     simple1: ("int main() { 42;} ", 42),
