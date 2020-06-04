@@ -148,6 +148,8 @@ tests! {
     init3: ("int main() { int a=19; int *b = &a; return *b; }", 19),
     init4: ("int main() { int a = {11, 22, 33}; return a; }", 11),
     init5: ("int main() { int a[4] = {1, 2, 3, 5}; return a[3]; }", 5),
+    init6: ("int main() { int a, b=4, c=5; return b *c; }", 20),
+    init7: ("int main() { int a[5] = {1,2,3,4,5}, *b, c=4; return a[3]; }", 4),
     array0: ("int main() { int a[10]; return 1; }", 1),
     array1: ("int main() { int arr[12]; arr[1] = 4; return arr[1];}", 4),
     array2: ("int main() { int arr[10]; int b; b = 3; arr[4 * b -10] = 21; return arr[4 - 2]; }", 21),

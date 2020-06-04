@@ -527,7 +527,7 @@ impl Parser {
         }
     }
 
-    // decl = "int" "*"* ident ("[" num "]")? ("=" initializer )?
+    // decl = "int" init_decl ("," init_decl)* ";"
     fn decl(&mut self, is_global: bool) -> Option<Node> {
         use NodeKind::*;
 
@@ -542,6 +542,20 @@ impl Parser {
             kindstr = self.iter.expect_type();
         }
         let kind = TypeKind::from_str(kindstr);
+
+        let mut node = Node::new(NDDECL, None, None);
+
+        self.init_decl(&mut node, is_global, kind);
+        while self.iter.consume(",") {
+            self.init_decl(&mut node, is_global, kind);
+        }
+
+        self.iter.expect(";");
+        Some(node)
+    }
+
+    // init_decl = "*"* ident ("[" num "]")? ("=" initializer )?
+    fn init_decl(&mut self, declnode: &mut Node, is_global: bool, kind: TypeKind) {
         let refs = {
             // # of times * occurs will tell us the depth of references
             let mut tmp = 0;
@@ -562,19 +576,14 @@ impl Parser {
             var_type = Type::new(kind, refs);
         }
 
-        let mut node = Node::new(NDDECL, None, None);
-
         if is_global {
             self.add_gvar(ident_name, var_type.clone());
         } else {
             let var = self.add_lvar(ident_name, var_type.clone());
             if self.iter.consume("=") {
-                self.initializer(&mut node, var);
+                self.initializer(declnode, var);
             }
         }
-
-        self.iter.expect(";");
-        Some(node)
     }
 
     fn init_array_lhs(pos: usize, var: &Var) -> Node {
