@@ -132,6 +132,7 @@ tests! {
     block3: ("int main() { int a= 3; {int a = 5;} return a; }", 3),
     block4: ("int main() { int a = 4; { int a = 10; { int a = 44;  { int a = 3; { int a = 24; } }} }  return a; }", 4),
     block5: ("int main() { int a= 5, i = 0; for (; i< 5; i++) { int a = 2; a += 9; } return a; }", 5),
+    block6: ("int main() { int a= 6; {int a = 56; return a;} }", 56),
     sizeof0: ("int main() { int x; x = 10; return sizeof x; }", 4),
     sizeof1: ("int main() {int x; int *hoge; hoge = &x; return sizeof (hoge);}", 8),
     sizeof2: ("int main() { return sizeof (100); }", 4),
