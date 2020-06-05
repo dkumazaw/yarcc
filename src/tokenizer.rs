@@ -202,9 +202,16 @@ impl Tokenizer {
                         Some("/=".to_string())
                     } else if in_str.chars().nth(cur).unwrap() == '/' {
                         cur += 1;
-                        while cur != len && in_str.chars().nth(cur).unwrap() != '\n' {
+                        while in_str.chars().nth(cur).unwrap() != '\n' {
                             cur += 1;
                         }
+                        None
+                    } else if in_str.chars().nth(cur).unwrap() == '*' {
+                        cur += 1;
+                        while &in_str[cur..cur + 2] != "*/" {
+                            cur += 1;
+                        }
+                        cur += 2;
                         None
                     } else {
                         Some("/".to_string())
