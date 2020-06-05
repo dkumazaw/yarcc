@@ -1031,6 +1031,8 @@ impl Parser {
     }
 
     // unary = "sizeof" unary
+    //       | "++" unary
+    //       | "--" unary
     //       | ("+" | "-" | "*" | "&" | "~") unary
     //       | postfix
     fn unary(&mut self) -> Node {
@@ -1043,6 +1045,30 @@ impl Parser {
             node = Node::new(NDNUM, None, None)
                 .val(lhs.ty.unwrap().total_size() as i32)
                 .ty(Type::new(TypeKind::INT, 0));
+        } else if self.iter.consume("++") {
+            node = Node::new_assign(
+                AssignMode::ADD,
+                Some(Box::new(self.unary())),
+                Some(Box::new(
+                    Node::new(NDNUM, None, None)
+                        .val(1)
+                        .ty(Type::new(TypeKind::INT, 0)),
+                )),
+            )
+            .eval_pre(true);
+            node.populate_ty();
+        } else if self.iter.consume("--") {
+            node = Node::new_assign(
+                AssignMode::SUB,
+                Some(Box::new(self.unary())),
+                Some(Box::new(
+                    Node::new(NDNUM, None, None)
+                        .val(1)
+                        .ty(Type::new(TypeKind::INT, 0)),
+                )),
+            )
+            .eval_pre(true);
+            node.populate_ty();
         } else if self.iter.consume("~") {
             node = Node::new(NDBITNOT, Some(Box::new(self.unary())), None);
         } else if self.iter.consume("*") {
