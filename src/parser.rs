@@ -23,6 +23,7 @@ pub enum NodeKind {
     NDBITNOT, // ~
     NDTERNARY,
     NDRETURN,
+    NDBREAK,
     NDIF,
     NDWHILE,
     NDFOR,
@@ -724,7 +725,7 @@ impl Parser {
     //      | "if" "(" expr ")" stmt ("else" stmt)?
     //      | "while" "(" expr ")" stmt
     //      | "for" "(" expr? ";" expr? ";" expr? ")" stmt
-    //      | "return" expr ";"
+    //      | jump
     //      | expr ";"
     fn stmt(&mut self) -> Node {
         use NodeKind::*;
@@ -775,14 +776,28 @@ impl Parser {
                 self.iter.expect(")");
             }
             node = node.repnode(Some(Box::new(self.stmt())));
-        } else if self.iter.consume("return") {
-            node = Node::new(NDRETURN, Some(Box::new(self.expr())), None);
-            self.iter.expect(";");
+        } else if let Some(jump) = self.jump() {
+            node = jump
         } else {
             node = self.expr();
             self.iter.expect(";");
         }
         node
+    }
+
+    // jump = ("break" | "return" expr) ";"
+    fn jump(&mut self) -> Option<Node> {
+        use NodeKind::*;
+        if self.iter.consume("break") {
+            self.iter.expect(";");
+            Some(Node::new(NDBREAK, None, None))
+        } else if self.iter.consume("return") {
+            let node = Node::new(NDRETURN, Some(Box::new(self.expr())), None);
+            self.iter.expect(";");
+            Some(node)
+        } else {
+            None
+        }
     }
 
     // expr = assign

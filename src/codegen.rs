@@ -1,4 +1,5 @@
 use crate::parser::{AssignMode, Node, NodeKind, Program};
+use std::collections::LinkedList;
 use std::fs::File;
 use std::io::Write;
 
@@ -8,7 +9,8 @@ static FUNC_REGS_8: [&str; 6] = ["rdi", "rsi", "rdx", "rcx", "r8", "r9"];
 pub struct CodeGen<'a> {
     f: &'a mut File,
     prog: Program,
-    cond_label: usize, // Used to track conditional labels
+    cond_label: usize, // Next cond label to be issued
+    conds: LinkedList<usize>,
 }
 
 impl<'a> CodeGen<'a> {
@@ -17,6 +19,7 @@ impl<'a> CodeGen<'a> {
             f: f,
             prog: prog,
             cond_label: 0,
+            conds: LinkedList::new(),
         }
     }
 
@@ -26,10 +29,24 @@ impl<'a> CodeGen<'a> {
         self.gen_text();
     }
 
-    fn issue_label(&mut self) -> usize {
+    fn issue_level(&mut self) -> usize {
         let issued = self.cond_label;
         self.cond_label += 1;
         issued
+    }
+
+    fn push_level(&mut self) -> usize {
+        let current = self.issue_level();
+        self.conds.push_back(current);
+        current
+    }
+
+    fn pop_level(&mut self) {
+        self.conds.pop_back();
+    }
+
+    fn get_current_level(&self) -> usize {
+        self.conds.back().unwrap().clone()
     }
 
     fn gen_data(&mut self) {
@@ -244,7 +261,7 @@ impl<'a> CodeGen<'a> {
                 self.gen_return();
             }
             NDIF => {
-                let my_label = self.issue_label();
+                let my_label = self.issue_level();
                 self.gen(*node.cond.unwrap());
                 gen_line!(self.f, "  pop rax\n");
                 gen_line!(self.f, "  cmp rax, 0\n");
@@ -262,8 +279,12 @@ impl<'a> CodeGen<'a> {
                 }
                 gen_line!(self.f, ".Lend{}:\n", my_label);
             }
+            NDBREAK => {
+                let label = self.get_current_level();
+                gen_line!(self.f, "  jmp .Lend{}\n", label);
+            }
             NDWHILE => {
-                let my_label = self.issue_label();
+                let my_label = self.push_level();
                 gen_line!(self.f, ".Lbegin{}:\n", my_label);
                 self.gen(*node.cond.unwrap());
                 gen_line!(self.f, "  pop rax\n");
@@ -272,9 +293,10 @@ impl<'a> CodeGen<'a> {
                 self.gen(*node.repnode.unwrap());
                 gen_line!(self.f, "  jmp .Lbegin{}\n", my_label);
                 gen_line!(self.f, ".Lend{}:", my_label);
+                self.pop_level();
             }
             NDFOR => {
-                let my_label = self.issue_label();
+                let my_label = self.push_level();
                 if let Some(initnode) = node.initnode {
                     self.gen(*initnode);
                 }
@@ -294,6 +316,7 @@ impl<'a> CodeGen<'a> {
                 }
                 gen_line!(self.f, "  jmp .Lbegin{}\n", my_label);
                 gen_line!(self.f, ".Lend{}:", my_label);
+                self.pop_level();
             }
             NDBLOCK => {
                 // Let empty block evaluate to 0
@@ -397,7 +420,7 @@ impl<'a> CodeGen<'a> {
             NDLOGAND | NDLOGOR => {
                 // Only evaluate the rhs if the lhs evaluates to 1
                 // as per C89 6.3.13 and 6.3.14
-                let my_label = self.issue_label();
+                let my_label = self.issue_level();
                 self.gen(*node.lhs.unwrap());
                 gen_line!(self.f, "  pop rax\n");
                 gen_line!(self.f, "  cmp rax, 0\n");
