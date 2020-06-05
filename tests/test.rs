@@ -121,6 +121,7 @@ tests! {
     jump4: ("examples/jumps/jump4.c", 4),
     jump5: ("examples/jumps/jump5.c", 6),
     jump6: ("examples/jumps/jump6.c", 12),
+    jump7: ("examples/jumps/jump7.c", 4),
     if0: ("int main() { if (1 == 1) return 1; return 2;} ", 1),
     if1: ("int main() { if (1 != 1) return 1; return 2;} ", 2),
     ifelse0: ("int main() { if (1 == 1) return 1; else return 2;} ", 1),

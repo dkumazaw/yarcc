@@ -1,3 +1,5 @@
+/* Break in nested loops should break out of the 
+ * immediate loop that contains break. */
 int main() {
     int i = 0;
     int a = 0;
