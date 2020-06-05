@@ -77,8 +77,8 @@ pub struct Node {
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum AssignMode {
     DEFAULT, // =
-    ADD,     // +=, ++(post)
-    SUB,     // -=, --(post)
+    ADD,     // +=, ++(pre, post)
+    SUB,     // -=, --(pre, post)
     MUL,     // *=
     DIV,     // /=
     MOD,     // %=
