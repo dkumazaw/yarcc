@@ -295,6 +295,18 @@ impl<'a> CodeGen<'a> {
                 gen_line!(self.f, ".Lend{}:", my_label);
                 self.pop_level();
             }
+            NDDOWHILE => {
+                let my_label = self.push_level();
+                gen_line!(self.f, ".Ldo{}:\n", my_label);
+                self.gen(*node.repnode.unwrap());
+                gen_line!(self.f, ".Lbegin{}:\n", my_label);
+                self.gen(*node.cond.unwrap());
+                gen_line!(self.f, "  pop rax\n");
+                gen_line!(self.f, "  cmp rax, 0\n");
+                gen_line!(self.f, "  jne .Ldo{}\n", my_label);
+                gen_line!(self.f, ".Lend{}:", my_label);
+                self.pop_level();
+            }
             NDFOR => {
                 let my_label = self.push_level();
                 if let Some(initnode) = node.initnode {

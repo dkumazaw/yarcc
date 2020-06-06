@@ -26,6 +26,7 @@ pub enum NodeKind {
     NDBREAK,
     NDIF,
     NDWHILE,
+    NDDOWHILE,
     NDFOR,
     NDBLOCK,
     NDCALL,    // function call
@@ -751,11 +752,40 @@ impl Parser {
             if self.iter.consume("else") {
                 node = node.elsenode(Some(Box::new(self.stmt())));
             }
-        } else if self.iter.consume("while") {
+        } else if let Some(iter) = self.iter() {
+            node = iter
+        } else if let Some(jump) = self.jump() {
+            node = jump
+        } else {
+            node = self.expr();
+            self.iter.expect(";");
+        }
+        node
+    }
+
+    // iter = "while" "(" expr ")" stmt
+    //      | "do" stmt while "(" expr ")" ";"
+    //      | "for" "(" expr? ";" expr? ";" expr? ")" stmt
+    fn iter(&mut self) -> Option<Node> {
+        use NodeKind::*;
+
+        let mut node;
+        if self.iter.consume("while") {
             self.iter.expect("(");
             node = Node::new(NDWHILE, None, None).cond(Some(Box::new(self.expr())));
             self.iter.expect(")");
             node = node.repnode(Some(Box::new(self.stmt())));
+        } else if self.iter.consume("do") {
+            node = Node::new(NDDOWHILE, None, None);
+            let repnode = self.stmt();
+            self.iter.expect("while");
+            self.iter.expect("(");
+            let cond = self.expr();
+            self.iter.expect(")");
+            self.iter.expect(";");
+            node = node
+                .repnode(Some(Box::new(repnode)))
+                .cond(Some(Box::new(cond)));
         } else if self.iter.consume("for") {
             self.iter.expect("(");
             node = Node::new(NDFOR, None, None);
@@ -776,16 +806,14 @@ impl Parser {
                 self.iter.expect(")");
             }
             node = node.repnode(Some(Box::new(self.stmt())));
-        } else if let Some(jump) = self.jump() {
-            node = jump
         } else {
-            node = self.expr();
-            self.iter.expect(";");
+            return None;
         }
-        node
+        Some(node)
     }
 
-    // jump = ("break" | "return" expr) ";"
+    // jump = "break" ";" | "return" expr ";"
+    // TODO: No expr version
     fn jump(&mut self) -> Option<Node> {
         use NodeKind::*;
         if self.iter.consume("break") {
