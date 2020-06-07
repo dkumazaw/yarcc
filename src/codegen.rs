@@ -327,12 +327,14 @@ impl<'a> CodeGen<'a> {
                 let my_label = self.push_level(NDDOWHILE);
                 gen_line!(self.f, ".Lbegin{}:\n", my_label);
                 self.gen(*node.repnode.unwrap());
+                gen_line!(self.f, "  pop r15\n");
                 gen_line!(self.f, ".Lcond{}:\n", my_label);
                 self.gen(*node.cond.unwrap());
                 gen_line!(self.f, "  pop rax\n");
                 gen_line!(self.f, "  cmp rax, 0\n");
                 gen_line!(self.f, "  jne .Lbegin{}\n", my_label);
                 gen_line!(self.f, ".Lend{}:\n", my_label);
+                gen_line!(self.f, "  push {}\n", MAGIC); // Balance stack
                 self.pop_level();
             }
             NDFOR => {
