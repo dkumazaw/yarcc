@@ -2,7 +2,7 @@ use assert_cmd::prelude::*;
 use std::process::Command;
 
 #[macro_use]
-mod testfn;
+mod macros;
 
 // Test cases from examples
 tests! {

@@ -299,6 +299,10 @@ impl<'a> CodeGen<'a> {
                 let label = self.get_current_level();
                 gen_line!(self.f, "  jmp .Lend{}\n", label);
             }
+            NDCONTINUE => {
+                let label = self.get_current_level();
+                gen_line!(self.f, "  jmp .Lbegin{}\n", label);
+            }
             NDWHILE => {
                 let my_label = self.push_level();
                 gen_line!(self.f, ".Lbegin{}:\n", my_label);

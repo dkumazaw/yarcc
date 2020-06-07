@@ -24,6 +24,7 @@ pub enum NodeKind {
     NDTERNARY,
     NDRETURN,
     NDBREAK,
+    NDCONTINUE,
     NDIF,
     NDWHILE,
     NDDOWHILE,
@@ -812,13 +813,18 @@ impl Parser {
         Some(node)
     }
 
-    // jump = "break" ";" | "return" expr ";"
+    // jump = "break" ";"
+    //      | "continue" ";"
+    //      | "return" expr ";"
     // TODO: No expr version
     fn jump(&mut self) -> Option<Node> {
         use NodeKind::*;
         if self.iter.consume("break") {
             self.iter.expect(";");
             Some(Node::new(NDBREAK, None, None))
+        } else if self.iter.consume("continue") {
+            self.iter.expect(";");
+            Some(Node::new(NDCONTINUE, None, None))
         } else if self.iter.consume("return") {
             let node = Node::new(NDRETURN, Some(Box::new(self.expr())), None);
             self.iter.expect(";");
