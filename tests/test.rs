@@ -27,9 +27,8 @@ macro_rules! tests {
     }
 }
 
-// Test cases from external files
+// Test cases from examples
 tests! {
-    file_check: ("examples/test.c", 1),
     singlenum: ("examples/singlenum.c", 94),
 }
 
@@ -42,7 +41,7 @@ tests! {
     simple5: ("int main() { (3+5)/2;} ", 4),
     simple6: ("int main() { 7 % 3;  }", 1),
     comment0: ("// Hey I am just a line comment! \n int main() { return 3; }", 3),
-    comment1: ("examples/comment.c", 4),
+    comment1: ("tests/comment.c", 4),
     comment2: ("int main() { /* I am just a comment! ***/ return 1; /* Returned! */ }", 1),
     unary0: ("int main() { -3*-5;} ", 15),
     unary1: ("int main() { 8*(-3)+30;} ", 6),
@@ -119,10 +118,10 @@ tests! {
     jump2: ("int main() { int a; a = 4 + 5; return a + 1;} ", 10),
     jump3: ("int main() { return 5; return 1; 2;} ", 5),
     jump5: ("int main() { /* Empty return should evaluate to 0 */  }", 0),
-    jump6: ("examples/jumps/jump4.c", 4),
-    jump7: ("examples/jumps/jump5.c", 6),
-    jump8: ("examples/jumps/jump6.c", 12),
-    jump9: ("examples/jumps/jump7.c", 4),
+    jump6: ("tests/jumps/jump4.c", 4),
+    jump7: ("tests/jumps/jump5.c", 6),
+    jump8: ("tests/jumps/jump6.c", 12),
+    jump9: ("tests/jumps/jump7.c", 4),
     if0: ("int main() { if (1 == 1) return 1; return 2;} ", 1),
     if1: ("int main() { if (1 != 1) return 1; return 2;} ", 2),
     if2: ("int main() { int a = 1; if (a == 0 ) a = 3; return a; }", 1),
