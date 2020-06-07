@@ -12,7 +12,7 @@ pub struct CodeGen<'a> {
     f: &'a mut File,
     prog: Program,
     cond_label: usize, // Next cond label to be issued
-    conds: LinkedList<usize>,
+    conds: LinkedList<(usize, NodeKind)>,
 }
 
 impl<'a> CodeGen<'a> {
@@ -37,9 +37,9 @@ impl<'a> CodeGen<'a> {
         issued
     }
 
-    fn push_level(&mut self) -> usize {
+    fn push_level(&mut self, kind: NodeKind) -> usize {
         let current = self.issue_level();
-        self.conds.push_back(current);
+        self.conds.push_back((current, kind));
         current
     }
 
@@ -47,7 +47,7 @@ impl<'a> CodeGen<'a> {
         self.conds.pop_back();
     }
 
-    fn get_current_level(&self) -> usize {
+    fn get_current_level(&self) -> (usize, NodeKind) {
         self.conds.back().unwrap().clone()
     }
 
@@ -296,15 +296,21 @@ impl<'a> CodeGen<'a> {
                 gen_line!(self.f, ".Lend{}:\n", my_label);
             }
             NDBREAK => {
-                let label = self.get_current_level();
+                let (label, _) = self.get_current_level();
                 gen_line!(self.f, "  jmp .Lend{}\n", label);
             }
             NDCONTINUE => {
-                let label = self.get_current_level();
-                gen_line!(self.f, "  jmp .Lbegin{}\n", label);
+                let (label, kind) = self.get_current_level();
+                let loc = match kind {
+                    NDFOR => ".Lstep",
+                    NDDOWHILE => ".Lcond",
+                    NDWHILE => ".Lbegin",
+                    _ => panic!("Shouldn't reach here."),
+                };
+                gen_line!(self.f, "  jmp {}{}\n", loc, label);
             }
             NDWHILE => {
-                let my_label = self.push_level();
+                let my_label = self.push_level(NDWHILE);
                 gen_line!(self.f, ".Lbegin{}:\n", my_label);
                 self.gen(*node.cond.unwrap());
                 gen_line!(self.f, "  pop rax\n");
@@ -318,21 +324,22 @@ impl<'a> CodeGen<'a> {
                 self.pop_level();
             }
             NDDOWHILE => {
-                let my_label = self.push_level();
-                gen_line!(self.f, ".Ldo{}:\n", my_label);
-                self.gen(*node.repnode.unwrap());
+                let my_label = self.push_level(NDDOWHILE);
                 gen_line!(self.f, ".Lbegin{}:\n", my_label);
+                self.gen(*node.repnode.unwrap());
+                gen_line!(self.f, ".Lcond{}:\n", my_label);
                 self.gen(*node.cond.unwrap());
                 gen_line!(self.f, "  pop rax\n");
                 gen_line!(self.f, "  cmp rax, 0\n");
-                gen_line!(self.f, "  jne .Ldo{}\n", my_label);
+                gen_line!(self.f, "  jne .Lbegin{}\n", my_label);
                 gen_line!(self.f, ".Lend{}:\n", my_label);
                 self.pop_level();
             }
             NDFOR => {
-                let my_label = self.push_level();
+                let my_label = self.push_level(NDFOR);
                 if let Some(initnode) = node.initnode {
                     self.gen(*initnode);
+                    gen_line!(self.f, "  pop r15\n");
                 }
                 gen_line!(self.f, ".Lbegin{}:\n", my_label);
                 if let Some(cond) = node.cond {
@@ -346,6 +353,7 @@ impl<'a> CodeGen<'a> {
                 gen_line!(self.f, "  je .Lend{}\n", my_label);
                 self.gen(*node.repnode.unwrap());
                 gen_line!(self.f, "  pop r15\n"); // Throw away garbage
+                gen_line!(self.f, ".Lstep{}:\n", my_label);
                 if let Some(stepnode) = node.stepnode {
                     self.gen(*stepnode);
                     gen_line!(self.f, "  pop r15\n"); // Throw away garbage
