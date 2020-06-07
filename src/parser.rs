@@ -1,7 +1,7 @@
 use crate::tokenizer::TokenIter;
 use std::collections::LinkedList;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum NodeKind {
     NDADD,    // +
     NDSUB,    // -

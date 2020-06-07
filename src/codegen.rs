@@ -6,6 +6,8 @@ use std::io::Write;
 static FUNC_REGS_4: [&str; 6] = ["edi", "esi", "edx", "ecx", "r8d", "r9d"];
 static FUNC_REGS_8: [&str; 6] = ["rdi", "rsi", "rdx", "rcx", "r8", "r9"];
 
+static MAGIC: usize = 141421356;
+
 pub struct CodeGen<'a> {
     f: &'a mut File,
     prog: Program,
@@ -138,6 +140,20 @@ impl<'a> CodeGen<'a> {
 
         gen_line!(self.f, "  mov [rax], {}\n", src);
         gen_line!(self.f, "  push rdi\n");
+    }
+
+    fn gen_blockstmts(&mut self, mut blockstmts: LinkedList<Node>) {
+        // Let empty block evaluate to 0
+        if blockstmts.len() == 0 {
+            gen_line!(self.f, "  push 0\n");
+            return;
+        }
+        while let Some(stmt) = blockstmts.pop_front() {
+            self.gen(stmt);
+            if blockstmts.len() != 0 {
+                gen_line!(self.f, "  pop rax\n");
+            }
+        }
     }
 
     // Set the last result to rax, restore the rbp and return
@@ -275,7 +291,7 @@ impl<'a> CodeGen<'a> {
                     self.gen(*elsenode);
                 } else {
                     // No else node provided. Push some bogus value to balance stack.
-                    gen_line!(self.f, "  push 0\n");
+                    gen_line!(self.f, "  push {}\n", MAGIC);
                 }
                 gen_line!(self.f, ".Lend{}:\n", my_label);
             }
@@ -291,8 +307,10 @@ impl<'a> CodeGen<'a> {
                 gen_line!(self.f, "  cmp rax, 0\n");
                 gen_line!(self.f, "  je .Lend{}\n", my_label);
                 self.gen(*node.repnode.unwrap());
+                gen_line!(self.f, "  pop r15\n"); // Pop unneeded stuff
                 gen_line!(self.f, "  jmp .Lbegin{}\n", my_label);
-                gen_line!(self.f, ".Lend{}:", my_label);
+                gen_line!(self.f, ".Lend{}:\n", my_label);
+                gen_line!(self.f, "  push {}\n", MAGIC); // Balance stack
                 self.pop_level();
             }
             NDDOWHILE => {
@@ -304,7 +322,7 @@ impl<'a> CodeGen<'a> {
                 gen_line!(self.f, "  pop rax\n");
                 gen_line!(self.f, "  cmp rax, 0\n");
                 gen_line!(self.f, "  jne .Ldo{}\n", my_label);
-                gen_line!(self.f, ".Lend{}:", my_label);
+                gen_line!(self.f, ".Lend{}:\n", my_label);
                 self.pop_level();
             }
             NDFOR => {
@@ -323,25 +341,18 @@ impl<'a> CodeGen<'a> {
                 gen_line!(self.f, "  cmp rax, 0\n");
                 gen_line!(self.f, "  je .Lend{}\n", my_label);
                 self.gen(*node.repnode.unwrap());
+                gen_line!(self.f, "  pop r15\n"); // Throw away garbage
                 if let Some(stepnode) = node.stepnode {
                     self.gen(*stepnode);
+                    gen_line!(self.f, "  pop r15\n"); // Throw away garbage
                 }
                 gen_line!(self.f, "  jmp .Lbegin{}\n", my_label);
-                gen_line!(self.f, ".Lend{}:", my_label);
+                gen_line!(self.f, ".Lend{}:\n", my_label);
+                gen_line!(self.f, "  push {}\n", MAGIC);
                 self.pop_level();
             }
             NDBLOCK => {
-                // Let empty block evaluate to 0
-                if node.blockstmts.len() == 0 {
-                    gen_line!(self.f, "  push 0\n");
-                }
-                while let Some(stmt) = node.blockstmts.pop_front() {
-                    self.gen(stmt);
-                    // pop if not the last stmt
-                    if node.blockstmts.len() != 0 {
-                        gen_line!(self.f, "  pop rax\n");
-                    }
-                }
+                self.gen_blockstmts(node.blockstmts);
             }
             NDCALL => {
                 self.cond_label += 2; // Consume 2
@@ -391,16 +402,7 @@ impl<'a> CodeGen<'a> {
                     gen_line!(self.f, "  mov [rax], {}\n", regs[i]);
                 }
 
-                // Go on to execute the stmts
-                while let Some(stmt) = node.blockstmts.pop_front() {
-                    self.gen(stmt);
-                    // Pop if not the last stmt
-                    if node.blockstmts.len() != 0 {
-                        gen_line!(self.f, "  pop rax\n");
-                    }
-                }
-
-                // Restore rbp and return
+                self.gen_blockstmts(node.blockstmts);
                 self.gen_return();
             }
             NDDECL => {
