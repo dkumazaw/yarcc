@@ -31,6 +31,8 @@ pub enum NodeKind {
     NDDOWHILE,
     NDFOR,
     NDBLOCK,
+    NDCASE,
+    NDDEFAULT,
     NDCALL,    // function call
     NDFUNCDEF, // function definition
     NDDECL,    // declaration
@@ -50,14 +52,14 @@ pub struct Node {
     pub kind: NodeKind,
     pub lhs: Option<Box<Node>>,
     pub rhs: Option<Box<Node>>,
-    pub val: Option<i32>,      // Used by NDNUM
+    pub val: Option<i32>,      // Used by NDNUM, NDCASE
     pub offset: Option<usize>, // Used by NDLVAR
     pub ty: Option<Type>,
     pub scale_lhs: Option<bool>, // Used by NDADD and NDSUB to perform ptr arithm.
 
-    pub cond: Option<Box<Node>>,     // NDIF, NDFOR, NDWHILE, NDTERNARY
-    pub ifnode: Option<Box<Node>>,   // Used when if cond evaluates to true
-    pub elsenode: Option<Box<Node>>, // Used when if cond evaluates to false
+    pub cond: Option<Box<Node>>, // NDIF, NDFOR, NDWHILE, NDCASE, NDTERNARY
+    pub ifnode: Option<Box<Node>>, // Used when cond evaluates to true
+    pub elsenode: Option<Box<Node>>, // Used when cond evaluates to false
 
     pub repnode: Option<Box<Node>>, // Used for "for" & "while"
 
@@ -734,6 +736,7 @@ impl Parser {
     }
 
     // stmt = decl
+    //      | labeled
     //      | compound
     //      | select
     //      | iter
@@ -742,6 +745,8 @@ impl Parser {
     fn stmt(&mut self) -> Option<Node> {
         let node = if let Some(decl) = self.decl(false) {
             Some(decl)
+        } else if let Some(labeled) = self.labeled() {
+            Some(labeled)
         } else if let Some(compound) = self.compound() {
             Some(compound)
         } else if let Some(select) = self.select() {
@@ -758,6 +763,28 @@ impl Parser {
                 self.iter.expect(";");
                 Some(node)
             }
+        };
+        node
+    }
+
+    // labeled = "case" expr ":" stmt
+    //         | "default" ":" stmt
+    fn labeled(&mut self) -> Option<Node> {
+        use NodeKind::*;
+
+        let node = if self.iter.consume("case") {
+            let cond = self.expr();
+            self.iter.expect(":");
+            let then = self.stmt();
+            Some(
+                Node::new(NDCASE, None, None)
+                    .cond(Some(Box::new(cond)))
+                    .ifnode(then),
+            )
+        } else if self.iter.consume("default") {
+            None
+        } else {
+            None
         };
         node
     }
