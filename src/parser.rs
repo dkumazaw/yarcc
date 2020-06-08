@@ -726,36 +726,45 @@ impl Parser {
     }
 
     // stmt = decl
-    //      | "{" stmt* "}"
+    //      | compound
     //      | select
     //      | iter
     //      | jump
     //      | expr ";"
     fn stmt(&mut self) -> Node {
-        use NodeKind::*;
+        let node = if let Some(decl) = self.decl(false) {
+            decl
+        } else if let Some(compound) = self.compound() { 
+            compound
+        } else if let Some(select) = self.select() {
+            select
+        } else if let Some(iter) = self.iter() {
+            iter
+        } else if let Some(jump) = self.jump() {
+            jump
+        } else {
+            let node = self.expr();
+            self.iter.expect(";");
+            node
+        };
+        node
+    }
 
-        let mut node;
-        if let Some(decl) = self.decl(false) {
-            node = decl;
-        } else if self.iter.consume("{") {
-            node = Node::new(NDBLOCK, None, None);
+    // compound = "{" stmt* "}"
+    fn compound(&mut self) -> Option<Node> {
+        use NodeKind::*;
+        if self.iter.consume("{") {
+            let mut node = Node::new(NDBLOCK, None, None);
 
             self.locals.add_scope();
             while !self.iter.consume("}") {
                 node = node.blockstmt(self.stmt());
             }
             self.locals.remove_scope();
-        } else if let Some(select) = self.select() {
-            node = select
-        } else if let Some(iter) = self.iter() {
-            node = iter
-        } else if let Some(jump) = self.jump() {
-            node = jump
+            Some(node)
         } else {
-            node = self.expr();
-            self.iter.expect(";");
+            None
         }
-        node
     }
 
     // select = "if" "(" expr ")" stmt ("else" stmt)?
