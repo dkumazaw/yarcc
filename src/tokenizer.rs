@@ -4,9 +4,9 @@ static ASSIGN_OPS: [&str; 11] = [
     "=", "+=", "-=", "*=", "/=", "%=", "<<=", ">>=", "&=", "|=", "^=",
 ];
 static TYPES: [&str; 3] = ["char", "short", "int"];
-static KEYWORDS: [&str; 12] = [
+static KEYWORDS: [&str; 15] = [
     "char", "short", "int", "return", "if", "else", "while", "for", "sizeof", "break", "continue",
-    "do",
+    "do", "switch", "case", "default",
 ];
 
 fn is_type(s: &str) -> bool {

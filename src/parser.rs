@@ -724,9 +724,8 @@ impl Parser {
 
     // stmt = decl
     //      | "{" stmt* "}"
-    //      | "if" "(" expr ")" stmt ("else" stmt)?
-    //      | "while" "(" expr ")" stmt
-    //      | "for" "(" expr? ";" expr? ";" expr? ")" stmt
+    //      | select
+    //      | iter
     //      | jump
     //      | expr ";"
     fn stmt(&mut self) -> Node {
@@ -743,16 +742,8 @@ impl Parser {
                 node = node.blockstmt(self.stmt());
             }
             self.locals.remove_scope();
-        } else if self.iter.consume("if") {
-            self.iter.expect("(");
-            node = Node::new(NDIF, None, None).cond(Some(Box::new(self.expr())));
-            self.iter.expect(")");
-            node = node.ifnode(Some(Box::new(self.stmt())));
-
-            // Else statement
-            if self.iter.consume("else") {
-                node = node.elsenode(Some(Box::new(self.stmt())));
-            }
+        } else if let Some(select) = self.select() {
+            node = select
         } else if let Some(iter) = self.iter() {
             node = iter
         } else if let Some(jump) = self.jump() {
@@ -762,6 +753,29 @@ impl Parser {
             self.iter.expect(";");
         }
         node
+    }
+
+    // select = "if" "(" expr ")" stmt ("else" stmt)?
+    //        | "switch" "(" expr ")" stmt
+    fn select(&mut self) -> Option<Node> {
+        use NodeKind::*;
+
+        let mut node;
+        if self.iter.consume("if") {
+            self.iter.expect("(");
+            node = Node::new(NDIF, None, None).cond(Some(Box::new(self.expr())));
+            self.iter.expect(")");
+            node = node.ifnode(Some(Box::new(self.stmt())));
+
+            // Else statement
+            if self.iter.consume("else") {
+                node = node.elsenode(Some(Box::new(self.stmt())));
+            }
+        } else {
+            return None;
+        }
+
+        Some(node)
     }
 
     // iter = "while" "(" expr ")" stmt
