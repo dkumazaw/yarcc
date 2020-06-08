@@ -212,18 +212,24 @@ impl Node {
         self
     }
 
-    fn ifnode(mut self, ifnode: Option<Box<Node>>) -> Self {
-        self.ifnode = ifnode;
+    fn ifnode(mut self, ifnode: Option<Node>) -> Self {
+        if let Some(node) = ifnode {
+            self.ifnode = Some(Box::new(node));
+        }
         self
     }
 
-    fn elsenode(mut self, elsenode: Option<Box<Node>>) -> Self {
-        self.elsenode = elsenode;
+    fn elsenode(mut self, elsenode: Option<Node>) -> Self {
+        if let Some(node) = elsenode {
+            self.elsenode = Some(Box::new(node));
+        }
         self
     }
 
-    fn repnode(mut self, repnode: Option<Box<Node>>) -> Self {
-        self.repnode = repnode;
+    fn repnode(mut self, repnode: Option<Node>) -> Self {
+        if let Some(node) = repnode {
+            self.repnode = Some(Box::new(node));
+        }
         self
     }
 
@@ -237,8 +243,10 @@ impl Node {
         self
     }
 
-    fn blockstmt(mut self, node: Node) -> Self {
-        self.blockstmts.push_back(node);
+    fn blockstmt(mut self, node: Option<Node>) -> Self {
+        if let Some(node) = node {
+            self.blockstmts.push_back(node);
+        }
         self
     }
 
@@ -730,22 +738,26 @@ impl Parser {
     //      | select
     //      | iter
     //      | jump
-    //      | expr ";"
-    fn stmt(&mut self) -> Node {
+    //      | expr? ";"
+    fn stmt(&mut self) -> Option<Node> {
         let node = if let Some(decl) = self.decl(false) {
-            decl
-        } else if let Some(compound) = self.compound() { 
-            compound
+            Some(decl)
+        } else if let Some(compound) = self.compound() {
+            Some(compound)
         } else if let Some(select) = self.select() {
-            select
+            Some(select)
         } else if let Some(iter) = self.iter() {
-            iter
+            Some(iter)
         } else if let Some(jump) = self.jump() {
-            jump
+            Some(jump)
         } else {
-            let node = self.expr();
-            self.iter.expect(";");
-            node
+            if self.iter.consume(";") {
+                None
+            } else {
+                let node = self.expr();
+                self.iter.expect(";");
+                Some(node)
+            }
         };
         node
     }
@@ -777,11 +789,11 @@ impl Parser {
             self.iter.expect("(");
             node = Node::new(NDIF, None, None).cond(Some(Box::new(self.expr())));
             self.iter.expect(")");
-            node = node.ifnode(Some(Box::new(self.stmt())));
+            node = node.ifnode(self.stmt());
 
             // Else statement
             if self.iter.consume("else") {
-                node = node.elsenode(Some(Box::new(self.stmt())));
+                node = node.elsenode(self.stmt());
             }
         } else if self.iter.consume("switch") {
             self.iter.expect("(");
@@ -809,7 +821,7 @@ impl Parser {
             self.iter.expect("(");
             node = Node::new(NDWHILE, None, None).cond(Some(Box::new(self.expr())));
             self.iter.expect(")");
-            node = node.repnode(Some(Box::new(self.stmt())));
+            node = node.repnode(self.stmt());
         } else if self.iter.consume("do") {
             node = Node::new(NDDOWHILE, None, None);
             let repnode = self.stmt();
@@ -818,9 +830,7 @@ impl Parser {
             let cond = self.expr();
             self.iter.expect(")");
             self.iter.expect(";");
-            node = node
-                .repnode(Some(Box::new(repnode)))
-                .cond(Some(Box::new(cond)));
+            node = node.repnode(repnode).cond(Some(Box::new(cond)));
         } else if self.iter.consume("for") {
             self.iter.expect("(");
             node = Node::new(NDFOR, None, None);
@@ -840,7 +850,7 @@ impl Parser {
                 node = node.stepnode(Some(Box::new(self.expr())));
                 self.iter.expect(")");
             }
-            node = node.repnode(Some(Box::new(self.stmt())));
+            node = node.repnode(self.stmt());
         } else {
             return None;
         }
@@ -894,13 +904,13 @@ impl Parser {
         let mut node = self.logical_or();
 
         if self.iter.consume("?") {
-            let truenode = self.expr();
+            let truenode = Some(self.expr());
             self.iter.expect(":");
-            let falsenode = self.conditional();
+            let falsenode = Some(self.conditional());
             node = Node::new(NDTERNARY, None, None)
                 .cond(Some(Box::new(node)))
-                .ifnode(Some(Box::new(truenode)))
-                .elsenode(Some(Box::new(falsenode)));
+                .ifnode(truenode)
+                .elsenode(falsenode);
         }
         node
     }

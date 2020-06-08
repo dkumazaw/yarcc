@@ -282,18 +282,18 @@ impl<'a> CodeGen<'a> {
                 gen_line!(self.f, "  pop rax\n");
                 gen_line!(self.f, "  cmp rax, 0\n");
                 gen_line!(self.f, "  je .Lelse{}\n", my_label);
-
-                self.gen(*node.ifnode.unwrap());
+                if let Some(ifnode) = node.ifnode {
+                    self.gen(*ifnode);
+                    gen_line!(self.f, "  pop r15\n");
+                }
                 gen_line!(self.f, "  jmp .Lend{}\n", my_label);
                 gen_line!(self.f, ".Lelse{}:\n", my_label);
-                // If else node exists, generate.
                 if let Some(elsenode) = node.elsenode {
                     self.gen(*elsenode);
-                } else {
-                    // No else node provided. Push some bogus value to balance stack.
-                    gen_line!(self.f, "  push {}\n", MAGIC);
+                    gen_line!(self.f, "  pop r15\n");
                 }
                 gen_line!(self.f, ".Lend{}:\n", my_label);
+                gen_line!(self.f, "  push {}\n", MAGIC);
             }
             NDSWITCH => {
                 let my_label = self.push_level(NDSWITCH);
@@ -361,8 +361,10 @@ impl<'a> CodeGen<'a> {
                 gen_line!(self.f, "  pop rax\n");
                 gen_line!(self.f, "  cmp rax, 0\n");
                 gen_line!(self.f, "  je .Lend{}\n", my_label);
-                self.gen(*node.repnode.unwrap());
-                gen_line!(self.f, "  pop r15\n"); // Throw away garbage
+                if let Some(repnode) = node.repnode {
+                    self.gen(*repnode);
+                    gen_line!(self.f, "  pop r15\n"); // Throw away garbage
+                }
                 gen_line!(self.f, ".Lstep{}:\n", my_label);
                 if let Some(stepnode) = node.stepnode {
                     self.gen(*stepnode);
