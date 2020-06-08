@@ -14,4 +14,6 @@ tests! {
     ifelse1: ("int main() { if (1 != 1) return 1; else return 2; }", 2),
     ifelse2: ("int main() { int a; a = 4; if (a == 4) return 1; else return 5;} ", 1),
     ifelse3: ("int main() { int boo; boo = 19; if (boo == 1) return 10; else return 2;} ", 2),
+    switch0: ("int main() { int i = 0; switch(i) i=3; return i; }", 0),
+    switch1: ("int main() { int i = 0; switch(i) { i=3; i += 4; } return i; }", 0),
 }

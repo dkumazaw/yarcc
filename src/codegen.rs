@@ -295,6 +295,14 @@ impl<'a> CodeGen<'a> {
                 }
                 gen_line!(self.f, ".Lend{}:\n", my_label);
             }
+            NDSWITCH => {
+                let my_label = self.push_level(NDSWITCH);
+                self.gen(*node.lhs.unwrap());
+                gen_line!(self.f, "  pop rax\n");
+                //self.gen(*node.rhs.unwrap());
+                gen_line!(self.f, ".Lend{}:\n", my_label);
+                gen_line!(self.f, "  push {}\n", MAGIC);
+            }
             NDBREAK => {
                 let (label, _) = self.get_current_level();
                 gen_line!(self.f, "  jmp .Lend{}\n", label);

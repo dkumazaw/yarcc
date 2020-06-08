@@ -26,6 +26,7 @@ pub enum NodeKind {
     NDBREAK,
     NDCONTINUE,
     NDIF,
+    NDSWITCH,
     NDWHILE,
     NDDOWHILE,
     NDFOR,
@@ -42,6 +43,8 @@ pub enum NodeKind {
 }
 
 // Node of an AST
+// NOTE: Maybe use enum to reduce redundancy?
+// Will leave this like this until wastefulness becomes an issue
 #[derive(Debug)]
 pub struct Node {
     pub kind: NodeKind,
@@ -53,8 +56,8 @@ pub struct Node {
     pub scale_lhs: Option<bool>, // Used by NDADD and NDSUB to perform ptr arithm.
 
     pub cond: Option<Box<Node>>,     // NDIF, NDFOR, NDWHILE, NDTERNARY
-    pub ifnode: Option<Box<Node>>,   // Used when if cond is true
-    pub elsenode: Option<Box<Node>>, // Used when if cond is false
+    pub ifnode: Option<Box<Node>>,   // Used when if cond evaluates to true
+    pub elsenode: Option<Box<Node>>, // Used when if cond evaluates to false
 
     pub repnode: Option<Box<Node>>, // Used for "for" & "while"
 
@@ -771,6 +774,14 @@ impl Parser {
             if self.iter.consume("else") {
                 node = node.elsenode(Some(Box::new(self.stmt())));
             }
+        } else if self.iter.consume("switch") {
+            self.iter.expect("(");
+            // Use lhs and rhs to store the controlling expr
+            // and the statement.
+            let ctrl = self.expr();
+            self.iter.expect(")");
+            let _stmt = self.stmt();
+            node = Node::new(NDSWITCH, Some(Box::new(ctrl)), None);
         } else {
             return None;
         }
