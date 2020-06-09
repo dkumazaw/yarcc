@@ -16,4 +16,6 @@ tests! {
     ifelse3: ("int main() { int boo; boo = 19; if (boo == 1) return 10; else return 2;} ", 2),
     switch0: ("int main() { int i = 0; switch(i) i=3; return i; }", 0),
     switch1: ("int main() { int i = 0; switch(i) { i=3; i += 4; } return i; }", 0),
+    switch2: ("int main() { int i = 3, b = 3; switch(i) case 3: b = 4; return b;  }", 4),
+    switch3: ("int main() { int i = 3, b = 3; switch(i) case 2: b = 4; return b;  }", 3),
 }
