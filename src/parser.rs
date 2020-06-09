@@ -52,8 +52,8 @@ pub struct Node {
     pub kind: NodeKind,
     pub lhs: Option<Box<Node>>,
     pub rhs: Option<Box<Node>>,
-    pub val: Option<i32>,      // Used by NDNUM, NDCASE
-    pub offset: Option<usize>, // Used by NDLVAR, NDCASE
+    pub val: Option<i32>,      // NDNUM, NDCASE
+    pub offset: Option<usize>, // NDLVAR, NDCASE
     pub ty: Option<Type>,
     pub scale_lhs: Option<bool>, // Used by NDADD and NDSUB to perform ptr arithm.
 
@@ -61,7 +61,7 @@ pub struct Node {
     pub ifnode: Option<Box<Node>>,   // Used when cond evaluates to true
     pub elsenode: Option<Box<Node>>, // Used when cond evaluates to false
 
-    pub repnode: Option<Box<Node>>, // Used for "for" & "while"
+    pub repnode: Option<Box<Node>>, // NDFOR, NDWHILE
 
     pub initnode: Option<Box<Node>>, // NDFOR
     pub stepnode: Option<Box<Node>>, // NDFOR
@@ -71,10 +71,9 @@ pub struct Node {
     pub name: Option<String>,       // NDCALL, NDGVARDEF, NDFUNCDEF
     pub funcargs: LinkedList<Node>, // NDCALL
 
-    pub funcarg_vars: LinkedList<Var>, // Context of args; used by NDFUNCDEF
+    pub funcarg_vars: LinkedList<Var>, // NDFUNCDEF (Context of args)
 
-    // Local variable context for NDFUNCDEF and NDBLOCK(TODO)
-    pub lvars_offset: Option<usize>, // Stores the amount of space needed on stack for lvars.
+    pub lvars_offset: Option<usize>, // NDFUNCDEF (amount of space needed on stack for lvars)
 
     pub inits: LinkedList<Node>, // NDDECL
 
