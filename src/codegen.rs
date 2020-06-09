@@ -80,6 +80,10 @@ impl<'a> CodeGen<'a> {
         gen_line!(self.f, ".global main\n\n");
     }
 
+    fn gen_push_magic(&mut self) {
+        gen_line!(self.f, "  push {}\n", MAGIC);
+    }
+
     fn gen_lval(&mut self, node: Node) {
         use NodeKind::*;
 
@@ -293,7 +297,7 @@ impl<'a> CodeGen<'a> {
                     gen_line!(self.f, "  pop r15\n");
                 }
                 gen_line!(self.f, ".Lend{}:\n", my_label);
-                gen_line!(self.f, "  push {}\n", MAGIC);
+                self.gen_push_magic();
             }
             NDCASE => {
                 let (label, kind) = self.get_current_level();
@@ -312,7 +316,7 @@ impl<'a> CodeGen<'a> {
                 if let Some(stmt) = node.stmt {
                     self.gen(*stmt);
                 } else {
-                    gen_line!(self.f, "  push {}\n", MAGIC);
+                    self.gen_push_magic();
                 }
             }
             NDSWITCH => {
@@ -338,7 +342,7 @@ impl<'a> CodeGen<'a> {
                     gen_line!(self.f, "  pop r15\n");
                 }
                 gen_line!(self.f, ".Lend{}:\n", my_label);
-                gen_line!(self.f, "  push {}\n", MAGIC);
+                self.gen_push_magic();
             }
             NDBREAK => {
                 let (label, _) = self.get_current_level();
@@ -365,7 +369,7 @@ impl<'a> CodeGen<'a> {
                 gen_line!(self.f, "  pop r15\n"); // Pop unneeded stuff
                 gen_line!(self.f, "  jmp .Lbegin{}\n", my_label);
                 gen_line!(self.f, ".Lend{}:\n", my_label);
-                gen_line!(self.f, "  push {}\n", MAGIC); // Balance stack
+                self.gen_push_magic();
                 self.pop_level();
             }
             NDDOWHILE => {
@@ -379,7 +383,7 @@ impl<'a> CodeGen<'a> {
                 gen_line!(self.f, "  cmp rax, 0\n");
                 gen_line!(self.f, "  jne .Lbegin{}\n", my_label);
                 gen_line!(self.f, ".Lend{}:\n", my_label);
-                gen_line!(self.f, "  push {}\n", MAGIC); // Balance stack
+                self.gen_push_magic();
                 self.pop_level();
             }
             NDFOR => {
@@ -409,7 +413,7 @@ impl<'a> CodeGen<'a> {
                 }
                 gen_line!(self.f, "  jmp .Lbegin{}\n", my_label);
                 gen_line!(self.f, ".Lend{}:\n", my_label);
-                gen_line!(self.f, "  push {}\n", MAGIC);
+                self.gen_push_magic();
                 self.pop_level();
             }
             NDBLOCK => {
@@ -475,9 +479,7 @@ impl<'a> CodeGen<'a> {
                         break;
                     }
                 }
-                // For now, just push some bogus value.
-                // TODO: Fix this
-                gen_line!(self.f, "  push 12345\n");
+                self.gen_push_magic();
             }
             NDADDR => {
                 self.gen_lval(*node.lhs.unwrap());
