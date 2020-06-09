@@ -84,6 +84,7 @@ pub struct Node {
     pub ctrl: Option<Box<Node>>, // NDSWITCH
     pub stmt: Option<Box<Node>>, // NDSWITCH
     pub cases: LinkedList<i32>,  // NDSWITCH
+    pub has_default: bool,       // NDSWITCH
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -194,6 +195,7 @@ impl Node {
             ctrl: None,
             stmt: None,
             cases: LinkedList::new(),
+            has_default: false,
         }
     }
 
@@ -315,6 +317,8 @@ impl Node {
         if stmt.kind == NDCASE {
             self.cases.push_back(stmt.val.unwrap());
             stmt.offset = Some(0);
+        } else if stmt.kind == NDDEFAULT {
+            self.has_default = true;
         } else if stmt.kind == NDBLOCK {
             let mut iter = stmt.blockstmts.iter_mut();
             let mut counter = 0;
@@ -325,6 +329,9 @@ impl Node {
                     self.cases.push_back(val);
                     stmt.offset = Some(counter);
                     counter += 1;
+                }
+                if stmt.kind == NDDEFAULT {
+                    self.has_default = true;
                 }
             }
         }
@@ -826,7 +833,9 @@ impl Parser {
             let then = self.stmt();
             Some(Node::new(NDCASE, None, None).ifnode(then).val(cond as i32))
         } else if self.iter.consume("default") {
-            None
+            self.iter.expect(":");
+            let stmt = self.stmt();
+            Some(Node::new(NDDEFAULT, None, None).stmt(stmt))
         } else {
             None
         };

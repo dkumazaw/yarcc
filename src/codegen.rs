@@ -303,6 +303,18 @@ impl<'a> CodeGen<'a> {
                 gen_line!(self.f, ".Lcase{}of{}:\n", node.offset.unwrap(), label);
                 self.gen(*node.ifnode.unwrap());
             }
+            NDDEFAULT => {
+                let (label, kind) = self.get_current_level();
+                if kind != NDSWITCH {
+                    panic!("Kind can't be anything other than switch");
+                }
+                gen_line!(self.f, ".Ldefault{}:\n", label);
+                if let Some(stmt) = node.stmt {
+                    self.gen(*stmt);
+                } else {
+                    gen_line!(self.f, "  push {}\n", MAGIC);
+                }
+            }
             NDSWITCH => {
                 let my_label = self.push_level(NDSWITCH);
                 self.gen(*node.ctrl.unwrap());
@@ -314,8 +326,12 @@ impl<'a> CodeGen<'a> {
                     gen_line!(self.f, "  je .Lcase{}of{}\n", counter, my_label);
                     counter += 1;
                 }
-                // TODO: Support default
-                gen_line!(self.f, "  jmp .Lend{}\n", my_label);
+                let loc = if node.has_default {
+                    ".Ldefault"
+                } else {
+                    ".Lend"
+                };
+                gen_line!(self.f, "  jmp {}{}\n", loc, my_label);
 
                 if let Some(stmt) = node.stmt {
                     self.gen(*stmt);

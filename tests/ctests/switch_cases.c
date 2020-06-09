@@ -47,8 +47,46 @@ int switch_break() {
     return b; // Expect: 4
 }
 
+int switch_default() {
+    int i = 7;
+    int b = 0;
+
+    switch (i) {
+        b += 10; // Should be ignored
+        case 4:
+            b += 4;
+            break;
+        case 5:
+            b += 5;
+            break;
+        default:
+            b += 6;
+    }
+
+    return b; // Expect: 6
+}
+
+int switch_default_fallback() {
+    int i = 5;
+    int b = 0;
+
+    switch (i) {
+        b += 10; // Should be ignored
+        case 4:
+            b += 4;
+            break;
+        case 5:
+            b += 5;
+        default:
+            b += 6;
+    }
+
+    return b; // Expect: 11
+}
+
 int main() {
-    if (switch_nobreak() != 15 || switch_break() != 4) {
+    if (switch_nobreak() != 15 || switch_break() != 4 
+        || switch_default() != 6 || switch_default_fallback() != 11) {
         return 0;
     } else {
         return 1;
