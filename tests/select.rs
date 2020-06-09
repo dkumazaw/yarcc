@@ -18,4 +18,5 @@ tests! {
     switch1: ("int main() { int i = 0; switch(i) { i=3; i += 4; } return i; }", 0),
     switch2: ("int main() { int i = 3, b = 3; switch(i) case 3: b = 4; return b;  }", 4),
     switch3: ("int main() { int i = 3, b = 3; switch(i) case 2: b = 4; return b;  }", 3),
+    switch4: ("tests/ctests/switch_cases.c", 1),
 }

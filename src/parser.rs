@@ -53,12 +53,12 @@ pub struct Node {
     pub lhs: Option<Box<Node>>,
     pub rhs: Option<Box<Node>>,
     pub val: Option<i32>,      // Used by NDNUM, NDCASE
-    pub offset: Option<usize>, // Used by NDLVAR
+    pub offset: Option<usize>, // Used by NDLVAR, NDCASE
     pub ty: Option<Type>,
     pub scale_lhs: Option<bool>, // Used by NDADD and NDSUB to perform ptr arithm.
 
-    pub cond: Option<Box<Node>>, // NDIF, NDFOR, NDWHILE, NDCASE, NDTERNARY
-    pub ifnode: Option<Box<Node>>, // Used when cond evaluates to true
+    pub cond: Option<Box<Node>>,     // NDIF, NDFOR, NDWHILE, NDTERNARY
+    pub ifnode: Option<Box<Node>>,   // Used when cond evaluates to true
     pub elsenode: Option<Box<Node>>, // Used when cond evaluates to false
 
     pub repnode: Option<Box<Node>>, // Used for "for" & "while"
@@ -80,6 +80,10 @@ pub struct Node {
 
     pub eval_pre: Option<bool>, // NDASSIGN; Pre-evaluate the result and return that value
     pub assign_mode: Option<AssignMode>, // NDASSIGN
+
+    pub ctrl: Option<Box<Node>>, // NDSWITCH
+    pub stmt: Option<Box<Node>>, // NDSWITCH
+    pub cases: LinkedList<i32>,  // NDSWITCH
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -187,6 +191,9 @@ impl Node {
             inits: LinkedList::new(),
             eval_pre: None,
             assign_mode: None,
+            ctrl: None,
+            stmt: None,
+            cases: LinkedList::new(),
         }
     }
 
@@ -280,6 +287,47 @@ impl Node {
     fn assign_mode(mut self, mode: AssignMode) -> Self {
         self.assign_mode = Some(mode);
         self
+    }
+
+    fn ctrl(mut self, ctrl: Node) -> Self {
+        self.ctrl = Some(Box::new(ctrl));
+        self
+    }
+
+    fn stmt(mut self, stmt: Option<Node>) -> Self {
+        if let Some(node) = stmt {
+            self.stmt = Some(Box::new(node));
+        }
+        self
+    }
+
+    fn populate_switch(&mut self) {
+        // Use offset to communicate the relative position in the
+        // order of appearance
+        use NodeKind::*;
+
+        if self.kind != NDSWITCH || self.stmt.is_none() {
+            return;
+        }
+
+        let stmt = self.stmt.as_mut().unwrap();
+
+        if stmt.kind == NDCASE {
+            self.cases.push_back(stmt.val.unwrap());
+            stmt.offset = Some(0);
+        } else if stmt.kind == NDBLOCK {
+            let mut iter = stmt.blockstmts.iter_mut();
+            let mut counter = 0;
+            while let Some(stmt) = iter.next() {
+                if stmt.kind == NDCASE {
+                    let val = stmt.val.unwrap();
+                    // TODO: Raise error if two cases with same val
+                    self.cases.push_back(val);
+                    stmt.offset = Some(counter);
+                    counter += 1;
+                }
+            }
+        }
     }
 
     fn populate_ty(&mut self) {
@@ -767,20 +815,16 @@ impl Parser {
         node
     }
 
-    // labeled = "case" expr ":" stmt
+    // labeled = "case" num ":" stmt // TODO: constexpr
     //         | "default" ":" stmt
     fn labeled(&mut self) -> Option<Node> {
         use NodeKind::*;
 
         let node = if self.iter.consume("case") {
-            let cond = self.expr();
+            let cond = self.iter.expect_number();
             self.iter.expect(":");
             let then = self.stmt();
-            Some(
-                Node::new(NDCASE, None, None)
-                    .cond(Some(Box::new(cond)))
-                    .ifnode(then),
-            )
+            Some(Node::new(NDCASE, None, None).ifnode(then).val(cond as i32))
         } else if self.iter.consume("default") {
             None
         } else {
@@ -824,12 +868,11 @@ impl Parser {
             }
         } else if self.iter.consume("switch") {
             self.iter.expect("(");
-            // Use lhs and rhs to store the controlling expr
-            // and the statement.
             let ctrl = self.expr();
             self.iter.expect(")");
-            let _stmt = self.stmt();
-            node = Node::new(NDSWITCH, Some(Box::new(ctrl)), None);
+            let stmt = self.stmt();
+            node = Node::new(NDSWITCH, None, None).ctrl(ctrl).stmt(stmt);
+            node.populate_switch();
         } else {
             return None;
         }

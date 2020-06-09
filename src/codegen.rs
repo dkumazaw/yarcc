@@ -295,11 +295,32 @@ impl<'a> CodeGen<'a> {
                 gen_line!(self.f, ".Lend{}:\n", my_label);
                 gen_line!(self.f, "  push {}\n", MAGIC);
             }
+            NDCASE => {
+                let (label, kind) = self.get_current_level();
+                if kind != NDSWITCH {
+                    panic!("Kind can't be anything other than switch");
+                }
+                gen_line!(self.f, ".Lcase{}of{}:\n", node.offset.unwrap(), label);
+                self.gen(*node.ifnode.unwrap());
+            }
             NDSWITCH => {
                 let my_label = self.push_level(NDSWITCH);
-                self.gen(*node.lhs.unwrap());
+                self.gen(*node.ctrl.unwrap());
                 gen_line!(self.f, "  pop rax\n");
-                //self.gen(*node.rhs.unwrap());
+
+                let mut counter = 0;
+                while let Some(val) = node.cases.pop_front() {
+                    gen_line!(self.f, "  cmp rax, {}\n", val);
+                    gen_line!(self.f, "  je .Lcase{}of{}\n", counter, my_label);
+                    counter += 1;
+                }
+                // TODO: Support default
+                gen_line!(self.f, "  jmp .Lend{}\n", my_label);
+
+                if let Some(stmt) = node.stmt {
+                    self.gen(*stmt);
+                    gen_line!(self.f, "  pop r15\n");
+                }
                 gen_line!(self.f, ".Lend{}:\n", my_label);
                 gen_line!(self.f, "  push {}\n", MAGIC);
             }
