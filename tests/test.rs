@@ -5,11 +5,11 @@ use std::process::Command;
 mod macros;
 
 // Test cases from examples
-tests! {
+test_succeed! {
     singlenum: ("examples/singlenum.c", 94),
 }
 
-tests! {
+test_succeed! {
     simple0: ("int main() { return   0;} ", 0),
     simple1: ("int main() { return  42;} ", 42),
     simple2: ("int main() { return   12 + 34 - 5 ;} ", 41),

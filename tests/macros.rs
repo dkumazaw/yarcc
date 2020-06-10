@@ -1,4 +1,4 @@
-macro_rules! tests {
+macro_rules! test_succeed {
     ($($name:ident: ($input:tt, $expected:tt),)*) => {
         $(
             #[test]
@@ -9,10 +9,13 @@ macro_rules! tests {
                                 .assert()
                                 .success();
 
-                let _obj = Command::new("cc")
+                let obj = Command::new("cc")
                                  .args(&["-no-pie", "-o", "tmp", "tmp.s"])
-                                 .output()
-                                 .unwrap();
+                                 .output();
+                match obj {
+                    Ok(_) => (),
+                    Err(_) => panic!("Failed to assemble/link the generated file.")
+                }
 
                 let status = Command::new("./tmp")
                                        .status()

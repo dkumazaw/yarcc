@@ -6,7 +6,7 @@ use std::process::Command;
 #[macro_use]
 mod macros;
 
-tests! {
+test_succeed! {
     if0: ("int main() { if (1 == 1) return 1; return 2;} ", 1),
     if1: ("int main() { if (1 != 1) return 1; return 2;} ", 2),
     if2: ("int main() { int a = 1; if (a == 0 ) a = 3; return a; }", 1),

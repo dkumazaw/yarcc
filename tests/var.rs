@@ -5,7 +5,7 @@ use std::process::Command;
 #[macro_use]
 mod macros;
 
-tests! {
+test_succeed! {
     lvar0: ("int main() { int a; a = 1; a;} ", 1),
     lvar1: ("int main() { int b; b = 1 + 3 * (4 - 2); b;} ", 7),
     lvar2: ("int main() { int foo; foo = 10 + 4; foo;} ", 14),

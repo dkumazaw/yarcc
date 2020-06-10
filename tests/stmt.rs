@@ -5,7 +5,7 @@ use std::process::Command;
 #[macro_use]
 mod macros;
 
-tests! {
+test_succeed! {
     // Optional expression stmts should be a no-op.
     optexpr0: ("int main() { ;;;;  {;; } return 1;}", 1),
     optexpr1: ("int main() { int i; for (i = 0; i < 4; i++) ; return i; }", 4),
