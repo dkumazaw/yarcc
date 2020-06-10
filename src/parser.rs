@@ -42,6 +42,7 @@ pub enum NodeKind {
     NDLVAR, // local var
     NDGVAR, // global var
     NDNUM,
+    NDSTR,
 }
 
 // Node of an AST
@@ -53,7 +54,7 @@ pub struct Node {
     pub lhs: Option<Box<Node>>,
     pub rhs: Option<Box<Node>>,
     pub val: Option<i32>,      // NDNUM, NDCASE
-    pub offset: Option<usize>, // NDLVAR, NDCASE
+    pub offset: Option<usize>, // NDLVAR, NDCASE, NDSTR
     pub ty: Option<Type>,
     pub scale_lhs: Option<bool>, // Used by NDADD and NDSUB to perform ptr arithm.
 
@@ -159,12 +160,14 @@ pub struct LVarScopes {
 pub struct Program {
     pub nodes: LinkedList<Node>,
     pub globals: LinkedList<Var>,
+    pub literals: LinkedList<String>,
 }
 
 pub struct Parser {
     iter: TokenIter,
     globals: LinkedList<Var>,
     locals: LVarScopes,
+    literals: LinkedList<String>,
 }
 
 impl Node {
@@ -557,6 +560,7 @@ impl Parser {
             iter: iter,
             globals: LinkedList::new(),
             locals: LVarScopes::new(),
+            literals: LinkedList::new(),
         }
     }
 
@@ -565,6 +569,7 @@ impl Parser {
         Program {
             nodes: nodes,
             globals: self.globals,
+            literals: self.literals,
         }
     }
 
@@ -1309,6 +1314,7 @@ impl Parser {
     }
 
     // primary = num
+    //         | str
     //         | ident ("(" (expr, )* ")")?
     //         | "(" expr ")"
     fn primary(&mut self) -> Node {
@@ -1353,6 +1359,9 @@ impl Parser {
                     Node::new(NDGVAR, None, None).name(ident).ty(var.ty.clone())
                 }
             }
+        } else if let Some(literal) = self.iter.consume_str() {
+            let pos = self.add_literal(literal);
+            Node::new(NDSTR, None, None).offset(pos)
         } else {
             // Must be NUM at this point
             Node::new(NDNUM, None, None)
@@ -1386,6 +1395,12 @@ impl Parser {
             offset: None,
             scope: None,
         });
+    }
+
+    fn add_literal(&mut self, s: String) -> usize {
+        let pos = self.literals.len();
+        self.literals.push_back(s);
+        pos
     }
 
     fn print_warn(s: &str) {

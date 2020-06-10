@@ -40,6 +40,5 @@ test_succeed! {
     pointer2: ("int main() { int x; int *xx; int **xxx; xx = &x; xxx = &xx; **xxx = 103; return x; } ", 103),
     pointer3: ("int main() { int x; int *y; y = &x; *y = 5; return *(&x); }", 5),
     pointer4: ("int foo(int **x) { **x = 32; } int main() {int a; int *b; b = &a; foo(&b); return a; } ", 32),
+    literal: ("tests/ctests/literal.c", 1),
 }
-
-

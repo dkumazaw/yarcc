@@ -399,6 +399,16 @@ impl TokenIter {
         ret
     }
 
+    pub fn consume_str(&mut self) -> Option<String> {
+        let t = self.peek();
+        let mut ret = None;
+        if t.kind == TokenKind::TKSTR {
+            ret = t.string.clone();
+            self.next();
+        }
+        ret
+    }
+
     pub fn consume_assign_op(&mut self) -> Option<String> {
         let t = self.peek();
         let mut ret: Option<String> = None;

@@ -7,6 +7,7 @@ static FUNC_REGS_4: [&str; 6] = ["edi", "esi", "edx", "ecx", "r8d", "r9d"];
 static FUNC_REGS_8: [&str; 6] = ["rdi", "rsi", "rdx", "rcx", "r8", "r9"];
 
 static MAGIC: usize = 141421356;
+static LITERAL_HEAD: &str = ".Lstr";
 
 pub struct CodeGen<'a> {
     f: &'a mut File,
@@ -62,6 +63,19 @@ impl<'a> CodeGen<'a> {
                 break;
             }
         }
+
+        let mut literal_count = 0;
+        loop {
+            if let Some(literal) = self.prog.literals.pop_front() {
+                gen_line!(self.f, "{}{}:\n", LITERAL_HEAD, literal_count);
+                gen_line!(self.f, "  .string \"{}\"\n", literal);
+                literal_count += 1;
+            } else {
+                break;
+            }
+        }
+
+        gen_line!(self.f, "\n");
     }
 
     fn gen_text(&mut self) {
@@ -95,6 +109,14 @@ impl<'a> CodeGen<'a> {
             }
             NDGVAR => {
                 gen_line!(self.f, "  push offset {}\n", node.name.unwrap());
+            }
+            NDSTR => {
+                gen_line!(
+                    self.f,
+                    "  push offset {}{}\n",
+                    LITERAL_HEAD,
+                    node.offset.unwrap()
+                );
             }
             NDDEREF => {
                 self.gen(*node.lhs.unwrap());
@@ -177,6 +199,9 @@ impl<'a> CodeGen<'a> {
         match node.kind {
             NDNUM => {
                 gen_line!(self.f, "  push {}\n", node.val.unwrap());
+            }
+            NDSTR => {
+                self.gen_lval(node);
             }
             NDLVAR | NDGVAR => match node.ty.as_ref().unwrap().kind {
                 ARRAY => {
