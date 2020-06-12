@@ -1,3 +1,4 @@
+// Recursive-descent parser
 use crate::tokenizer::TokenIter;
 use std::collections::LinkedList;
 
@@ -130,6 +131,7 @@ pub enum TypeKind {
     LONG,
     PTR,
     ARRAY,
+    STRUCT,
 }
 
 #[derive(Debug, Clone)]
@@ -137,6 +139,9 @@ pub struct Type {
     pub kind: TypeKind,
     pub ptr_to: Option<Box<Type>>,
     pub array_size: Option<usize>,
+    pub struct_size: Option<usize>,
+
+    pub fields: Option<Vec<Box<(String, Type)>>>, // STRUCT, ENUM, UNION
 }
 
 // Stores the name of var, its type, and stack offset if the variable is local.
@@ -463,6 +468,7 @@ impl TypeKind {
             "char" => TypeKind::CHAR,
             "int" => TypeKind::INT,
             "short" => TypeKind::SHORT,
+            "struct" => TypeKind::STRUCT,
             _ => {
                 panic!("Cannot convert this token to TypeKind.");
             }
@@ -494,6 +500,8 @@ impl Type {
                 Some(Box::new(Type::new(basekind, ref_depth - 1)))
             },
             array_size: None,
+            struct_size: None,
+            fields: None,
         }
     }
 
@@ -502,6 +510,8 @@ impl Type {
             kind: TypeKind::ARRAY,
             ptr_to: Some(Box::new(Type::new(basekind, ref_depth))),
             array_size: Some(array_size),
+            struct_size: None,
+            fields: None,
         }
     }
 
@@ -520,6 +530,8 @@ impl Type {
             kind: TypeKind::PTR,
             ptr_to: Some(Box::new(self.clone())),
             array_size: None,
+            struct_size: None,
+            fields: None,
         }
     }
 
@@ -533,6 +545,7 @@ impl Type {
             LONG => 8,
             PTR => 8,
             ARRAY => self.base_size(),
+            STRUCT => self.struct_size.unwrap(),
         }
     }
 
@@ -540,7 +553,7 @@ impl Type {
     pub fn total_size(&self) -> usize {
         use TypeKind::*;
         match self.kind {
-            CHAR | SHORT | INT | LONG | PTR => self.size(),
+            CHAR | SHORT | INT | LONG | PTR | STRUCT => self.size(),
             ARRAY => self.array_size.unwrap() * self.size(),
         }
     }
@@ -621,7 +634,9 @@ impl Parser {
         }
     }
 
-    // decl = decl_spec (init_decl ("," init_decl)*)? ";"
+    // decl = decl_spec init_decl ("," init_decl)* ";"
+    // init_decl = declarator ("=" initializer)?
+    // TODO: Support global variable initializer
     fn decl(&mut self, is_global: bool) -> Option<Node> {
         use NodeKind::*;
 
@@ -631,36 +646,44 @@ impl Parser {
             if is_global {
                 panic!("Expected type specifier")
             } else {
-                return None
+                return None;
             }
         }
 
         let mut node = Node::new(NDDECL, None, None);
 
-        self.init_decl(&mut node, is_global, kind.unwrap());
-        while self.iter.consume(",") {
-            self.init_decl(&mut node, is_global, kind.unwrap());
+        loop {
+            let (name, ty) = self.read_declarator(kind.unwrap());
+            if is_global {
+                self.add_gvar(name, ty.clone());
+            } else {
+                let var = self.add_lvar(name, ty.clone());
+                if self.iter.consume("=") {
+                    self.initializer(&mut node, var);
+                }
+            }
+            if !self.iter.consume(",") {
+                break;
+            }
         }
-
         self.iter.expect(";");
         Some(node)
     }
 
-    // decl_spec  
+    // decl_spec
     fn decl_spec(&mut self) -> Option<TypeKind> {
-        let kindstr;
-        if let Some(s) = self.iter.consume_type() {
-            kindstr = s;
-        } else {
+        let kindstr = self.iter.consume_type();
+        if kindstr.is_none() {
             return None;
         }
-        
-        let kind = TypeKind::from_str(kindstr);
+        let kind = TypeKind::from_str(kindstr.unwrap());
+
         Some(kind)
     }
 
-    // init_decl = "*"* ident ("[" num "]")? ("=" initializer )?
-    fn init_decl(&mut self, declnode: &mut Node, is_global: bool, kind: TypeKind) {
+    // Reads the name and type of declarator.
+    // declarator = "*"* ident ("[" num "]")? ("=" initializer )?
+    fn read_declarator(&mut self, basekind: TypeKind) -> (String, Type) {
         let refs = {
             // # of times * occurs will tell us the depth of references
             let mut tmp = 0;
@@ -671,24 +694,16 @@ impl Parser {
         };
 
         let ident_name = self.iter.expect_ident();
-        let var_type;
-        if self.iter.consume("[") {
+        let var_type = if self.iter.consume("[") {
             // This is an array
             let array_size = self.iter.expect_number() as usize;
-            var_type = Type::new_array(kind, refs, array_size);
             self.iter.expect("]");
+            Type::new_array(basekind, refs, array_size)
         } else {
-            var_type = Type::new(kind, refs);
-        }
+            Type::new(basekind, refs)
+        };
 
-        if is_global {
-            self.add_gvar(ident_name, var_type.clone());
-        } else {
-            let var = self.add_lvar(ident_name, var_type.clone());
-            if self.iter.consume("=") {
-                self.initializer(declnode, var);
-            }
-        }
+        return (ident_name, var_type);
     }
 
     // declarator: "*"*

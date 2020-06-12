@@ -6,8 +6,8 @@ static ASSIGN_OPS: [&str; 11] = [
 static STORAGE_CLASSES: [&str; 5] = ["typedef", "extern", "static", "auto", "register"];
 static TYPES: [&str; 3] = ["char", "short", "int"];
 static KEYWORDS: [&str; 12] = [
-    "return", "if", "else", "while", "for", "sizeof", "break", "continue",
-    "do", "switch", "case", "default",
+    "return", "if", "else", "while", "for", "sizeof", "break", "continue", "do", "switch", "case",
+    "default",
 ];
 
 fn is_storage_class(s: &str) -> bool {
@@ -281,7 +281,9 @@ impl Tokenizer {
                     }
                     // Match keywords here
                     match ident_name.as_str() {
-                        ident_name if KEYWORDS.contains(&ident_name) || TYPES.contains(&ident_name) => {
+                        ident_name
+                            if KEYWORDS.contains(&ident_name) || TYPES.contains(&ident_name) =>
+                        {
                             self.tokens
                                 .push_back(Token::new(TKRESERVED).string(&ident_name));
                         }
