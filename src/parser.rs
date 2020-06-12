@@ -653,7 +653,7 @@ impl Parser {
         let mut node = Node::new(NDDECL, None, None);
 
         loop {
-            let (name, ty) = self.read_declarator(kind.unwrap());
+            let (name, ty) = self.declarator(kind.unwrap());
             if is_global {
                 self.add_gvar(name, ty.clone());
             } else {
@@ -681,9 +681,8 @@ impl Parser {
         Some(kind)
     }
 
-    // Reads the name and type of declarator.
     // declarator = "*"* ident ("[" num "]")? ("=" initializer )?
-    fn read_declarator(&mut self, basekind: TypeKind) -> (String, Type) {
+    fn declarator(&mut self, basekind: TypeKind) -> (String, Type) {
         let refs = {
             // # of times * occurs will tell us the depth of references
             let mut tmp = 0;
@@ -705,9 +704,6 @@ impl Parser {
 
         return (ident_name, var_type);
     }
-
-    // declarator: "*"*
-    fn declarator(&mut self) {}
 
     fn init_array_lhs(pos: usize, var: &Var) -> Node {
         use NodeKind::*;
