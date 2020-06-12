@@ -3,11 +3,19 @@ use std::collections::LinkedList;
 static ASSIGN_OPS: [&str; 11] = [
     "=", "+=", "-=", "*=", "/=", "%=", "<<=", ">>=", "&=", "|=", "^=",
 ];
+static STORAGE_CLASSES: [&str; 5] = ["typedef", "extern", "static", "auto", "register"];
 static TYPES: [&str; 3] = ["char", "short", "int"];
-static KEYWORDS: [&str; 15] = [
-    "char", "short", "int", "return", "if", "else", "while", "for", "sizeof", "break", "continue",
+static KEYWORDS: [&str; 12] = [
+    "return", "if", "else", "while", "for", "sizeof", "break", "continue",
     "do", "switch", "case", "default",
 ];
+
+fn is_storage_class(s: &str) -> bool {
+    match s {
+        _s if STORAGE_CLASSES.contains(&_s) => true,
+        _ => false,
+    }
+}
 
 fn is_type(s: &str) -> bool {
     match s {
@@ -273,7 +281,7 @@ impl Tokenizer {
                     }
                     // Match keywords here
                     match ident_name.as_str() {
-                        ident_name if KEYWORDS.contains(&ident_name) => {
+                        ident_name if KEYWORDS.contains(&ident_name) || TYPES.contains(&ident_name) => {
                             self.tokens
                                 .push_back(Token::new(TKRESERVED).string(&ident_name));
                         }
@@ -373,6 +381,19 @@ impl TokenIter {
             }
         }
         ret
+    }
+
+    pub fn consume_storage_class(&mut self) -> Option<String> {
+        let t = self.peek();
+        if t.kind != TokenKind::TKRESERVED {
+            return None;
+        }
+        if is_storage_class(t.string.as_ref().unwrap().as_str()) {
+            let n = self.next();
+            Some(n.string.as_ref().unwrap().to_string())
+        } else {
+            None
+        }
     }
 
     pub fn consume_type(&mut self) -> Option<String> {

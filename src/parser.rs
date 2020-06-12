@@ -621,31 +621,42 @@ impl Parser {
         }
     }
 
-    // decl = "int" init_decl ("," init_decl)* ";"
+    // decl = decl_spec (init_decl ("," init_decl)*)? ";"
     fn decl(&mut self, is_global: bool) -> Option<Node> {
         use NodeKind::*;
 
-        let kindstr;
-        if !is_global {
-            if let Some(s) = self.iter.consume_type() {
-                kindstr = s;
+        let kind = self.decl_spec();
+
+        if kind.is_none() {
+            if is_global {
+                panic!("Expected type specifier")
             } else {
-                return None;
+                return None
             }
-        } else {
-            kindstr = self.iter.expect_type();
         }
-        let kind = TypeKind::from_str(kindstr);
 
         let mut node = Node::new(NDDECL, None, None);
 
-        self.init_decl(&mut node, is_global, kind);
+        self.init_decl(&mut node, is_global, kind.unwrap());
         while self.iter.consume(",") {
-            self.init_decl(&mut node, is_global, kind);
+            self.init_decl(&mut node, is_global, kind.unwrap());
         }
 
         self.iter.expect(";");
         Some(node)
+    }
+
+    // decl_spec  
+    fn decl_spec(&mut self) -> Option<TypeKind> {
+        let kindstr;
+        if let Some(s) = self.iter.consume_type() {
+            kindstr = s;
+        } else {
+            return None;
+        }
+        
+        let kind = TypeKind::from_str(kindstr);
+        Some(kind)
     }
 
     // init_decl = "*"* ident ("[" num "]")? ("=" initializer )?
