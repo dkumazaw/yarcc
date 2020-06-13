@@ -34,6 +34,7 @@ pub enum NodeKind {
     NDBLOCK,
     NDCASE,
     NDDEFAULT,
+    NDFIELD,
     NDCALL,    // function call
     NDFUNCDEF, // function definition
     NDDECL,    // declaration
@@ -47,7 +48,7 @@ pub enum NodeKind {
 }
 
 // Node of an AST
-// NOTE: Maybe use enum to reduce redundancy?
+// NOTE: Maybe use enum?
 // Will leave this like this until wastefulness becomes an issue
 #[derive(Debug)]
 pub struct Node {
@@ -159,18 +160,18 @@ impl Type {
         }
     }
 
-    fn as_str(&self) -> &str {
-        use Type::*;
-
-        match self {
-            CHAR => "char",
-            SHORT => "short",
-            INT => "int",
-            LONG => "long",
-            _ => panic!("This is not a base type."),
+    // Create a new Type from the provided base type.
+    fn new_from(basety: Self, ref_depth: usize) -> Self {
+        if ref_depth == 0 {
+            basety
+        } else {
+            Type::PTR {
+                ptr_to: Box::new(Type::new_from(basety, ref_depth - 1)),
+            }
         }
     }
 
+    // Create a new Type based on the kind str str.
     fn new(basekind: &str, ref_depth: usize) -> Self {
         if ref_depth == 0 {
             Type::new_base(basekind)
@@ -194,6 +195,19 @@ impl Type {
         match self {
             PTR { ref ptr_to } | ARRAY { ref ptr_to, .. } => *(ptr_to.clone()),
             _ => panic!("Trying to clone the base of terminal types."),
+        }
+    }
+
+    fn as_str(&self) -> &str {
+        use Type::*;
+
+        match self {
+            CHAR => "char",
+            SHORT => "short",
+            INT => "int",
+            LONG => "long",
+            STRUCT { .. } => "struct",
+            _ => panic!("This is not a base type."),
         }
     }
 
@@ -252,6 +266,7 @@ pub struct Var {
 #[derive(Debug, Clone)]
 pub struct Tag {
     pub name: String,
+    pub ty: Option<Type>,
     pub scope: Option<usize>, // None if global
 }
 
@@ -274,6 +289,7 @@ pub struct Program {
 pub struct Parser {
     iter: TokenIter,
     globals: LinkedList<Var>,
+    gtags: Vec<Tag>,
     lscopes: LocalScopes,
     literals: LinkedList<String>,
 }
@@ -571,6 +587,7 @@ impl Parser {
         Parser {
             iter: iter,
             globals: LinkedList::new(),
+            gtags: Vec::new(),
             lscopes: LocalScopes::new(),
             literals: LinkedList::new(),
         }
@@ -656,6 +673,7 @@ impl Parser {
             return None;
         }
 
+        println!("{:?}", kind);
         let mut node = Node::new(NDDECL, None, None);
         loop {
             let (name, ty) = self.declarator(kind.clone());
@@ -686,8 +704,21 @@ impl Parser {
 
         match kindstr.as_str() {
             "struct" => {
-                let (name, ty) = self.struct_spec();
-                Some(ty)
+                let (maybe_tag, maybe_ty) = self.struct_spec();
+                println!("{:?} {:?}", maybe_tag, maybe_ty);
+                match (maybe_tag, maybe_ty) {
+                    (Some(tag), Some(ty)) => {
+                        self.add_tag(true, tag, ty.clone());
+                        Some(ty)
+                    }
+                    (Some(tag), None) => self.find_tag(true, tag),
+                    (None, Some(_)) => {
+                        self.error("Not implemented");
+                    }
+                    (None, None) => {
+                        self.error("Expected identifier or '{'");
+                    }
+                }
             }
             s => Some(Type::new_base(s)),
         }
@@ -696,24 +727,29 @@ impl Parser {
     // Assumes type "struct" has already been read
     // struct-or-union-specifier
     //      = struct-or-union ident? "{" (struct-decl ";")+ "}"
-    fn struct_spec(&mut self) -> (Option<String>, Type) {
+    //      | struct-or-union ident
+    fn struct_spec(&mut self) -> (Option<String>, Option<Type>) {
         let name = self.iter.consume_ident();
-        let mut fields: Vec<Box<(String, Type)>> = Vec::new();
-        self.iter.expect("{");
-        // C89 6.5.2.1 stipulates that an empty struct-decl shall
-        // result in undefined behavior, so I'm just going to enforce
-        // 1+ members here.
-        let mut size = 0;
-        loop {
-            let (name, ty) = self.struct_declaration();
-            size += ty.total_size();
-            fields.push(Box::new((name, ty)));
-            if self.iter.consume("}") {
-                break;
+        let mut ty = None;
+
+        if self.iter.consume("{") {
+            // C89 6.5.2.1 stipulates that an empty struct-decl shall
+            // result in undefined behavior, so I'm just going to enforce
+            // 1+ members here.
+            let mut size = 0;
+            let mut fields: Vec<Box<(String, Type)>> = Vec::new();
+            loop {
+                let (name, ty) = self.struct_declaration();
+                size += ty.total_size();
+                fields.push(Box::new((name, ty)));
+                if self.iter.consume("}") {
+                    break;
+                }
             }
+            ty = Some(Type::STRUCT { size, fields });
         }
 
-        (name, Type::STRUCT { size, fields })
+        (name, ty)
     }
 
     // struct_declaration = decl_spec declarator ";"
@@ -743,7 +779,7 @@ impl Parser {
             self.iter.expect("]");
             Type::new_array(basety.as_str(), refs, array_size)
         } else {
-            Type::new(basety.as_str(), refs)
+            Type::new_from(basety, refs)
         };
 
         (ident_name, var_type)
@@ -1348,6 +1384,7 @@ impl Parser {
 
     // postfix = primary
     //         | primary '[' expr ']'
+    //         | primary "." ident
     //         | primary "++"
     //         | primary "--"
     fn postfix(&mut self) -> Node {
@@ -1459,6 +1496,26 @@ impl Parser {
         panic!("Parser: Found an undefined variable {}\n", ident_name);
     }
 
+    // TODO These functions shouldn't be Parser's methods...
+    fn add_tag(&mut self, is_global: bool, tag: String, ty: Type) {
+        if is_global {
+            self.gtags.push(Tag {
+                name: tag,
+                ty: Some(ty),
+                scope: None,
+            })
+        }
+    }
+
+    fn find_tag(&mut self, is_global: bool, name: String) -> Option<Type> {
+        if is_global {
+            if let Some(ref tag) = self.gtags.iter().rev().find(|x| x.name == name) {
+                return Some(tag.ty.as_ref().unwrap().clone());
+            }
+        }
+        None
+    }
+
     fn add_lvar(&mut self, ident_name: String, ty: Type) -> Var {
         self.lscopes.register_lvar(ident_name, ty)
     }
@@ -1478,10 +1535,10 @@ impl Parser {
         pos
     }
 
-    fn error(&self, s: &str) {
+    fn error(&self, s: &str) -> ! {
         let mut msg = "error: ".to_string();
         msg.push_str(s);
-        println!("{}", msg);
+        panic!("{}", msg);
     }
 
     fn warn(&self, s: &str) {
