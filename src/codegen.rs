@@ -194,7 +194,7 @@ impl<'a> CodeGen<'a> {
     // Entry point into codegen
     pub fn gen(&mut self, mut node: Node) {
         use crate::parser::NodeKind::*;
-        use crate::parser::Type2::*;
+        use crate::parser::Type::*;
 
         match node.kind {
             NDNUM => {
