@@ -249,9 +249,16 @@ pub struct Var {
     pub scope: Option<usize>,  // None if global
 }
 
+#[derive(Debug, Clone)]
+pub struct Tag {
+    pub name: String,
+    pub scope: Option<usize>, // None if global
+}
+
 #[derive(Debug)]
-pub struct LVarScopes {
-    list: LinkedList<Var>,
+pub struct LocalScopes {
+    vars: Vec<Var>,
+    tags: Vec<Tag>,
     level: usize, // Current scope's level
     offset: usize,
 }
@@ -267,7 +274,7 @@ pub struct Program {
 pub struct Parser {
     iter: TokenIter,
     globals: LinkedList<Var>,
-    locals: LVarScopes,
+    lscopes: LocalScopes,
     literals: LinkedList<String>,
 }
 
@@ -513,10 +520,11 @@ impl Node {
     }
 }
 
-impl LVarScopes {
+impl LocalScopes {
     fn new() -> Self {
-        LVarScopes {
-            list: LinkedList::new(),
+        LocalScopes {
+            vars: Vec::new(),
+            tags: Vec::new(),
             level: 0,
             offset: 0,
         }
@@ -528,11 +536,11 @@ impl LVarScopes {
 
     fn remove_scope(&mut self) {
         // Pop everything in this scope
-        while let Some(ref var) = self.list.front() {
+        while let Some(ref var) = self.vars.last() {
             if var.scope.unwrap() != self.level {
                 break;
             }
-            self.list.pop_front();
+            self.vars.pop();
         }
         self.level -= 1;
     }
@@ -548,13 +556,13 @@ impl LVarScopes {
             offset: Some(my_ofs),
             scope: Some(self.level),
         };
-        self.list.push_front(lvar.clone());
+        self.vars.push(lvar.clone());
         lvar
     }
 
     fn find_lvar(&self, ident_name: &str) -> Option<&Var> {
         // Notice that this finds the ident of the closest scope
-        self.list.iter().find(|x| x.name == ident_name)
+        self.vars.iter().rev().find(|x| x.name == ident_name)
     }
 }
 
@@ -563,7 +571,7 @@ impl Parser {
         Parser {
             iter: iter,
             globals: LinkedList::new(),
-            locals: LVarScopes::new(),
+            lscopes: LocalScopes::new(),
             literals: LinkedList::new(),
         }
     }
@@ -625,7 +633,7 @@ impl Parser {
         }
     }
 
-    // decl = decl_spec init_decl ("," init_decl)* ";"
+    // decl = decl_spec (init_decl ("," init_decl)*)? ";"
     // init_decl = declarator ("=" initializer)?
     // TODO: Support global variable initializer
     fn declaration(&mut self, is_global: bool) -> Option<Node> {
@@ -643,9 +651,12 @@ impl Parser {
             }
         }
 
-        let mut node = Node::new(NDDECL, None, None);
-        println!("Let's loop");
+        if self.iter.consume(";") {
+            self.warn("This is a useless empty declaration.");
+            return None;
+        }
 
+        let mut node = Node::new(NDDECL, None, None);
         loop {
             let (name, ty) = self.declarator(kind.clone());
             if is_global {
@@ -710,13 +721,14 @@ impl Parser {
     // TODO: Can have comma separated declarator...
     fn struct_declaration(&mut self) -> (String, Type) {
         let base = self.decl_spec();
-        self.declarator(base.unwrap())
+        let (name, ty) = self.declarator(base.unwrap());
+        self.iter.expect(";");
+        (name, ty)
     }
 
-    // declarator = "*"* ident ("[" num "]")? 
+    // declarator = "*"* ident ("[" num "]")?
     fn declarator(&mut self, basety: Type) -> (String, Type) {
         let refs = {
-            // # of times * occurs will tell us the depth of references
             let mut tmp = 0;
             while self.iter.consume("*") {
                 tmp += 1;
@@ -787,9 +799,7 @@ impl Parser {
         while self.iter.consume(",") {
             if !is_array || pos * var.ty.base_size() >= var.ty.total_size() {
                 if !warned {
-                    Parser::print_warn(
-                        "Excess elements in initializer for an array will be ignored.",
-                    );
+                    self.warn("Excess elements in initializer for an array will be ignored.");
                     warned = true;
                 }
                 self.assign();
@@ -828,7 +838,7 @@ impl Parser {
 
         let mut node = Node::new(NDFUNCDEF, None, None).name(ident_name.to_string());
         // Create a new scope:
-        self.locals = LVarScopes::new();
+        self.lscopes = LocalScopes::new();
 
         if !self.iter.consume(")") {
             // There's at least one local variable definition.
@@ -854,7 +864,7 @@ impl Parser {
         }
 
         // Remember the # of variables created & pop the scope out of the stack
-        node = node.lvars_offset(self.locals.offset);
+        node = node.lvars_offset(self.lscopes.offset);
 
         Some(node)
     }
@@ -917,11 +927,11 @@ impl Parser {
         if self.iter.consume("{") {
             let mut node = Node::new(NDBLOCK, None, None);
 
-            self.locals.add_scope();
+            self.lscopes.add_scope();
             while !self.iter.consume("}") {
                 node = node.blockstmt(self.stmt());
             }
-            self.locals.remove_scope();
+            self.lscopes.remove_scope();
             Some(node)
         } else {
             None
@@ -1438,7 +1448,7 @@ impl Parser {
     // Finds if the passed identitier already exists
     fn find_var(&mut self, ident_name: &str) -> &Var {
         // Check locals
-        if let Some(ref v) = self.locals.find_lvar(ident_name) {
+        if let Some(ref v) = self.lscopes.find_lvar(ident_name) {
             return v;
         }
         // Check globals
@@ -1450,7 +1460,7 @@ impl Parser {
     }
 
     fn add_lvar(&mut self, ident_name: String, ty: Type) -> Var {
-        self.locals.register_lvar(ident_name, ty)
+        self.lscopes.register_lvar(ident_name, ty)
     }
 
     fn add_gvar(&mut self, ident_name: String, ty: Type) {
@@ -1468,8 +1478,14 @@ impl Parser {
         pos
     }
 
-    fn print_warn(s: &str) {
-        let mut msg = "Parser: Warning: ".to_string();
+    fn error(&self, s: &str) {
+        let mut msg = "error: ".to_string();
+        msg.push_str(s);
+        println!("{}", msg);
+    }
+
+    fn warn(&self, s: &str) {
+        let mut msg = "warning: ".to_string();
         msg.push_str(s);
         println!("{}", msg);
     }
