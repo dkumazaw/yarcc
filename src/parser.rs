@@ -56,7 +56,7 @@ pub struct Node {
     pub rhs: Option<Box<Node>>,
     pub val: Option<i32>,      // NDNUM, NDCASE
     pub offset: Option<usize>, // NDLVAR, NDCASE, NDSTR
-    pub ty: Option<Type>,
+    pub ty: Option<Type2>,
     pub scale_lhs: Option<bool>, // Used by NDADD and NDSUB to perform ptr arithm.
 
     pub cond: Option<Box<Node>>,     // NDIF, NDFOR, NDWHILE, NDTERNARY
@@ -123,32 +123,116 @@ impl AssignMode {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq)]
-pub enum TypeKind {
+#[derive(Debug, Clone)]
+pub enum Type2 {
     CHAR,
     SHORT,
     INT,
     LONG,
-    PTR,
-    ARRAY,
-    STRUCT,
+    PTR {
+        ptr_to: Box<Type2>,
+    },
+    ARRAY {
+        size: usize,
+        ptr_to: Box<Type2>,
+    },
+    STRUCT {
+        size: usize,
+        fields: Vec<Box<(String, Type2)>>,
+    },
 }
 
-#[derive(Debug, Clone)]
-pub struct Type {
-    pub kind: TypeKind,
-    pub ptr_to: Option<Box<Type>>,
-    pub array_size: Option<usize>,
-    pub struct_size: Option<usize>,
+impl PartialEq for Type2 {
+    fn eq(&self, other: &Self) -> bool {
+        self == other
+    }
+}
 
-    pub fields: Option<Vec<Box<(String, Type)>>>, // STRUCT, ENUM, UNION
+impl Type2 {
+    fn new_base(basekind: &str) -> Self {
+        match basekind {
+            "char" => Type2::CHAR,
+            "short" => Type2::SHORT,
+            "int" => Type2::INT,
+            "long" => Type2::LONG,
+            _ => panic!("Non-base kind was provided."),
+        }
+    }
+
+    fn new(basekind: &str, ref_depth: usize) -> Self {
+        if ref_depth == 0 {
+            Type2::new_base(basekind)
+        } else {
+            Type2::PTR {
+                ptr_to: Box::new(Type2::new(basekind, ref_depth - 1)),
+            }
+        }
+    }
+
+    fn new_array(basekind: &str, ref_depth: usize, array_size: usize) -> Self {
+        Type2::ARRAY {
+            size: array_size,
+            ptr_to: Box::new(Type2::new(basekind, ref_depth)),
+        }
+    }
+
+    fn clone_base(&self) -> Self {
+        use Type2::*;
+
+        match self {
+            PTR { ref ptr_to } | ARRAY { ref ptr_to, .. } => *(ptr_to.clone()),
+            _ => panic!("Trying to clone the base of terminal types."),
+        }
+    }
+
+    fn new_ptr_to(&self) -> Self {
+        Type2::PTR {
+            ptr_to: Box::new(self.clone()),
+        }
+    }
+
+    pub fn is_ptr_like(&self) -> bool {
+        use Type2::*;
+        match self {
+            PTR { .. } | ARRAY { .. } => true,
+            _ => false,
+        }
+    }
+
+    pub fn size(&self) -> usize {
+        use Type2::*;
+        match self {
+            CHAR => 1,
+            SHORT => 2,
+            INT => 4,
+            LONG | PTR { .. } => 8,
+            ARRAY { .. } => self.base_size(),
+            STRUCT { size, .. } => size.clone(),
+        }
+    }
+
+    pub fn total_size(&self) -> usize {
+        use Type2::*;
+        match self {
+            CHAR | SHORT | INT | LONG | PTR { .. } | STRUCT { .. } => self.size(),
+            ARRAY { size, .. } => size.clone() * self.size(),
+        }
+    }
+
+    pub fn base_size(&self) -> usize {
+        use Type2::*;
+        match self {
+            PTR { ptr_to } | ARRAY { ptr_to, .. } => ptr_to.size(),
+            _ => panic!("Requesting a base size for a terminal type."),
+        }
+    }
 }
 
 // Stores the name of var, its type, and stack offset if the variable is local.
 #[derive(Debug, Clone)]
 pub struct Var {
     pub name: String,
-    pub ty: Type,
+    pub ty: Type2,
     pub offset: Option<usize>, // None if global
     pub scope: Option<usize>,  // None if global
 }
@@ -220,7 +304,7 @@ impl Node {
         self
     }
 
-    fn ty(mut self, ty: Type) -> Self {
+    fn ty(mut self, ty: Type2) -> Self {
         self.ty = Some(ty);
         self
     }
@@ -361,28 +445,28 @@ impl Node {
                 let l_ty = lhs.ty.as_ref().unwrap();
                 let r_ty = rhs.ty.as_ref().unwrap();
 
-                if l_ty.kind.is_ptr_like() {
-                    if r_ty.kind.is_ptr_like() {
+                if l_ty.is_ptr_like() {
+                    if r_ty.is_ptr_like() {
                         panic!("Parser: Both sides of add/sub are pointers...");
                     }
                     self.scale_lhs = Some(true);
                     Some(l_ty.clone())
-                } else if r_ty.kind.is_ptr_like() {
+                } else if r_ty.is_ptr_like() {
                     // Already checked above that l_ty is not a pointer
                     self.scale_lhs = Some(false);
                     Some(r_ty.clone())
                 } else {
                     // TODO: Update this
-                    Some(Type::new(TypeKind::LONG, 0))
+                    Some(Type2::new_base("long"))
                 }
             }
             NDMUL | NDDIV | NDEQ | NDNEQ | NDLEQ | NDLT => {
                 // TODO: Update this
-                Some(Type::new(TypeKind::INT, 0))
+                Some(Type2::new_base("int"))
             }
             NDCALL => {
                 // TODO: Currently the only retval is INT
-                Some(Type::new(TypeKind::INT, 0))
+                Some(Type2::new_base("int"))
             }
             NDADDR => {
                 let lhs = self.lhs.as_mut().unwrap();
@@ -400,7 +484,7 @@ impl Node {
 
                 let l_ty = lhs.ty.as_ref().unwrap();
                 if mode == ADD || mode == SUB {
-                    if l_ty.kind.is_ptr_like() {
+                    if l_ty.is_ptr_like() {
                         self.scale_lhs = Some(true);
                     }
                 }
@@ -441,7 +525,7 @@ impl LVarScopes {
         self.level -= 1;
     }
 
-    fn register_lvar(&mut self, ident_name: String, ty: Type) -> Var {
+    fn register_lvar(&mut self, ident_name: String, ty: Type2) -> Var {
         let requested_size = ty.total_size();
         self.offset += requested_size;
         let my_ofs = self.offset;
@@ -459,111 +543,6 @@ impl LVarScopes {
     fn find_lvar(&self, ident_name: &str) -> Option<&Var> {
         // Notice that this finds the ident of the closest scope
         self.list.iter().find(|x| x.name == ident_name)
-    }
-}
-
-impl TypeKind {
-    fn from_str(s: String) -> Self {
-        match s.as_str() {
-            "char" => TypeKind::CHAR,
-            "int" => TypeKind::INT,
-            "short" => TypeKind::SHORT,
-            "struct" => TypeKind::STRUCT,
-            _ => {
-                panic!("Cannot convert this token to TypeKind.");
-            }
-        }
-    }
-    pub fn is_ptr_like(&self) -> bool {
-        use TypeKind::*;
-        match self {
-            PTR | ARRAY => true,
-            _ => false,
-        }
-    }
-}
-
-impl Type {
-    fn new(basekind: TypeKind, ref_depth: usize) -> Self {
-        if basekind == TypeKind::ARRAY {
-            panic!("For array, use new_array!");
-        }
-        Type {
-            kind: if ref_depth == 0 {
-                basekind
-            } else {
-                TypeKind::PTR
-            },
-            ptr_to: if ref_depth == 0 {
-                None
-            } else {
-                Some(Box::new(Type::new(basekind, ref_depth - 1)))
-            },
-            array_size: None,
-            struct_size: None,
-            fields: None,
-        }
-    }
-
-    fn new_array(basekind: TypeKind, ref_depth: usize, array_size: usize) -> Self {
-        Type {
-            kind: TypeKind::ARRAY,
-            ptr_to: Some(Box::new(Type::new(basekind, ref_depth))),
-            array_size: Some(array_size),
-            struct_size: None,
-            fields: None,
-        }
-    }
-
-    // Clones whatever is pointed to by ptr_to
-    fn clone_base(&self) -> Self {
-        if let Some(ref base) = self.ptr_to {
-            *base.clone()
-        } else {
-            panic!("Trying to clone the base of terminal types.")
-        }
-    }
-
-    // Creates a new Type that is a pointer to mas_ref()
-    fn new_ptr_to(&self) -> Self {
-        Type {
-            kind: TypeKind::PTR,
-            ptr_to: Some(Box::new(self.clone())),
-            array_size: None,
-            struct_size: None,
-            fields: None,
-        }
-    }
-
-    // Size of one element
-    pub fn size(&self) -> usize {
-        use TypeKind::*;
-        match self.kind {
-            CHAR => 1,
-            SHORT => 2,
-            INT => 4,
-            LONG => 8,
-            PTR => 8,
-            ARRAY => self.base_size(),
-            STRUCT => self.struct_size.unwrap(),
-        }
-    }
-
-    // Total size of this type
-    pub fn total_size(&self) -> usize {
-        use TypeKind::*;
-        match self.kind {
-            CHAR | SHORT | INT | LONG | PTR | STRUCT => self.size(),
-            ARRAY => self.array_size.unwrap() * self.size(),
-        }
-    }
-
-    pub fn base_size(&self) -> usize {
-        if let Some(ref base) = self.ptr_to {
-            base.size()
-        } else {
-            panic!("Requesting a base size for a terminal type.");
-        }
     }
 }
 
@@ -601,11 +580,11 @@ impl Parser {
             if self.iter.consume("[") {
                 // This is an array
                 let array_size = self.iter.expect_number() as usize;
-                let var_type = Type::new_array(TypeKind::from_str(tkkind), refs, array_size);
+                let var_type = Type2::new_array(tkkind.as_str(), refs, array_size);
                 self.iter.expect("]");
                 Some(self.add_lvar(ident, var_type))
             } else {
-                let var_type = Type::new(TypeKind::from_str(tkkind), refs);
+                let var_type = Type2::new(tkkind.as_str(), refs);
                 Some(self.add_lvar(ident, var_type))
             }
         } else {
@@ -640,9 +619,11 @@ impl Parser {
     fn decl(&mut self, is_global: bool) -> Option<Node> {
         use NodeKind::*;
 
-        let kind = self.decl_spec();
+        let kind;
 
-        if kind.is_none() {
+        if let Some(k) = self.decl_spec() {
+            kind = k;
+        } else {
             if is_global {
                 panic!("Expected type specifier")
             } else {
@@ -653,7 +634,7 @@ impl Parser {
         let mut node = Node::new(NDDECL, None, None);
 
         loop {
-            let (name, ty) = self.declarator(kind.unwrap());
+            let (name, ty) = self.declarator(kind.clone());
             if is_global {
                 self.add_gvar(name, ty.clone());
             } else {
@@ -671,18 +652,16 @@ impl Parser {
     }
 
     // decl_spec
-    fn decl_spec(&mut self) -> Option<TypeKind> {
+    fn decl_spec(&mut self) -> Option<String> {
         let kindstr = self.iter.consume_type();
         if kindstr.is_none() {
             return None;
         }
-        let kind = TypeKind::from_str(kindstr.unwrap());
-
-        Some(kind)
+        kindstr
     }
 
     // declarator = "*"* ident ("[" num "]")? ("=" initializer )?
-    fn declarator(&mut self, basekind: TypeKind) -> (String, Type) {
+    fn declarator(&mut self, basekind: String) -> (String, Type2) {
         let refs = {
             // # of times * occurs will tell us the depth of references
             let mut tmp = 0;
@@ -697,9 +676,9 @@ impl Parser {
             // This is an array
             let array_size = self.iter.expect_number() as usize;
             self.iter.expect("]");
-            Type::new_array(basekind, refs, array_size)
+            Type2::new_array(basekind.as_str(), refs, array_size)
         } else {
-            Type::new(basekind, refs)
+            Type2::new(basekind.as_str(), refs)
         };
 
         return (ident_name, var_type);
@@ -713,7 +692,7 @@ impl Parser {
             .ty(var.ty.clone());
         let rhs = Node::new(NDNUM, None, None)
             .val(pos as i32)
-            .ty(Type::new(TypeKind::INT, 0));
+            .ty(Type2::new_base("int"));
         lhs = Node::new(NDADD, Some(Box::new(lhs)), Some(Box::new(rhs)));
         lhs = Node::new(NDDEREF, Some(Box::new(lhs)), None);
         lhs
@@ -722,16 +701,16 @@ impl Parser {
     // initializer = assign | "{" ( assign "," )* "}"
     fn initializer(&mut self, declnode: &mut Node, var: Var) {
         use NodeKind::*;
+        use Type2::*;
 
         let is_init_list = self.iter.consume("{");
         let mut pos: usize = 0;
 
-        let lhs = if var.ty.kind == TypeKind::ARRAY {
-            Parser::init_array_lhs(pos, &var)
-        } else {
-            Node::new(NDLVAR, None, None)
+        let lhs = match var.ty {
+            ARRAY { .. } => Parser::init_array_lhs(pos, &var),
+            _ => Node::new(NDLVAR, None, None)
                 .offset(var.offset.unwrap())
-                .ty(var.ty.clone())
+                .ty(var.ty.clone()),
         };
         let mut init = Node::new_assign(
             AssignMode::DEFAULT,
@@ -745,10 +724,21 @@ impl Parser {
             return;
         }
 
+        let mut warned = false;
+        let is_array = if let Type2::ARRAY { .. } = var.ty {
+            true
+        } else {
+            false
+        };
         pos += 1;
         while self.iter.consume(",") {
-            if var.ty.kind != TypeKind::ARRAY || pos * var.ty.base_size() >= var.ty.total_size() {
-                Parser::print_warn("Excess elements in initializer will be ignored.");
+            if !is_array || pos * var.ty.base_size() >= var.ty.total_size() {
+                if !warned {
+                    Parser::print_warn(
+                        "Excess elements in initializer for an array will be ignored.",
+                    );
+                    warned = true;
+                }
                 self.assign();
                 continue;
             }
@@ -769,7 +759,7 @@ impl Parser {
     fn funcdef(&mut self) -> Option<Node> {
         use NodeKind::*;
 
-        let kind = TypeKind::from_str(self.iter.expect_type());
+        let _kind = self.iter.expect_type();
         let refs = {
             // # of times * occurs will tell us the depth of references
             let mut tmp = 0;
@@ -1242,7 +1232,7 @@ impl Parser {
             lhs.populate_ty();
             node = Node::new(NDNUM, None, None)
                 .val(lhs.ty.unwrap().total_size() as i32)
-                .ty(Type::new(TypeKind::INT, 0));
+                .ty(Type2::new_base("int"));
         } else if self.iter.consume("++") {
             node = Node::new_assign(
                 AssignMode::ADD,
@@ -1250,7 +1240,7 @@ impl Parser {
                 Some(Box::new(
                     Node::new(NDNUM, None, None)
                         .val(1)
-                        .ty(Type::new(TypeKind::INT, 0)),
+                        .ty(Type2::new_base("int")),
                 )),
             )
             .eval_pre(true);
@@ -1262,7 +1252,7 @@ impl Parser {
                 Some(Box::new(
                     Node::new(NDNUM, None, None)
                         .val(1)
-                        .ty(Type::new(TypeKind::INT, 0)),
+                        .ty(Type2::new_base("int")),
                 )),
             )
             .eval_pre(true);
@@ -1282,7 +1272,7 @@ impl Parser {
                 Some(Box::new(
                     Node::new(NDNUM, None, None)
                         .val(0)
-                        .ty(Type::new(TypeKind::INT, 0)),
+                        .ty(Type2::new_base("int")),
                 )),
                 Some(Box::new(self.unary())),
             );
@@ -1313,7 +1303,7 @@ impl Parser {
                 Some(Box::new(
                     Node::new(NDNUM, None, None)
                         .val(1)
-                        .ty(Type::new(TypeKind::INT, 0)),
+                        .ty(Type2::new_base("int")),
                 )),
             )
             .eval_pre(false);
@@ -1326,7 +1316,7 @@ impl Parser {
                 Some(Box::new(
                     Node::new(NDNUM, None, None)
                         .val(1)
-                        .ty(Type::new(TypeKind::INT, 0)),
+                        .ty(Type2::new_base("int")),
                 )),
             )
             .eval_pre(false);
@@ -1388,7 +1378,7 @@ impl Parser {
             // Must be NUM at this point
             Node::new(NDNUM, None, None)
                 .val(self.iter.expect_number())
-                .ty(Type::new(TypeKind::INT, 0))
+                .ty(Type2::new_base("int"))
         }
     }
 
@@ -1406,11 +1396,11 @@ impl Parser {
         panic!("Parser: Found an undefined variable {}\n", ident_name);
     }
 
-    fn add_lvar(&mut self, ident_name: String, ty: Type) -> Var {
+    fn add_lvar(&mut self, ident_name: String, ty: Type2) -> Var {
         self.locals.register_lvar(ident_name, ty)
     }
 
-    fn add_gvar(&mut self, ident_name: String, ty: Type) {
+    fn add_gvar(&mut self, ident_name: String, ty: Type2) {
         self.globals.push_back(Var {
             name: ident_name,
             ty: ty,

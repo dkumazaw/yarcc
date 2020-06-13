@@ -194,7 +194,7 @@ impl<'a> CodeGen<'a> {
     // Entry point into codegen
     pub fn gen(&mut self, mut node: Node) {
         use crate::parser::NodeKind::*;
-        use crate::parser::TypeKind::*;
+        use crate::parser::Type2::*;
 
         match node.kind {
             NDNUM => {
@@ -203,8 +203,8 @@ impl<'a> CodeGen<'a> {
             NDSTR => {
                 self.gen_lval(node);
             }
-            NDLVAR | NDGVAR => match node.ty.as_ref().unwrap().kind {
-                ARRAY => {
+            NDLVAR | NDGVAR => match node.ty.as_ref().unwrap() {
+                ARRAY { .. } => {
                     self.gen_lval(node);
                 }
                 _ => {
@@ -577,7 +577,7 @@ impl<'a> CodeGen<'a> {
         match node.kind {
             NDADD => {
                 let ty = node.ty.unwrap();
-                if ty.kind.is_ptr_like() {
+                if ty.is_ptr_like() {
                     let reg_to_scale = if node.scale_lhs.unwrap() {
                         "rdi"
                     } else {
@@ -589,7 +589,7 @@ impl<'a> CodeGen<'a> {
             }
             NDSUB => {
                 let ty = node.ty.unwrap();
-                if ty.kind.is_ptr_like() {
+                if ty.is_ptr_like() {
                     gen_line!(self.f, "  imul rdi, {}\n", ty.base_size());
                 }
                 gen_line!(self.f, "  sub rax, rdi\n");
