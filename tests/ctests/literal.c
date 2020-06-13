@@ -1,3 +1,4 @@
+// Test cases for string literals
 
 char *bp1;
 char *bp2;

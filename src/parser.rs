@@ -159,6 +159,18 @@ impl Type {
         }
     }
 
+    fn as_str(&self) -> &str {
+        use Type::*;
+
+        match self {
+            CHAR => "char",
+            SHORT => "short",
+            INT => "int",
+            LONG => "long",
+            _ => panic!("This is not a base type."),
+        }
+    }
+
     fn new(basekind: &str, ref_depth: usize) -> Self {
         if ref_depth == 0 {
             Type::new_base(basekind)
@@ -608,7 +620,7 @@ impl Parser {
         if self.iter.is_func() {
             return self.funcdef();
         } else {
-            self.decl(true);
+            self.declaration(true);
             return None;
         }
     }
@@ -616,7 +628,7 @@ impl Parser {
     // decl = decl_spec init_decl ("," init_decl)* ";"
     // init_decl = declarator ("=" initializer)?
     // TODO: Support global variable initializer
-    fn decl(&mut self, is_global: bool) -> Option<Node> {
+    fn declaration(&mut self, is_global: bool) -> Option<Node> {
         use NodeKind::*;
 
         let kind;
@@ -632,6 +644,7 @@ impl Parser {
         }
 
         let mut node = Node::new(NDDECL, None, None);
+        println!("Let's loop");
 
         loop {
             let (name, ty) = self.declarator(kind.clone());
@@ -652,16 +665,56 @@ impl Parser {
     }
 
     // decl_spec
-    fn decl_spec(&mut self) -> Option<String> {
-        let kindstr = self.iter.consume_type();
-        if kindstr.is_none() {
+    fn decl_spec(&mut self) -> Option<Type> {
+        let kindstr;
+        if let Some(s) = self.iter.consume_type() {
+            kindstr = s;
+        } else {
             return None;
         }
-        kindstr
+
+        match kindstr.as_str() {
+            "struct" => {
+                let (name, ty) = self.struct_spec();
+                Some(ty)
+            }
+            s => Some(Type::new_base(s)),
+        }
     }
 
-    // declarator = "*"* ident ("[" num "]")? ("=" initializer )?
-    fn declarator(&mut self, basekind: String) -> (String, Type) {
+    // Assumes type "struct" has already been read
+    // struct-or-union-specifier
+    //      = struct-or-union ident? "{" (struct-decl ";")+ "}"
+    fn struct_spec(&mut self) -> (Option<String>, Type) {
+        let name = self.iter.consume_ident();
+        let mut fields: Vec<Box<(String, Type)>> = Vec::new();
+        self.iter.expect("{");
+        // C89 6.5.2.1 stipulates that an empty struct-decl shall
+        // result in undefined behavior, so I'm just going to enforce
+        // 1+ members here.
+        let mut size = 0;
+        loop {
+            let (name, ty) = self.struct_declaration();
+            size += ty.total_size();
+            fields.push(Box::new((name, ty)));
+            if self.iter.consume("}") {
+                break;
+            }
+        }
+
+        (name, Type::STRUCT { size, fields })
+    }
+
+    // struct_declaration = decl_spec declarator ";"
+    // TODO: Support bitfield etc
+    // TODO: Can have comma separated declarator...
+    fn struct_declaration(&mut self) -> (String, Type) {
+        let base = self.decl_spec();
+        self.declarator(base.unwrap())
+    }
+
+    // declarator = "*"* ident ("[" num "]")? 
+    fn declarator(&mut self, basety: Type) -> (String, Type) {
         let refs = {
             // # of times * occurs will tell us the depth of references
             let mut tmp = 0;
@@ -676,12 +729,12 @@ impl Parser {
             // This is an array
             let array_size = self.iter.expect_number() as usize;
             self.iter.expect("]");
-            Type::new_array(basekind.as_str(), refs, array_size)
+            Type::new_array(basety.as_str(), refs, array_size)
         } else {
-            Type::new(basekind.as_str(), refs)
+            Type::new(basety.as_str(), refs)
         };
 
-        return (ident_name, var_type);
+        (ident_name, var_type)
     }
 
     fn init_array_lhs(pos: usize, var: &Var) -> Node {
@@ -814,7 +867,7 @@ impl Parser {
     //      | jump
     //      | expr? ";"
     fn stmt(&mut self) -> Option<Node> {
-        let node = if let Some(decl) = self.decl(false) {
+        let node = if let Some(decl) = self.declaration(false) {
             Some(decl)
         } else if let Some(labeled) = self.labeled() {
             Some(labeled)
