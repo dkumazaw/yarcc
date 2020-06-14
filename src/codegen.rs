@@ -1,6 +1,6 @@
+use crate::ctype::Type;
 use crate::node::{AssignMode, Node, NodeKind};
 use crate::parser::Program;
-use crate::ctype::Type;
 use std::collections::LinkedList;
 use std::fs::File;
 use std::io::Write;

@@ -10,10 +10,10 @@ macro_rules! gen_line {
 }
 
 mod codegen;
+mod ctype;
 mod node;
 mod parser;
 mod tokenizer;
-mod ctype;
 
 use codegen::CodeGen;
 use parser::Parser;
