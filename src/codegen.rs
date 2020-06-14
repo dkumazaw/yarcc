@@ -1,4 +1,5 @@
-use crate::parser::{AssignMode, Node, NodeKind, Program};
+use crate::node::{AssignMode, Node, NodeKind};
+use crate::parser::{Program, Type};
 use std::collections::LinkedList;
 use std::fs::File;
 use std::io::Write;
@@ -9,11 +10,19 @@ static FUNC_REGS_8: [&str; 6] = ["rdi", "rsi", "rdx", "rcx", "r8", "r9"];
 static MAGIC: usize = 141421356;
 static LITERAL_HEAD: &str = ".Lstr";
 
+#[derive(Debug, Copy, Clone, PartialEq)]
+enum LevelKind {
+    SWITCH,
+    WHILE,
+    DOWHILE,
+    FOR,
+}
+
 pub struct CodeGen<'a> {
     f: &'a mut File,
     prog: Program,
     cond_label: usize, // Next cond label to be issued
-    conds: LinkedList<(usize, NodeKind)>,
+    conds: LinkedList<(usize, LevelKind)>,
 }
 
 impl<'a> CodeGen<'a> {
@@ -38,7 +47,7 @@ impl<'a> CodeGen<'a> {
         issued
     }
 
-    fn push_level(&mut self, kind: NodeKind) -> usize {
+    fn push_level(&mut self, kind: LevelKind) -> usize {
         let current = self.issue_level();
         self.conds.push_back((current, kind));
         current
@@ -48,7 +57,7 @@ impl<'a> CodeGen<'a> {
         self.conds.pop_back();
     }
 
-    fn get_current_level(&self) -> (usize, NodeKind) {
+    fn get_current_level(&self) -> (usize, LevelKind) {
         self.conds.back().unwrap().clone()
     }
 
@@ -102,24 +111,19 @@ impl<'a> CodeGen<'a> {
         use NodeKind::*;
 
         match node.kind {
-            NDLVAR => {
+            NDLVAR { offset } => {
                 gen_line!(self.f, "  mov rax, rbp\n");
-                gen_line!(self.f, "  sub rax, {}\n", node.offset.unwrap());
+                gen_line!(self.f, "  sub rax, {}\n", offset);
                 gen_line!(self.f, "  push rax\n");
             }
-            NDGVAR => {
-                gen_line!(self.f, "  push offset {}\n", node.name.unwrap());
+            NDGVAR { name } => {
+                gen_line!(self.f, "  push offset {}\n", name);
             }
-            NDSTR => {
-                gen_line!(
-                    self.f,
-                    "  push offset {}{}\n",
-                    LITERAL_HEAD,
-                    node.offset.unwrap()
-                );
+            NDSTR { pos } => {
+                gen_line!(self.f, "  push offset {}{}\n", LITERAL_HEAD, pos);
             }
-            NDDEREF => {
-                self.gen(*node.lhs.unwrap());
+            NDDEREF { node: operand } => {
+                self.gen(*operand);
             }
             _ => {
                 panic!("Unexpected node: got {:?}", node.kind);
@@ -191,19 +195,43 @@ impl<'a> CodeGen<'a> {
         gen_line!(self.f, "  ret\n");
     }
 
+    // For NDLOGAND and NDLOGOR
+    fn gen_logical(&mut self, lhs: Node, rhs: Node, is_and: bool) {
+        // Only evaluate the rhs if the lhs evaluates to 1
+        // as per C89 6.3.13 and 6.3.14
+        let my_label = self.issue_level();
+        let instr = if is_and { "je" } else { "jne" };
+
+        self.gen(lhs);
+        gen_line!(self.f, "  pop rax\n");
+        gen_line!(self.f, "  cmp rax, 0\n");
+        gen_line!(self.f, "  setne al\n");
+        gen_line!(self.f, "  movzb rax, al\n");
+        gen_line!(self.f, "  {} .Lend{}\n", instr, my_label);
+
+        self.gen(rhs);
+        gen_line!(self.f, "  pop rax\n");
+        gen_line!(self.f, "  cmp rax, 0\n");
+        gen_line!(self.f, "  setne al\n");
+        gen_line!(self.f, "  movzb rax, al\n");
+
+        gen_line!(self.f, ".Lend{}:\n", my_label);
+        gen_line!(self.f, "  push rax\n");
+    }
+
     // Entry point into codegen
     pub fn gen(&mut self, mut node: Node) {
-        use crate::parser::NodeKind::*;
-        use crate::parser::Type::*;
+        use NodeKind::*;
+        use Type::*;
 
         match node.kind {
-            NDNUM => {
-                gen_line!(self.f, "  push {}\n", node.val.unwrap());
+            NDINT { val } => {
+                gen_line!(self.f, "  push {}\n", val);
             }
-            NDSTR => {
+            NDSTR { .. } => {
                 self.gen_lval(node);
             }
-            NDLVAR | NDGVAR => match node.ty.as_ref().unwrap() {
+            NDLVAR { .. } | NDGVAR { .. } => match node.ty.as_ref().unwrap() {
                 ARRAY { .. } => {
                     self.gen_lval(node);
                 }
@@ -213,29 +241,34 @@ impl<'a> CodeGen<'a> {
                     self.gen_load(size);
                 }
             },
-            NDASSIGN => {
+            NDASSIGN {
+                lhs,
+                rhs,
+                scale_lhs,
+                eval_pre,
+                assign_mode,
+            } => {
                 use AssignMode::*;
-                let mode = node.assign_mode.unwrap();
-                if mode == DEFAULT {
-                    self.gen_lval(*node.lhs.unwrap());
-                    self.gen(*node.rhs.unwrap());
+                if assign_mode == DEFAULT {
+                    self.gen_lval(*lhs);
+                    self.gen(*rhs);
                     self.gen_store(node.ty.unwrap().size());
                     return;
                 }
 
                 // Needs to be done on a register
-                let size = node.lhs.as_ref().unwrap().ty.as_ref().unwrap().size();
-                self.gen_lval(*node.lhs.unwrap());
+                let size = lhs.as_ref().ty.as_ref().unwrap().size();
+                self.gen_lval(*lhs);
                 // Duplicate the address for later store
                 gen_line!(self.f, "  pop rax\n");
                 gen_line!(self.f, "  push rax\n");
                 gen_line!(self.f, "  push rax\n");
                 self.gen_load(size);
-                self.gen(*node.rhs.unwrap());
+                self.gen(*rhs);
 
-                if let Some(to_scale) = node.scale_lhs {
+                if let Some(to_scale) = scale_lhs {
                     if to_scale {
-                        if mode == MUL || mode == DIV {
+                        if assign_mode == MUL || assign_mode == DIV {
                             panic!("Scaling should not be allowed for this node.");
                         }
                         gen_line!(self.f, "  pop rax\n");
@@ -250,11 +283,11 @@ impl<'a> CodeGen<'a> {
 
                 gen_line!(self.f, "  pop rdi\n");
                 gen_line!(self.f, "  pop rax\n");
-                if !node.eval_pre.unwrap() {
+                if !eval_pre {
                     // This is post incr/decr
                     gen_line!(self.f, "  mov r12, rax\n");
                 }
-                match mode {
+                match assign_mode {
                     ADD => {
                         gen_line!(self.f, "  add rax, rdi\n");
                     }
@@ -296,73 +329,78 @@ impl<'a> CodeGen<'a> {
                 gen_line!(self.f, "  push rax\n");
 
                 self.gen_store(node.ty.unwrap().size());
-                if !node.eval_pre.unwrap() {
+                if !eval_pre {
                     gen_line!(self.f, "  pop rax\n");
                     gen_line!(self.f, "  push r12\n");
                 }
             }
-            NDRETURN => {
-                self.gen(*node.lhs.unwrap());
+            NDRETURN { node: operand } => {
+                self.gen(*operand);
                 self.gen_return();
             }
-            NDIF => {
+            NDIF {
+                cond,
+                ifnode,
+                elsenode,
+            } => {
                 let my_label = self.issue_level();
-                self.gen(*node.cond.unwrap());
+                self.gen(*cond);
                 gen_line!(self.f, "  pop rax\n");
                 gen_line!(self.f, "  cmp rax, 0\n");
                 gen_line!(self.f, "  je .Lelse{}\n", my_label);
-                if let Some(ifnode) = node.ifnode {
+                if let Some(ifnode) = ifnode {
                     self.gen(*ifnode);
                     gen_line!(self.f, "  pop r15\n");
                 }
                 gen_line!(self.f, "  jmp .Lend{}\n", my_label);
                 gen_line!(self.f, ".Lelse{}:\n", my_label);
-                if let Some(elsenode) = node.elsenode {
+                if let Some(elsenode) = elsenode {
                     self.gen(*elsenode);
                     gen_line!(self.f, "  pop r15\n");
                 }
                 gen_line!(self.f, ".Lend{}:\n", my_label);
                 self.gen_push_magic();
             }
-            NDCASE => {
+            NDCASE { stmt, pos, .. } => {
                 let (label, kind) = self.get_current_level();
-                if kind != NDSWITCH {
+                if kind != LevelKind::SWITCH {
                     panic!("Kind can't be anything other than switch");
                 }
-                gen_line!(self.f, ".Lcase{}of{}:\n", node.offset.unwrap(), label);
-                self.gen(*node.ifnode.unwrap());
+                gen_line!(self.f, ".Lcase{}of{}:\n", pos.unwrap(), label);
+                self.gen(*stmt.unwrap());
             }
-            NDDEFAULT => {
+            NDDEFAULT { stmt } => {
                 let (label, kind) = self.get_current_level();
-                if kind != NDSWITCH {
+                if kind != LevelKind::SWITCH {
                     panic!("Kind can't be anything other than switch");
                 }
                 gen_line!(self.f, ".Ldefault{}:\n", label);
-                if let Some(stmt) = node.stmt {
+                if let Some(stmt) = stmt {
                     self.gen(*stmt);
                 } else {
                     self.gen_push_magic();
                 }
             }
-            NDSWITCH => {
-                let my_label = self.push_level(NDSWITCH);
-                self.gen(*node.ctrl.unwrap());
+            NDSWITCH {
+                ctrl,
+                stmt,
+                mut cases,
+                has_default,
+            } => {
+                let my_label = self.push_level(LevelKind::SWITCH);
+                self.gen(*ctrl);
                 gen_line!(self.f, "  pop rax\n");
 
                 let mut counter = 0;
-                while let Some(val) = node.cases.pop_front() {
+                while let Some(val) = cases.pop_front() {
                     gen_line!(self.f, "  cmp rax, {}\n", val);
                     gen_line!(self.f, "  je .Lcase{}of{}\n", counter, my_label);
                     counter += 1;
                 }
-                let loc = if node.has_default {
-                    ".Ldefault"
-                } else {
-                    ".Lend"
-                };
+                let loc = if has_default { ".Ldefault" } else { ".Lend" };
                 gen_line!(self.f, "  jmp {}{}\n", loc, my_label);
 
-                if let Some(stmt) = node.stmt {
+                if let Some(stmt) = stmt {
                     self.gen(*stmt);
                     gen_line!(self.f, "  pop r15\n");
                 }
@@ -376,34 +414,34 @@ impl<'a> CodeGen<'a> {
             NDCONTINUE => {
                 let (label, kind) = self.get_current_level();
                 let loc = match kind {
-                    NDFOR => ".Lstep",
-                    NDDOWHILE => ".Lcond",
-                    NDWHILE => ".Lbegin",
+                    LevelKind::FOR => ".Lstep",
+                    LevelKind::DOWHILE => ".Lcond",
+                    LevelKind::WHILE => ".Lbegin",
                     _ => panic!("Shouldn't reach here."),
                 };
                 gen_line!(self.f, "  jmp {}{}\n", loc, label);
             }
-            NDWHILE => {
-                let my_label = self.push_level(NDWHILE);
+            NDWHILE { cond, repnode } => {
+                let my_label = self.push_level(LevelKind::WHILE);
                 gen_line!(self.f, ".Lbegin{}:\n", my_label);
-                self.gen(*node.cond.unwrap());
+                self.gen(*cond);
                 gen_line!(self.f, "  pop rax\n");
                 gen_line!(self.f, "  cmp rax, 0\n");
                 gen_line!(self.f, "  je .Lend{}\n", my_label);
-                self.gen(*node.repnode.unwrap());
+                self.gen(*repnode.unwrap());
                 gen_line!(self.f, "  pop r15\n"); // Pop unneeded stuff
                 gen_line!(self.f, "  jmp .Lbegin{}\n", my_label);
                 gen_line!(self.f, ".Lend{}:\n", my_label);
                 self.gen_push_magic();
                 self.pop_level();
             }
-            NDDOWHILE => {
-                let my_label = self.push_level(NDDOWHILE);
+            NDDOWHILE { cond, repnode } => {
+                let my_label = self.push_level(LevelKind::DOWHILE);
                 gen_line!(self.f, ".Lbegin{}:\n", my_label);
-                self.gen(*node.repnode.unwrap());
+                self.gen(*repnode.unwrap());
                 gen_line!(self.f, "  pop r15\n");
                 gen_line!(self.f, ".Lcond{}:\n", my_label);
-                self.gen(*node.cond.unwrap());
+                self.gen(*cond);
                 gen_line!(self.f, "  pop rax\n");
                 gen_line!(self.f, "  cmp rax, 0\n");
                 gen_line!(self.f, "  jne .Lbegin{}\n", my_label);
@@ -411,14 +449,19 @@ impl<'a> CodeGen<'a> {
                 self.gen_push_magic();
                 self.pop_level();
             }
-            NDFOR => {
-                let my_label = self.push_level(NDFOR);
-                if let Some(initnode) = node.initnode {
-                    self.gen(*initnode);
+            NDFOR {
+                init,
+                cond,
+                step,
+                repnode,
+            } => {
+                let my_label = self.push_level(LevelKind::FOR);
+                if let Some(init) = init {
+                    self.gen(*init);
                     gen_line!(self.f, "  pop r15\n");
                 }
                 gen_line!(self.f, ".Lbegin{}:\n", my_label);
-                if let Some(cond) = node.cond {
+                if let Some(cond) = cond {
                     self.gen(*cond);
                 } else {
                     // Infinite loop: push 1 to make sure the cmp always succeeds
@@ -427,13 +470,13 @@ impl<'a> CodeGen<'a> {
                 gen_line!(self.f, "  pop rax\n");
                 gen_line!(self.f, "  cmp rax, 0\n");
                 gen_line!(self.f, "  je .Lend{}\n", my_label);
-                if let Some(repnode) = node.repnode {
+                if let Some(repnode) = repnode {
                     self.gen(*repnode);
                     gen_line!(self.f, "  pop r15\n"); // Throw away garbage
                 }
                 gen_line!(self.f, ".Lstep{}:\n", my_label);
-                if let Some(stepnode) = node.stepnode {
-                    self.gen(*stepnode);
+                if let Some(step) = step {
+                    self.gen(*step);
                     gen_line!(self.f, "  pop r15\n"); // Throw away garbage
                 }
                 gen_line!(self.f, "  jmp .Lbegin{}\n", my_label);
@@ -441,16 +484,16 @@ impl<'a> CodeGen<'a> {
                 self.gen_push_magic();
                 self.pop_level();
             }
-            NDBLOCK => {
-                self.gen_blockstmts(node.blockstmts);
+            NDBLOCK { stmts } => {
+                self.gen_blockstmts(stmts);
             }
-            NDCALL => {
+            NDCALL { name, mut args } => {
                 self.cond_label += 2; // Consume 2
-                let num_args = node.funcargs.len();
+                let num_args = args.len();
 
                 // Push args to the designated registers
                 for i in 0..num_args {
-                    self.gen(node.funcargs.pop_front().unwrap());
+                    self.gen(args.pop_front().unwrap());
                     gen_line!(self.f, "  pop {}\n", FUNC_REGS_8[i]);
                 }
 
@@ -461,27 +504,32 @@ impl<'a> CodeGen<'a> {
                 gen_line!(self.f, "  sub r12, r13\n"); // Need to sub rsp this much
                                                        // TODO: Skip alignment if its already a multiple of 16
                 gen_line!(self.f, "  sub rsp, r12\n");
-                gen_line!(self.f, "  call {}\n", node.name.unwrap());
+                gen_line!(self.f, "  call {}\n", name);
                 // Rewind the alignment
                 gen_line!(self.f, "  add rsp, r12\n");
 
                 // Finally, store result returned from the call:
                 gen_line!(self.f, "  push rax\n");
             }
-            NDFUNCDEF => {
-                gen_line!(self.f, "{}:\n", node.name.unwrap());
+            NDFUNCDEF {
+                name,
+                mut argvars,
+                stmts,
+                lvars_offset,
+            } => {
+                gen_line!(self.f, "{}:\n", name);
 
                 // Save callee-saved regs that are used by me:
                 gen_line!(self.f, "  push r12\n");
                 gen_line!(self.f, "  push rbp\n");
                 // Make sure to create enough space for variables
                 gen_line!(self.f, "  mov rbp, rsp\n");
-                gen_line!(self.f, "  sub rsp, {}\n", node.lvars_offset.unwrap());
+                gen_line!(self.f, "  sub rsp, {}\n", lvars_offset);
 
                 // Get the arguments from the correspoinding registers
-                let num_args = node.funcarg_vars.len();
+                let num_args = argvars.len();
                 for i in 0..num_args {
-                    let lvar = node.funcarg_vars.pop_front().unwrap();
+                    let lvar = argvars.pop_front().unwrap();
                     gen_line!(self.f, "  mov rax, rbp\n");
                     gen_line!(self.f, "  sub rax, {}\n", lvar.offset.unwrap());
                     let regs = match lvar.ty.size() {
@@ -492,12 +540,12 @@ impl<'a> CodeGen<'a> {
                     gen_line!(self.f, "  mov [rax], {}\n", regs[i]);
                 }
 
-                self.gen_blockstmts(node.blockstmts);
+                self.gen_blockstmts(stmts);
                 self.gen_return();
             }
-            NDDECL => {
+            NDDECL { mut inits } => {
                 loop {
-                    if let Some(init) = node.inits.pop_front() {
+                    if let Some(init) = inits.pop_front() {
                         self.gen(init);
                         gen_line!(self.f, "  pop rax\n");
                     } else {
@@ -506,51 +554,41 @@ impl<'a> CodeGen<'a> {
                 }
                 self.gen_push_magic();
             }
-            NDADDR => {
-                self.gen_lval(*node.lhs.unwrap());
+            NDADDR { node: operand } => {
+                self.gen_lval(*operand);
             }
-            NDDEREF => {
-                self.gen(*node.lhs.unwrap());
+            NDDEREF { node: operand } => {
+                self.gen(*operand);
                 self.gen_load(node.ty.unwrap().size());
             }
-            NDBITNOT => {
-                self.gen(*node.lhs.unwrap());
+            NDBITNOT { node: operand } => {
+                self.gen(*operand);
                 gen_line!(self.f, "  pop rax\n");
                 gen_line!(self.f, "  not rax\n");
                 gen_line!(self.f, "  push rax\n");
             }
-            NDLOGAND | NDLOGOR => {
-                // Only evaluate the rhs if the lhs evaluates to 1
-                // as per C89 6.3.13 and 6.3.14
-                let my_label = self.issue_level();
-                self.gen(*node.lhs.unwrap());
-                gen_line!(self.f, "  pop rax\n");
-                gen_line!(self.f, "  cmp rax, 0\n");
-                gen_line!(self.f, "  setne al\n");
-                gen_line!(self.f, "  movzb rax, al\n");
-                if node.kind == NDLOGAND {
-                    gen_line!(self.f, "  je .Lend{}\n", my_label);
-                } else {
-                    gen_line!(self.f, "  jne .Lend{}\n", my_label);
-                }
-                self.gen(*node.rhs.unwrap());
-                gen_line!(self.f, "  pop rax\n");
-                gen_line!(self.f, "  cmp rax, 0\n");
-                gen_line!(self.f, "  setne al\n");
-                gen_line!(self.f, "  movzb rax, al\n");
-
-                gen_line!(self.f, ".Lend{}:\n", my_label);
-                gen_line!(self.f, "  push rax\n");
+            NDLOGAND { lhs, rhs } => {
+                self.gen_logical(*lhs, *rhs, true);
             }
-            NDSHL | NDSHR => {
-                self.gen(*node.lhs.unwrap());
-                self.gen(*node.rhs.unwrap());
+            NDLOGOR { lhs, rhs } => {
+                self.gen_logical(*lhs, *rhs, false);
+            }
+            NDSHL { lhs, rhs } => {
+                self.gen(*lhs);
+                self.gen(*rhs);
                 gen_line!(self.f, "  pop rcx\n");
                 gen_line!(self.f, "  pop rax\n");
 
-                // Also read my comments in parser
-                let instr = if node.kind == NDSHL { "shl" } else { "shr" };
-                gen_line!(self.f, "  {} rax, cl\n", instr);
+                gen_line!(self.f, "  shl rax, cl\n");
+                gen_line!(self.f, "  push rax\n");
+            }
+            NDSHR { lhs, rhs } => {
+                self.gen(*lhs);
+                self.gen(*rhs);
+                gen_line!(self.f, "  pop rcx\n");
+                gen_line!(self.f, "  pop rax\n");
+
+                gen_line!(self.f, "  shr rax, cl\n");
                 gen_line!(self.f, "  push rax\n");
             }
             _ => {
@@ -561,78 +599,129 @@ impl<'a> CodeGen<'a> {
     }
 
     // Generates code for primitive ops
+    // TODO CLean up repetition
     fn gen_primitive(&mut self, node: Node) {
-        use crate::parser::NodeKind::*;
-
-        if let Some(lhs) = node.lhs {
-            self.gen(*lhs);
-        }
-        if let Some(rhs) = node.rhs {
-            self.gen(*rhs);
-        }
-
-        gen_line!(self.f, "  pop rdi\n");
-        gen_line!(self.f, "  pop rax\n");
+        use NodeKind::*;
 
         match node.kind {
-            NDADD => {
+            NDADD {
+                lhs,
+                rhs,
+                scale_lhs,
+            } => {
+                self.gen(*lhs);
+                self.gen(*rhs);
+                gen_line!(self.f, "  pop rdi\n");
+                gen_line!(self.f, "  pop rax\n");
+
                 let ty = node.ty.unwrap();
                 if ty.is_ptr_like() {
-                    let reg_to_scale = if node.scale_lhs.unwrap() {
-                        "rdi"
-                    } else {
-                        "rax"
-                    };
+                    let reg_to_scale = if scale_lhs.unwrap() { "rdi" } else { "rax" };
                     gen_line!(self.f, "  imul {}, {}\n", reg_to_scale, ty.base_size());
                 }
                 gen_line!(self.f, "  add rax, rdi\n");
             }
-            NDSUB => {
+            NDSUB { lhs, rhs, .. } => {
+                self.gen(*lhs);
+                self.gen(*rhs);
+                gen_line!(self.f, "  pop rdi\n");
+                gen_line!(self.f, "  pop rax\n");
+
                 let ty = node.ty.unwrap();
                 if ty.is_ptr_like() {
                     gen_line!(self.f, "  imul rdi, {}\n", ty.base_size());
                 }
                 gen_line!(self.f, "  sub rax, rdi\n");
             }
-            NDMUL => {
+            NDMUL { lhs, rhs } => {
+                self.gen(*lhs);
+                self.gen(*rhs);
+                gen_line!(self.f, "  pop rdi\n");
+                gen_line!(self.f, "  pop rax\n");
+
                 gen_line!(self.f, "  imul rax, rdi\n");
             }
-            NDDIV => {
+            NDDIV { lhs, rhs } => {
+                self.gen(*lhs);
+                self.gen(*rhs);
+                gen_line!(self.f, "  pop rdi\n");
+                gen_line!(self.f, "  pop rax\n");
+
                 gen_line!(self.f, "  cqo\n");
                 gen_line!(self.f, "  idiv rdi\n");
             }
-            NDMOD => {
+            NDMOD { lhs, rhs } => {
+                self.gen(*lhs);
+                self.gen(*rhs);
+                gen_line!(self.f, "  pop rdi\n");
+                gen_line!(self.f, "  pop rax\n");
+
                 gen_line!(self.f, "  cqo\n");
                 gen_line!(self.f, "  idiv rdi\n");
                 gen_line!(self.f, "  mov rax, rdx\n");
             }
-            NDEQ => {
+            NDEQ { lhs, rhs } => {
+                self.gen(*lhs);
+                self.gen(*rhs);
+                gen_line!(self.f, "  pop rdi\n");
+                gen_line!(self.f, "  pop rax\n");
+
                 gen_line!(self.f, "  cmp rax, rdi\n");
                 gen_line!(self.f, "  sete al\n");
                 gen_line!(self.f, "  movzb rax, al\n");
             }
-            NDNEQ => {
+            NDNEQ { lhs, rhs } => {
+                self.gen(*lhs);
+                self.gen(*rhs);
+                gen_line!(self.f, "  pop rdi\n");
+                gen_line!(self.f, "  pop rax\n");
+
                 gen_line!(self.f, "  cmp rax, rdi\n");
                 gen_line!(self.f, "  setne al\n");
                 gen_line!(self.f, "  movzb rax, al\n");
             }
-            NDLEQ => {
+            NDLEQ { lhs, rhs } => {
+                self.gen(*lhs);
+                self.gen(*rhs);
+                gen_line!(self.f, "  pop rdi\n");
+                gen_line!(self.f, "  pop rax\n");
+
                 gen_line!(self.f, "  cmp rax, rdi\n");
                 gen_line!(self.f, "  setle al\n");
                 gen_line!(self.f, "  movzb rax, al\n");
             }
-            NDLT => {
+            NDLT { lhs, rhs } => {
+                self.gen(*lhs);
+                self.gen(*rhs);
+                gen_line!(self.f, "  pop rdi\n");
+                gen_line!(self.f, "  pop rax\n");
+
                 gen_line!(self.f, "  cmp rax, rdi\n");
                 gen_line!(self.f, "  setl al\n");
                 gen_line!(self.f, "  movzb rax, al\n");
             }
-            NDBITAND => {
+            NDBITAND { lhs, rhs } => {
+                self.gen(*lhs);
+                self.gen(*rhs);
+                gen_line!(self.f, "  pop rdi\n");
+                gen_line!(self.f, "  pop rax\n");
+
                 gen_line!(self.f, "  and rax, rdi\n");
             }
-            NDBITXOR => {
+            NDBITXOR { lhs, rhs } => {
+                self.gen(*lhs);
+                self.gen(*rhs);
+                gen_line!(self.f, "  pop rdi\n");
+                gen_line!(self.f, "  pop rax\n");
+
                 gen_line!(self.f, "  xor rax, rdi\n");
             }
-            NDBITOR => {
+            NDBITOR { lhs, rhs } => {
+                self.gen(*lhs);
+                self.gen(*rhs);
+                gen_line!(self.f, "  pop rdi\n");
+                gen_line!(self.f, "  pop rax\n");
+
                 gen_line!(self.f, "  or rax, rdi\n");
             }
             _ => panic!("Oops, found a strange node kind."),
