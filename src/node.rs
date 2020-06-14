@@ -1,6 +1,6 @@
 // AST node
 use crate::parser::Var;
-use crate::ty::Type;
+use crate::ctype::Type;
 use std::collections::LinkedList;
 
 #[derive(Debug, Clone)]

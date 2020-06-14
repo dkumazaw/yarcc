@@ -1,7 +1,7 @@
 // Recursive-descent parser
 use crate::node::{AssignMode, Node};
 use crate::tokenizer::TokenIter;
-use crate::ty::Type;
+use crate::ctype::Type;
 use std::collections::LinkedList;
 
 // Stores the name of var, its type, and stack offset if the variable is local.
