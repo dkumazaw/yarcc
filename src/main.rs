@@ -13,6 +13,7 @@ mod codegen;
 mod node;
 mod parser;
 mod tokenizer;
+mod ty;
 
 use codegen::CodeGen;
 use parser::Parser;
