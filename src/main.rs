@@ -9,6 +9,7 @@ macro_rules! gen_line {
     }
 }
 
+mod cenv;
 mod codegen;
 mod ctype;
 mod node;

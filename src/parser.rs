@@ -1,103 +1,27 @@
 // Recursive-descent parser
+use crate::cenv::{Env, Tag, Var};
 use crate::ctype::{Member, Type};
 use crate::node::{AssignMode, Node};
 use crate::tokenizer::TokenIter;
 use std::collections::LinkedList;
 
-// Stores the name of var, its type, and stack offset if the variable is local.
-#[derive(Debug, Clone)]
-pub struct Var {
-    pub name: String,
-    pub ty: Type,
-    pub offset: Option<usize>, // None if global
-    pub scope: Option<usize>,  // None if global
-}
-
-#[derive(Debug, Clone)]
-pub struct Tag {
-    pub name: String,
-    pub ty: Option<Type>,
-    pub scope: Option<usize>, // None if global
-}
-
-#[derive(Debug)]
-pub struct LocalScopes {
-    vars: Vec<Var>,
-    tags: Vec<Tag>,
-    level: usize, // Current scope's level
-    offset: usize,
-}
-
 // Parser returns this context;
 // codegen should use this context to produce code
 pub struct Program {
     pub nodes: LinkedList<Node>,
-    pub globals: LinkedList<Var>,
-    pub literals: LinkedList<String>,
+    pub env: Env,
 }
 
 pub struct Parser {
     iter: TokenIter,
-    globals: LinkedList<Var>,
-    gtags: Vec<Tag>,
-    lscopes: LocalScopes,
-    literals: LinkedList<String>,
-}
-
-impl LocalScopes {
-    fn new() -> Self {
-        LocalScopes {
-            vars: Vec::new(),
-            tags: Vec::new(),
-            level: 0,
-            offset: 0,
-        }
-    }
-
-    fn add_scope(&mut self) {
-        self.level += 1;
-    }
-
-    fn remove_scope(&mut self) {
-        // Pop everything in this scope
-        while let Some(ref var) = self.vars.last() {
-            if var.scope.unwrap() != self.level {
-                break;
-            }
-            self.vars.pop();
-        }
-        self.level -= 1;
-    }
-
-    fn register_lvar(&mut self, ident_name: String, ty: Type) -> Var {
-        let requested_size = ty.total_size();
-        self.offset += requested_size;
-        let my_ofs = self.offset;
-
-        let lvar = Var {
-            name: ident_name,
-            ty: ty,
-            offset: Some(my_ofs),
-            scope: Some(self.level),
-        };
-        self.vars.push(lvar.clone());
-        lvar
-    }
-
-    fn find_lvar(&self, ident_name: &str) -> Option<&Var> {
-        // Notice that this finds the ident of the closest scope
-        self.vars.iter().rev().find(|x| x.name == ident_name)
-    }
+    env: Env,
 }
 
 impl Parser {
     pub fn new(iter: TokenIter) -> Self {
         Parser {
             iter: iter,
-            globals: LinkedList::new(),
-            gtags: Vec::new(),
-            lscopes: LocalScopes::new(),
-            literals: LinkedList::new(),
+            env: Env::new(),
         }
     }
 
@@ -105,8 +29,7 @@ impl Parser {
         let nodes = self.program();
         Program {
             nodes: nodes,
-            globals: self.globals,
-            literals: self.literals,
+            env: self.env,
         }
     }
 
@@ -127,10 +50,10 @@ impl Parser {
                 let array_size = self.iter.expect_number() as usize;
                 let var_type = Type::new_array(tkkind.as_str(), refs, array_size);
                 self.iter.expect("]");
-                Some(self.add_lvar(ident, var_type))
+                Some(self.env.add_var(false, ident, var_type))
             } else {
                 let var_type = Type::new(tkkind.as_str(), refs);
-                Some(self.add_lvar(ident, var_type))
+                Some(self.env.add_var(false, ident, var_type))
             }
         } else {
             None
@@ -184,9 +107,9 @@ impl Parser {
         loop {
             let (name, ty) = self.declarator(kind.clone());
             if is_global {
-                self.add_gvar(name, ty.clone());
+                self.env.add_var(is_global, name, ty.clone());
             } else {
-                let var = self.add_lvar(name, ty.clone());
+                let var = self.env.add_var(is_global, name, ty.clone());
                 if self.iter.consume("=") {
                     inits.append(&mut self.initializer(var));
                 }
@@ -214,10 +137,10 @@ impl Parser {
                 println!("{:?} {:?}", maybe_tag, maybe_ty);
                 match (maybe_tag, maybe_ty) {
                     (Some(tag), Some(ty)) => {
-                        self.add_tag(true, tag, ty.clone());
+                        self.env.add_tag(true, tag, ty.clone());
                         Some(ty)
                     }
-                    (Some(tag), None) => self.find_tag(true, tag),
+                    (Some(tag), None) => self.env.find_tag(true, tag),
                     (None, Some(_)) => {
                         self.error("Not implemented");
                     }
@@ -373,8 +296,8 @@ impl Parser {
 
         self.iter.expect("(");
 
-        // Create a new scope:
-        self.lscopes = LocalScopes::new();
+        // Create new local scopes:
+        self.env.init_scopes();
 
         if !self.iter.consume(")") {
             // There's at least one local variable definition.
@@ -405,7 +328,7 @@ impl Parser {
             ident_name,
             argvars,
             stmts,
-            self.lscopes.offset,
+            self.env.close_scopes(),
         ))
     }
 
@@ -464,13 +387,13 @@ impl Parser {
         if self.iter.consume("{") {
             let mut stmts: LinkedList<Node> = LinkedList::new();
 
-            self.lscopes.add_scope();
+            self.env.add_scope();
             while !self.iter.consume("}") {
                 if let Some(stmt) = self.stmt() {
                     stmts.push_back(stmt);
                 }
             }
-            self.lscopes.remove_scope();
+            self.env.remove_scope();
             Some(Node::new_block(stmts))
         } else {
             None
@@ -871,7 +794,7 @@ impl Parser {
                 Node::new_call(ident, args)
             } else {
                 // This is a variable
-                let var = self.find_var(&ident);
+                let var = self.env.find_var(&ident);
                 if let Some(offset) = var.offset {
                     // This is local
                     Node::new_lvar(offset, var.ty.clone())
@@ -880,65 +803,12 @@ impl Parser {
                 }
             }
         } else if let Some(literal) = self.iter.consume_str() {
-            let pos = self.add_literal(literal);
+            let pos = self.env.add_literal(literal);
             Node::new_str(pos)
         } else {
             // Must be NUM at this point
             Node::new_int(self.iter.expect_number())
         }
-    }
-
-    // Finds if the passed identitier already exists
-    fn find_var(&mut self, ident_name: &str) -> &Var {
-        // Check locals
-        if let Some(ref v) = self.lscopes.find_lvar(ident_name) {
-            return v;
-        }
-        // Check globals
-        if let Some(ref v) = self.globals.iter().find(|x| x.name == ident_name) {
-            return v;
-        }
-
-        panic!("Parser: Found an undefined variable {}\n", ident_name);
-    }
-
-    // TODO These functions shouldn't be Parser's methods...
-    fn add_tag(&mut self, is_global: bool, tag: String, ty: Type) {
-        if is_global {
-            self.gtags.push(Tag {
-                name: tag,
-                ty: Some(ty),
-                scope: None,
-            })
-        }
-    }
-
-    fn find_tag(&mut self, is_global: bool, name: String) -> Option<Type> {
-        if is_global {
-            if let Some(ref tag) = self.gtags.iter().rev().find(|x| x.name == name) {
-                return Some(tag.ty.as_ref().unwrap().clone());
-            }
-        }
-        None
-    }
-
-    fn add_lvar(&mut self, ident_name: String, ty: Type) -> Var {
-        self.lscopes.register_lvar(ident_name, ty)
-    }
-
-    fn add_gvar(&mut self, ident_name: String, ty: Type) {
-        self.globals.push_back(Var {
-            name: ident_name,
-            ty: ty,
-            offset: None,
-            scope: None,
-        });
-    }
-
-    fn add_literal(&mut self, s: String) -> usize {
-        let pos = self.literals.len();
-        self.literals.push_back(s);
-        pos
     }
 
     fn error(&self, s: &str) -> ! {
