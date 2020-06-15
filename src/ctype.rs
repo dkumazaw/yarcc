@@ -92,6 +92,14 @@ impl Type {
         }
     }
 
+    pub fn is_struct(&self) -> bool {
+        use Type::STRUCT;
+        match self {
+            STRUCT { .. } => true,
+            _ => false,
+        }
+    }
+
     pub fn is_ptr_like(&self) -> bool {
         use Type::*;
         match self {

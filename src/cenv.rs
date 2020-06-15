@@ -10,6 +10,21 @@ pub struct Env {
     lscopes: Option<LocalScopes>,
 }
 
+#[derive(Debug, Clone)]
+pub struct Var {
+    pub name: String,
+    pub ty: Type,
+    pub offset: Option<usize>, // None if global
+    pub scope: Option<usize>,  // None if global
+}
+
+#[derive(Debug, Clone)]
+pub struct Tag {
+    pub name: String,
+    pub ty: Option<Type>,     // None if incomplete
+    pub scope: Option<usize>, // None if global
+}
+
 impl Env {
     pub fn new() -> Self {
         Env {
@@ -70,23 +85,34 @@ impl Env {
     }
 
     // Tags
-    pub fn add_tag(&mut self, is_global: bool, tag: String, ty: Type) {
+    /// Adds a tag as an incomplete type
+    pub fn init_tag(&mut self, is_global: bool, name: String) {
+        if let Some(_) = self.find_tag(is_global, name.as_str()) {
+            return;
+        }
         if is_global {
             self.tags.push(Tag {
-                name: tag,
-                ty: Some(ty),
+                name: name,
+                ty: None,
                 scope: None,
             })
         }
     }
 
-    pub fn find_tag(&mut self, is_global: bool, name: String) -> Option<Type> {
-        if is_global {
-            if let Some(ref tag) = self.tags.iter().rev().find(|x| x.name == name) {
-                return Some(tag.ty.as_ref().unwrap().clone());
+    pub fn update_tag(&mut self, name: &str, ty: Type) {
+        if let Some(ref mut tag) = self.tags.iter_mut().find(|x| x.name == name) {
+            if !tag.ty.is_none() {
+                panic!("This tag is already complete.")
             }
+            tag.ty = Some(ty)
+        } else {
+            panic!("Trying to update a tag that is not present.")
         }
-        None
+    }
+
+    /// Finds the type of tag.
+    pub fn find_tag(&mut self, is_global: bool, name: &str) -> Option<&Tag> {
+        self.tags.iter().rev().find(|x| x.name == name)
     }
 
     // Literals
@@ -95,22 +121,6 @@ impl Env {
         self.literals.push_back(s);
         pos
     }
-}
-
-// Stores the name of var, its type, and stack offset if the variable is local.
-#[derive(Debug, Clone)]
-pub struct Var {
-    pub name: String,
-    pub ty: Type,
-    pub offset: Option<usize>, // None if global
-    pub scope: Option<usize>,  // None if global
-}
-
-#[derive(Debug, Clone)]
-pub struct Tag {
-    pub name: String,
-    pub ty: Option<Type>,
-    pub scope: Option<usize>, // None if global
 }
 
 #[derive(Debug)]

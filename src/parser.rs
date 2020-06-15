@@ -85,27 +85,37 @@ impl Parser {
     // init_decl = declarator ("=" initializer)?
     // TODO: Support global variable initializer
     fn declaration(&mut self, is_global: bool) -> Option<Node> {
-        let kind;
+        let ty;
 
-        if let Some(k) = self.decl_spec() {
-            kind = k;
-        } else {
-            if is_global {
-                panic!("Expected type specifier")
-            } else {
-                return None;
+        match self.decl_spec() {
+            Some(t) => {
+                ty = t;
+            }
+            None => {
+                if is_global {
+                    panic!("Expected type specifier")
+                } else {
+                    return None;
+                }
             }
         }
 
         if self.iter.consume(";") {
-            self.warn("This is a useless empty declaration.");
-            return None;
+            if !ty.is_struct() {
+                self.warn("This is a useless empty declaration.");
+            }
+            if is_global {
+                return None;
+            } else {
+                // TODO: Clean up this part
+                return Some(Node::new_decl(LinkedList::new()));
+            }
         }
 
-        println!("{:?}", kind);
+        println!("{:?}", ty);
         let mut inits: LinkedList<Node> = LinkedList::new();
         loop {
-            let (name, ty) = self.declarator(kind.clone());
+            let (name, ty) = self.declarator(ty.clone());
             if is_global {
                 self.env.add_var(is_global, name, ty.clone());
             } else {
@@ -135,19 +145,7 @@ impl Parser {
             "struct" => {
                 let (maybe_tag, maybe_ty) = self.struct_spec();
                 println!("{:?} {:?}", maybe_tag, maybe_ty);
-                match (maybe_tag, maybe_ty) {
-                    (Some(tag), Some(ty)) => {
-                        self.env.add_tag(true, tag, ty.clone());
-                        Some(ty)
-                    }
-                    (Some(tag), None) => self.env.find_tag(true, tag),
-                    (None, Some(_)) => {
-                        self.error("Not implemented");
-                    }
-                    (None, None) => {
-                        self.error("Expected identifier or '{'");
-                    }
-                }
+                maybe_ty
             }
             s => Some(Type::new_base(s)),
         }
@@ -158,10 +156,13 @@ impl Parser {
     //      = struct-or-union ident? "{" (struct-decl ";")+ "}"
     //      | struct-or-union ident
     fn struct_spec(&mut self) -> (Option<String>, Option<Type>) {
-        let name = self.iter.consume_ident();
-        let mut ty = None;
+        let maybe_name: Option<String> = self.iter.consume_ident();
+        let mut maybe_ty: Option<Type> = None;
 
         if self.iter.consume("{") {
+            if let Some(ref name) = maybe_name {
+                self.env.init_tag(true, name.clone()); // Add itself as an incomplete type
+            }
             // C89 6.5.2.1 stipulates that an empty struct-decl shall
             // result in undefined behavior, so I'm just going to enforce
             // 1+ members here.
@@ -180,10 +181,28 @@ impl Parser {
                     break;
                 }
             }
-            ty = Some(Type::STRUCT { size, members });
+            maybe_ty = Some(Type::STRUCT { size, members });
         }
 
-        (name, ty)
+        match (maybe_name, maybe_ty) {
+            (Some(name), Some(ty)) => {
+                self.env.update_tag(name.as_str(), ty.clone());
+                (Some(name), Some(ty))
+            }
+            (Some(name), None) => {
+                let found_ty = if let Some(found_tag) = self.env.find_tag(true, name.as_str()) {
+                    found_tag.ty.clone()
+                } else {
+                    self.env.init_tag(true, name.clone());
+                    None
+                };
+                (Some(name), found_ty)
+            }
+            (None, Some(ty)) => (None, Some(ty)),
+            (None, None) => {
+                self.error("Expected identifier or '{'");
+            }
+        }
     }
 
     // struct_declaration = decl_spec declarator ";"
@@ -811,15 +830,21 @@ impl Parser {
         }
     }
 
-    fn error(&self, s: &str) -> ! {
-        let mut msg = "error: ".to_string();
+    fn debug(&self, s: &str) {
+        let mut msg = "debug: ".to_string();
         msg.push_str(s);
-        panic!("{}", msg);
+        println!("{}", msg);
     }
 
     fn warn(&self, s: &str) {
         let mut msg = "warning: ".to_string();
         msg.push_str(s);
         println!("{}", msg);
+    }
+
+    fn error(&self, s: &str) -> ! {
+        let mut msg = "error: ".to_string();
+        msg.push_str(s);
+        panic!("{}", msg);
     }
 }
