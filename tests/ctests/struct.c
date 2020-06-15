@@ -7,8 +7,8 @@ struct tagged {
 
 int test_tagged() {
     struct tagged c;
-    //c.a = 4;
-    //c.b = 2;
+    c.a = 4;
+    c.b = 2;
     return 1;
 }
 

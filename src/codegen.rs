@@ -126,6 +126,11 @@ impl<'a> CodeGen<'a> {
             NDDEREF { node: operand } => {
                 self.gen(*operand);
             }
+            NDMEMBER {
+                node: operand,
+                name: name,
+                ..
+            } => {}
             _ => {
                 panic!("Unexpected node: got {:?}", node.kind);
             }

@@ -1,5 +1,5 @@
 // Recursive-descent parser
-use crate::ctype::Type;
+use crate::ctype::{Member, Type};
 use crate::node::{AssignMode, Node};
 use crate::tokenizer::TokenIter;
 use std::collections::LinkedList;
@@ -243,16 +243,21 @@ impl Parser {
             // result in undefined behavior, so I'm just going to enforce
             // 1+ members here.
             let mut size = 0;
-            let mut fields: Vec<Box<(String, Type)>> = Vec::new();
+            let mut members: Vec<Member> = Vec::new();
             loop {
                 let (name, ty) = self.struct_declaration();
-                size += ty.total_size();
-                fields.push(Box::new((name, ty)));
+                let mysize = ty.total_size();
+                members.push(Member {
+                    name: name,
+                    ty: ty,
+                    offset: size,
+                });
+                size += mysize;
                 if self.iter.consume("}") {
                     break;
                 }
             }
-            ty = Some(Type::STRUCT { size, fields });
+            ty = Some(Type::STRUCT { size, members });
         }
 
         (name, ty)
@@ -815,6 +820,10 @@ impl Parser {
             node = Node::new_unary("*", node);
             node.populate_ty();
             self.iter.expect("]");
+        } else if self.iter.consume(".") {
+            let ident = self.iter.expect_ident();
+            node = Node::new_member(node, ident);
+            node.populate_ty();
         } else if self.iter.consume("++") {
             node = Node::new_assign(AssignMode::ADD, node, Node::new_int(1), false);
             node.populate_ty();

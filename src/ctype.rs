@@ -6,17 +6,16 @@ pub enum Type {
     SHORT,
     INT,
     LONG,
-    PTR {
-        ptr_to: Box<Type>,
-    },
-    ARRAY {
-        size: usize,
-        ptr_to: Box<Type>,
-    },
-    STRUCT {
-        size: usize,
-        fields: Vec<Box<(String, Type)>>,
-    },
+    PTR { ptr_to: Box<Type> },
+    ARRAY { size: usize, ptr_to: Box<Type> },
+    STRUCT { size: usize, members: Vec<Member> },
+}
+
+#[derive(Debug, Clone)]
+pub struct Member {
+    pub name: String,
+    pub ty: Type,
+    pub offset: usize,
 }
 
 impl PartialEq for Type {
@@ -93,6 +92,14 @@ impl Type {
         }
     }
 
+    pub fn is_struct(&self) -> bool {
+        use Type::*;
+        match self {
+            STRUCT { .. } => true,
+            _ => false,
+        }
+    }
+
     pub fn is_ptr_like(&self) -> bool {
         use Type::*;
         match self {
@@ -126,6 +133,22 @@ impl Type {
         match self {
             PTR { ptr_to } | ARRAY { ptr_to, .. } => ptr_to.size(),
             _ => panic!("Requesting a base size for a terminal type."),
+        }
+    }
+
+    // Returns the relative offset and type of a member of struct
+    // None is returned if no such member exists
+    pub fn get_member_offset(&self, name: &str) -> Option<(usize, Self)> {
+        use Type::STRUCT;
+        if let STRUCT { ref members, .. } = self {
+            let maybe_found = members.iter().find(|m| m.name == name);
+            if let Some(found) = maybe_found {
+                Some((found.offset, found.ty.clone()))
+            } else {
+                None
+            }
+        } else {
+            panic!("Requesting a member offset from a non-struct type.")
         }
     }
 }

@@ -104,6 +104,12 @@ pub enum NodeKind {
     NDRETURN {
         node: Box<Node>,
     },
+    // struct member access
+    NDMEMBER {
+        node: Box<Node>,
+        name: String,
+        offset: Option<usize>,
+    },
     // No operand
     NDBREAK,
     NDCONTINUE,
@@ -509,6 +515,17 @@ impl Node {
         }
     }
 
+    pub fn new_member(node: Self, name: String) -> Self {
+        Node {
+            ty: None,
+            kind: NodeKind::NDMEMBER {
+                node: Box::new(node),
+                name: name,
+                offset: None,
+            },
+        }
+    }
+
     pub fn populate_switch(&mut self) {
         // Use offset to communicate the relative position in the
         // order of appearance
@@ -647,6 +664,21 @@ impl Node {
                 node.populate_ty();
                 // What lhs's type points to should be my type.
                 Some(node.ty.as_ref().unwrap().clone_base())
+            }
+            NDMEMBER {
+                ref mut node,
+                ref name,
+                ref mut offset,
+            } => {
+                // Should be the member's type
+                node.populate_ty();
+                if let Some((ofs, ty)) = node.ty.as_ref().unwrap().get_member_offset(name.as_str())
+                {
+                    *offset = Some(ofs);
+                    Some(ty)
+                } else {
+                    panic!("No member with name {} found!", name);
+                }
             }
             _ => None,
         }
