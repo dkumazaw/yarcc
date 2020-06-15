@@ -1,5 +1,5 @@
 // Variables, literals, tags, scopes
-use crate::ctype::Type;
+use crate::ctype::{EnumMember, Type};
 use std::collections::VecDeque;
 
 #[derive(Debug)]
@@ -21,6 +21,21 @@ pub struct Tag {
     pub name: String,
     pub ty: Option<Type>, // None if incomplete
     pub scope: usize,     // 0 if global
+}
+
+#[derive(Debug, Clone)]
+pub struct EnumConst {
+    pub member: EnumMember,
+    pub scope: usize,
+}
+
+#[derive(Debug)]
+pub struct Scopes {
+    vars: Vec<Var>,
+    consts: Vec<EnumConst>,
+    tags: Vec<Tag>,
+    level: usize, // Current scope's level; 0 when global
+    offset: usize,
 }
 
 impl Env {
@@ -46,18 +61,11 @@ impl Env {
     }
 }
 
-#[derive(Debug)]
-pub struct Scopes {
-    vars: Vec<Var>,
-    tags: Vec<Tag>,
-    level: usize, // Current scope's level; 0 when global
-    offset: usize,
-}
-
 impl Scopes {
     pub fn new() -> Self {
         Scopes {
             vars: Vec::new(),
+            consts: Vec::new(),
             tags: Vec::new(),
             level: 0,
             offset: 0,
@@ -86,6 +94,12 @@ impl Scopes {
             }
             self.tags.pop();
         }
+        while let Some(ref ec) = self.consts.last() {
+            if ec.scope != self.level {
+                break;
+            }
+            self.consts.pop();
+        }
 
         self.level -= 1;
         // Check if we just moved out of local context
@@ -101,6 +115,7 @@ impl Scopes {
 
     // Vars
     pub fn add_var(&mut self, ident_name: String, ty: Type) -> Var {
+        // TODO: Protect against collision with const names
         let offset = if self.level > 0 {
             // This is local; perform the computation
             let requested_size = ty.total_size();
@@ -123,6 +138,18 @@ impl Scopes {
     pub fn find_var(&self, ident_name: &str) -> Option<&Var> {
         // Notice that this finds the ident of the closest scope
         self.vars.iter().rev().find(|x| x.name == ident_name)
+    }
+
+    // Consts
+    pub fn add_const(&mut self, member: EnumMember) {
+        self.consts.push(EnumConst {
+            member: member,
+            scope: self.level,
+        });
+    }
+
+    pub fn find_const(&mut self, name: &str) -> Option<&EnumConst> {
+        self.consts.iter().rev().find(|x| x.member.name == name)
     }
 
     // Tags

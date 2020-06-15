@@ -42,4 +42,5 @@ test_succeed! {
     pointer4: ("int foo(int **x) { **x = 32; } int main() {int a; int *b; b = &a; foo(&b); return a; } ", 32),
     literal: ("tests/ctests/literal.c", 1),
     cstruct: ("tests/ctests/struct.c", 0),
+    cenum: ("tests/ctests/enum.c", 0),
 }

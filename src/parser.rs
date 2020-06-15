@@ -1,5 +1,5 @@
 // Recursive-descent parser
-use crate::cenv::{Env, Var};
+use crate::cenv::{EnumConst, Env, Var};
 use crate::ctype::{EnumMember, StructMember, Type};
 use crate::node::{AssignMode, Node};
 use crate::tokenizer::TokenIter;
@@ -164,16 +164,18 @@ impl Parser {
 
             loop {
                 let name = self.iter.expect_ident();
-
-                // TODO: Parse "="
-                members.push(EnumMember {
+                let ec = EnumMember {
                     name: name,
                     val: val,
-                });
+                };
+                // TODO: Parse "="
+                self.env.scopes.add_const(ec.clone());
+                members.push(ec);
                 val += 1;
                 if self.iter.consume("}") {
                     break;
                 }
+                self.iter.expect(",")
             }
 
             maybe_ty = Some(Type::ENUM { members });
@@ -865,17 +867,16 @@ impl Parser {
 
                 Node::new_call(ident, args)
             } else {
-                // This is a variable
-                let var = self.env.scopes.find_var(&ident);
-                if var.is_none() {
-                    self.error("Encountered an undefined ident!");
-                }
-                let var = var.unwrap();
-                if let Some(offset) = var.offset {
-                    // This is local
-                    Node::new_lvar(offset, var.ty.clone())
+                // This is a variable or enum const
+                if let Some(var) = self.env.scopes.find_var(&ident) {
+                    match var.offset {
+                        Some(offset) => Node::new_lvar(offset, var.ty.clone()),
+                        None => Node::new_gvar(ident, var.ty.clone()),
+                    }
+                } else if let Some(ec) = self.env.scopes.find_const(&ident) {
+                    Node::new_int(ec.member.val)
                 } else {
-                    Node::new_gvar(ident, var.ty.clone())
+                    self.error("Undefined identifier!");
                 }
             }
         } else if let Some(literal) = self.iter.consume_str() {
