@@ -40,12 +40,19 @@ int test_assign() {
     return d + b; // Expect: 22
 }
 
+int test_diff_type() {
+    enum a { aa, bb ,cc , dd };
+    short foo = cc;
+    return foo; // Expect: 2
+}
+
 int main() {
     if (test_simple() != 1) return 1; 
     if (test_local() != 2) return 2;
     if (test_various_decls() != 6) return 3;
     if (test_same_name() != 2) return 4;
     if (test_assign() != 22) return 5;
+    if (test_diff_type() != 2) return 6;
 
     // Successful
     return 0;
