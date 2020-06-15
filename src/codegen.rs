@@ -65,8 +65,9 @@ impl<'a> CodeGen<'a> {
     fn gen_data(&mut self) {
         gen_line!(self.f, ".data\n");
 
+        let mut variter = self.prog.globals.iter();
         loop {
-            if let Some(gvar) = self.prog.env.globals.pop_front() {
+            if let Some(ref gvar) = variter.next() {
                 gen_line!(self.f, "{}:\n", gvar.name);
                 gen_line!(self.f, "  .zero {}\n", gvar.ty.total_size());
             } else {
@@ -76,7 +77,7 @@ impl<'a> CodeGen<'a> {
 
         let mut literal_count = 0;
         loop {
-            if let Some(literal) = self.prog.env.literals.pop_front() {
+            if let Some(literal) = self.prog.literals.pop_front() {
                 gen_line!(self.f, "{}{}:\n", LITERAL_HEAD, literal_count);
                 gen_line!(self.f, "  .string \"{}\"\n", literal);
                 literal_count += 1;

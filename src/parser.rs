@@ -1,15 +1,16 @@
 // Recursive-descent parser
-use crate::cenv::{Env, Tag, Var};
-use crate::ctype::{Member, Type};
+use crate::cenv::{Env, Var};
+use crate::ctype::{EnumMember, StructMember, Type};
 use crate::node::{AssignMode, Node};
 use crate::tokenizer::TokenIter;
-use std::collections::LinkedList;
+use std::collections::{LinkedList, VecDeque};
 
 // Parser returns this context;
 // codegen should use this context to produce code
 pub struct Program {
     pub nodes: LinkedList<Node>,
-    pub env: Env,
+    pub globals: Vec<Var>,
+    pub literals: VecDeque<String>,
 }
 
 pub struct Parser {
@@ -27,9 +28,11 @@ impl Parser {
 
     pub fn parse(mut self) -> Program {
         let nodes = self.program();
+        let (g, l) = self.env.get_symbols();
         Program {
             nodes: nodes,
-            env: self.env,
+            globals: g,
+            literals: l,
         }
     }
 
@@ -50,10 +53,10 @@ impl Parser {
                 let array_size = self.iter.expect_number() as usize;
                 let var_type = Type::new_array(tkkind.as_str(), refs, array_size);
                 self.iter.expect("]");
-                Some(self.env.add_var(false, ident, var_type))
+                Some(self.env.scopes.add_var(ident, var_type))
             } else {
                 let var_type = Type::new(tkkind.as_str(), refs);
-                Some(self.env.add_var(false, ident, var_type))
+                Some(self.env.scopes.add_var(ident, var_type))
             }
         } else {
             None
@@ -117,9 +120,9 @@ impl Parser {
         loop {
             let (name, ty) = self.declarator(ty.clone());
             if is_global {
-                self.env.add_var(is_global, name, ty.clone());
+                self.env.scopes.add_var(name, ty.clone());
             } else {
-                let var = self.env.add_var(is_global, name, ty.clone());
+                let var = self.env.scopes.add_var(name, ty.clone());
                 if self.iter.consume("=") {
                     inits.append(&mut self.initializer(var));
                 }
@@ -134,20 +137,70 @@ impl Parser {
 
     // decl_spec
     fn decl_spec(&mut self) -> Option<Type> {
-        let kindstr;
+        let tystr;
         if let Some(s) = self.iter.consume_type() {
-            kindstr = s;
+            tystr = s;
         } else {
             return None;
         }
 
-        match kindstr.as_str() {
-            "struct" => {
-                let (maybe_tag, maybe_ty) = self.struct_spec();
-                println!("{:?} {:?}", maybe_tag, maybe_ty);
-                maybe_ty
-            }
+        match tystr.as_str() {
+            "struct" => self.struct_spec(),
+            "enum" => self.enum_spec(),
             s => Some(Type::new_base(s)),
+        }
+    }
+
+    // Assumes type "enum" has already been read
+    // enum-spec = "enum" ident? "{" ident ("=" constexpr)? ("," ident ("=" constexpr)?)* "}"
+    //           | "enum" ident
+    fn enum_spec(&mut self) -> Option<Type> {
+        let maybe_name: Option<String> = self.iter.consume_ident();
+        let mut maybe_ty: Option<Type> = None;
+
+        if self.iter.consume("{") {
+            let mut val: i32 = 0;
+            let mut members: Vec<EnumMember> = Vec::new();
+
+            loop {
+                let name = self.iter.expect_ident();
+
+                // TODO: Parse "="
+                members.push(EnumMember {
+                    name: name,
+                    val: val,
+                });
+                val += 1;
+                if self.iter.consume("}") {
+                    break;
+                }
+            }
+
+            maybe_ty = Some(Type::ENUM { members });
+        }
+
+        match (maybe_name, maybe_ty) {
+            (Some(name), Some(ty)) => {
+                self.env.scopes.init_tag(name.clone());
+                self.env.scopes.update_tag(name.as_str(), ty.clone());
+                Some(ty)
+            }
+            (Some(name), None) => {
+                let found_ty = if let Some(found_tag) = self.env.scopes.find_tag(name.as_str()) {
+                    if !found_tag.ty.as_ref().unwrap().is_enum() {
+                        self.error("This tag is not defined as enum.")
+                    }
+                    found_tag.ty.clone()
+                } else {
+                    self.env.scopes.init_tag(name.clone());
+                    None
+                };
+                found_ty
+            }
+            (None, Some(ty)) => Some(ty),
+            (None, None) => {
+                self.error("Expected identifier or '{'");
+            }
         }
     }
 
@@ -155,23 +208,23 @@ impl Parser {
     // struct-or-union-specifier
     //      = struct-or-union ident? "{" (struct-decl ";")+ "}"
     //      | struct-or-union ident
-    fn struct_spec(&mut self) -> (Option<String>, Option<Type>) {
+    fn struct_spec(&mut self) -> Option<Type> {
         let maybe_name: Option<String> = self.iter.consume_ident();
         let mut maybe_ty: Option<Type> = None;
 
         if self.iter.consume("{") {
             if let Some(ref name) = maybe_name {
-                self.env.init_tag(true, name.clone()); // Add itself as an incomplete type
+                self.env.scopes.init_tag(name.clone()); // Add itself as an incomplete type
             }
             // C89 6.5.2.1 stipulates that an empty struct-decl shall
             // result in undefined behavior, so I'm just going to enforce
             // 1+ members here.
             let mut size = 0;
-            let mut members: Vec<Member> = Vec::new();
+            let mut members: Vec<StructMember> = Vec::new();
             loop {
                 let (name, ty) = self.struct_declaration();
                 let mysize = ty.total_size();
-                members.push(Member {
+                members.push(StructMember {
                     name: name,
                     ty: ty,
                     offset: size,
@@ -186,19 +239,19 @@ impl Parser {
 
         match (maybe_name, maybe_ty) {
             (Some(name), Some(ty)) => {
-                self.env.update_tag(name.as_str(), ty.clone());
-                (Some(name), Some(ty))
+                self.env.scopes.update_tag(name.as_str(), ty.clone());
+                Some(ty)
             }
             (Some(name), None) => {
-                let found_ty = if let Some(found_tag) = self.env.find_tag(true, name.as_str()) {
+                let found_ty = if let Some(found_tag) = self.env.scopes.find_tag(name.as_str()) {
                     found_tag.ty.clone()
                 } else {
-                    self.env.init_tag(true, name.clone());
+                    self.env.scopes.init_tag(name.clone());
                     None
                 };
-                (Some(name), found_ty)
+                found_ty
             }
-            (None, Some(ty)) => (None, Some(ty)),
+            (None, Some(ty)) => Some(ty),
             (None, None) => {
                 self.error("Expected identifier or '{'");
             }
@@ -316,7 +369,7 @@ impl Parser {
         self.iter.expect("(");
 
         // Create new local scopes:
-        self.env.init_scopes();
+        self.env.scopes.add_scope();
 
         if !self.iter.consume(")") {
             // There's at least one local variable definition.
@@ -347,7 +400,7 @@ impl Parser {
             ident_name,
             argvars,
             stmts,
-            self.env.close_scopes(),
+            self.env.scopes.remove_scope().unwrap(),
         ))
     }
 
@@ -406,13 +459,13 @@ impl Parser {
         if self.iter.consume("{") {
             let mut stmts: LinkedList<Node> = LinkedList::new();
 
-            self.env.add_scope();
+            self.env.scopes.add_scope();
             while !self.iter.consume("}") {
                 if let Some(stmt) = self.stmt() {
                     stmts.push_back(stmt);
                 }
             }
-            self.env.remove_scope();
+            self.env.scopes.remove_scope();
             Some(Node::new_block(stmts))
         } else {
             None
@@ -813,7 +866,11 @@ impl Parser {
                 Node::new_call(ident, args)
             } else {
                 // This is a variable
-                let var = self.env.find_var(&ident);
+                let var = self.env.scopes.find_var(&ident);
+                if var.is_none() {
+                    self.error("Encountered an undefined ident!");
+                }
+                let var = var.unwrap();
                 if let Some(offset) = var.offset {
                     // This is local
                     Node::new_lvar(offset, var.ty.clone())

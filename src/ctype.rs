@@ -6,16 +6,33 @@ pub enum Type {
     SHORT,
     INT,
     LONG,
-    PTR { ptr_to: Box<Type> },
-    ARRAY { size: usize, ptr_to: Box<Type> },
-    STRUCT { size: usize, members: Vec<Member> },
+    PTR {
+        ptr_to: Box<Type>,
+    },
+    ARRAY {
+        size: usize,
+        ptr_to: Box<Type>,
+    },
+    STRUCT {
+        size: usize,
+        members: Vec<StructMember>,
+    },
+    ENUM {
+        members: Vec<EnumMember>,
+    },
 }
 
 #[derive(Debug, Clone)]
-pub struct Member {
+pub struct StructMember {
     pub name: String,
     pub ty: Type,
     pub offset: usize,
+}
+
+#[derive(Debug, Clone)]
+pub struct EnumMember {
+    pub name: String,
+    pub val: i32,
 }
 
 impl PartialEq for Type {
@@ -100,6 +117,14 @@ impl Type {
         }
     }
 
+    pub fn is_enum(&self) -> bool {
+        use Type::ENUM;
+        match self {
+            ENUM { .. } => true,
+            _ => false,
+        }
+    }
+
     pub fn is_ptr_like(&self) -> bool {
         use Type::*;
         match self {
@@ -117,6 +142,7 @@ impl Type {
             LONG | PTR { .. } => 8,
             ARRAY { .. } => self.base_size(),
             STRUCT { size, .. } => size.clone(),
+            ENUM { .. } => 4,
         }
     }
 
@@ -124,8 +150,8 @@ impl Type {
     pub fn total_size(&self) -> usize {
         use Type::*;
         match self {
-            CHAR | SHORT | INT | LONG | PTR { .. } | STRUCT { .. } => self.size(),
             ARRAY { size, .. } => size.clone() * self.size(),
+            _ => self.size(),
         }
     }
 
