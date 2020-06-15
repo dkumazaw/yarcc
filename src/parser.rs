@@ -811,6 +811,7 @@ impl Parser {
     // postfix = primary
     //         | primary '[' expr ']'
     //         | primary "." ident
+    //         | primary "->" ident
     //         | primary "++"
     //         | primary "--"
     fn postfix(&mut self) -> Node {
@@ -823,6 +824,10 @@ impl Parser {
         } else if self.iter.consume(".") {
             let ident = self.iter.expect_ident();
             node = Node::new_member(node, ident);
+            node.populate_ty();
+        } else if self.iter.consume("->") {
+            let ident = self.iter.expect_ident();
+            node = Node::new_member(Node::new_unary("*", node), ident);
             node.populate_ty();
         } else if self.iter.consume("++") {
             node = Node::new_assign(AssignMode::ADD, node, Node::new_int(1), false);

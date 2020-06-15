@@ -185,6 +185,9 @@ impl Tokenizer {
                     } else if in_str.chars().nth(cur).unwrap() == '-' {
                         cur += 1;
                         c.to_string() + "-"
+                    } else if in_str.chars().nth(cur).unwrap() == '>' {
+                        cur += 1;
+                        c.to_string() + ">"
                     } else {
                         c.to_string()
                     };
