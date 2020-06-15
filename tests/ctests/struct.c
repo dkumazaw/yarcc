@@ -36,12 +36,21 @@ int test_various_decls() {
     return l1.a + l1.c + l2_1.e + l2_2.f + l_no_tag.j; // Expect: 32
 }
 
-int main() {
-    int ret = 0;
-    if (test_simple() != 6) ret |= 1;
-    if (test_local() != 45) ret |= (1 << 1);
-    if (test_various_decls() != 32) ret |= (1 << 2);
+int test_same_name() {
+    struct simple { int aa; int bb; int cc; };
+    struct simple s;
+    s.aa = 23;
+    s.cc = 45;
 
-    // Successful if 0
-    return ret;
+    return s.cc - s.aa; // Expect: 22
+}
+
+int main() {
+    if (test_simple() != 6) return 1;
+    if (test_local() != 45) return 2;
+    if (test_various_decls() != 32) return 3;
+    if (test_same_name() != 22) return 4;
+
+    // Successful
+    return 0;
 }
