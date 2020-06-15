@@ -164,11 +164,14 @@ impl Parser {
 
             loop {
                 let name = self.iter.expect_ident();
+                if self.iter.consume("=") {
+                    // TODO: Replace with constexpr
+                    val = self.iter.expect_number();
+                }
                 let ec = EnumMember {
                     name: name,
                     val: val,
                 };
-                // TODO: Parse "="
                 self.env.scopes.add_const(ec.clone());
                 members.push(ec);
                 val += 1;

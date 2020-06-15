@@ -35,11 +35,17 @@ int test_same_name() {
     return s; // Expect: 2 (Not 0!)
 }
 
+int test_assign() {
+    enum e { a, b, c = 20, d };
+    return d + b; // Expect: 22
+}
+
 int main() {
     if (test_simple() != 1) return 1; 
     if (test_local() != 2) return 2;
     if (test_various_decls() != 6) return 3;
     if (test_same_name() != 2) return 4;
+    if (test_assign() != 22) return 5;
 
     // Successful
     return 0;
