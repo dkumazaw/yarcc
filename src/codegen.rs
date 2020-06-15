@@ -127,10 +127,15 @@ impl<'a> CodeGen<'a> {
                 self.gen(*operand);
             }
             NDMEMBER {
-                node: operand,
-                name: name,
+                node: varnode,
+                offset: relative_offset,
                 ..
-            } => {}
+            } => {
+                self.gen_lval(*varnode);
+                gen_line!(self.f, "  pop rax\n");
+                gen_line!(self.f, "  add rax, {}\n", relative_offset.unwrap());
+                gen_line!(self.f, "  push rax\n");
+            }
             _ => {
                 panic!("Unexpected node: got {:?}", node.kind);
             }
@@ -247,6 +252,11 @@ impl<'a> CodeGen<'a> {
                     self.gen_load(size);
                 }
             },
+            NDMEMBER { .. } => {
+                let size = node.ty.as_ref().unwrap().size();
+                self.gen_lval(node);
+                self.gen_load(size);
+            }
             NDASSIGN {
                 lhs,
                 rhs,

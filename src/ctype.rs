@@ -92,14 +92,6 @@ impl Type {
         }
     }
 
-    pub fn is_struct(&self) -> bool {
-        use Type::*;
-        match self {
-            STRUCT { .. } => true,
-            _ => false,
-        }
-    }
-
     pub fn is_ptr_like(&self) -> bool {
         use Type::*;
         match self {
@@ -120,6 +112,7 @@ impl Type {
         }
     }
 
+    // TODO: This may be a bit confusing. Maybe name it like "array_size"?
     pub fn total_size(&self) -> usize {
         use Type::*;
         match self {
