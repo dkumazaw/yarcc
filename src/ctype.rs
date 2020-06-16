@@ -41,9 +41,9 @@ pub struct EnumMember {
 #[derive(Debug, Clone)]
 pub enum IncompleteKind {
     VOID,
-    ARRAY,                   // Unknow size
-    STRUCT { name: String }, // Unknown content
-    ENUM { name: String },   // Unknown content
+    ARRAY,  // Unknow size
+    STRUCT, // Unknown content
+    ENUM,   // Unknown content
 }
 
 impl PartialEq for Type {
@@ -211,18 +211,7 @@ impl Type {
                     None
                 }
             }
-            INCOMPLETE { ref kind } => {
-                match kind {
-                    IncompleteKind::STRUCT { name: ref tagname } => {
-                        // Resolve incomplete type
-                        // FIXME: This results in redundant lookup for
-                        // cases where there is no self-reference or circular reference.
-                        println!("{}", tagname);
-                        None
-                    }
-                    _ => panic!("Unreacheable."),
-                }
-            }
+            INCOMPLETE { ref kind } => panic!("Not implemented yet."),
             _ => panic!("Unreacheable."),
         }
     }

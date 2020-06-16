@@ -206,7 +206,7 @@ impl Parser {
                     Some(found_tag.ty.clone())
                 } else {
                     // Define an incomplete enum
-                    let ty = Type::new_incomplete(IncompleteKind::ENUM { name: name.clone() });
+                    let ty = Type::new_incomplete(IncompleteKind::ENUM);
                     self.env.scopes.add_tag(name.clone(), ty.clone());
                     Some(ty)
                 };
@@ -230,8 +230,7 @@ impl Parser {
         if self.iter.consume("{") {
             if let Some(ref name) = maybe_name {
                 // Add itself as an incomplete type
-                let incomplete =
-                    Type::new_incomplete(IncompleteKind::STRUCT { name: name.clone() });
+                let incomplete = Type::new_incomplete(IncompleteKind::STRUCT);
                 self.env.scopes.add_tag(name.clone(), incomplete);
             }
             // C89 6.5.2.1 stipulates that an empty struct-decl shall
@@ -268,7 +267,7 @@ impl Parser {
                     Some(found_tag.ty.clone())
                 } else {
                     // Define an incomplete struct
-                    let ty = Type::new_incomplete(IncompleteKind::STRUCT { name: name.clone() });
+                    let ty = Type::new_incomplete(IncompleteKind::STRUCT);
                     self.env.scopes.add_tag(name.clone(), ty.clone());
                     Some(ty)
                 };
