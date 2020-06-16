@@ -41,9 +41,9 @@ pub struct EnumMember {
 #[derive(Debug, Clone)]
 pub enum IncompleteKind {
     VOID,
-    ARRAY,  // Unknow size
-    STRUCT, // Unknown content
-    ENUM,   // Unknown content
+    ARRAY,                   // Unknow size
+    STRUCT { name: String }, // Unknown content
+    ENUM { name: String },   // Unknown content
 }
 
 impl PartialEq for Type {
@@ -129,7 +129,7 @@ impl Type {
         match self {
             STRUCT { .. } => true,
             INCOMPLETE { ref kind } => match kind {
-                IncompleteKind::STRUCT => true,
+                IncompleteKind::STRUCT { .. } => true,
                 _ => false,
             },
             _ => false,
@@ -141,7 +141,7 @@ impl Type {
         match self {
             ENUM { .. } => true,
             INCOMPLETE { ref kind } => match kind {
-                IncompleteKind::ENUM => true,
+                IncompleteKind::ENUM { .. } => true,
                 _ => false,
             },
             _ => false,
@@ -195,19 +195,35 @@ impl Type {
         }
     }
 
-    // Returns the relative offset and type of a member of struct
-    // None is returned if no such member exists
+    /// Returns the relative offset and type of a member of struct
+    /// None is returned if no such member exists
     pub fn get_member_offset(&self, name: &str) -> Option<(usize, Self)> {
-        use Type::STRUCT;
-        if let STRUCT { ref members, .. } = self {
-            let maybe_found = members.iter().find(|m| m.name == name);
-            if let Some(found) = maybe_found {
-                Some((found.offset, found.ty.clone()))
-            } else {
-                None
-            }
-        } else {
+        use Type::{INCOMPLETE, STRUCT};
+        if !self.is_struct() {
             panic!("Requesting a member offset from a non-struct type.")
+        }
+        match self {
+            STRUCT { ref members, .. } => {
+                let maybe_found = members.iter().find(|m| m.name == name);
+                if let Some(found) = maybe_found {
+                    Some((found.offset, found.ty.clone()))
+                } else {
+                    None
+                }
+            }
+            INCOMPLETE { ref kind } => {
+                match kind {
+                    IncompleteKind::STRUCT { name: ref tagname } => {
+                        // Resolve incomplete type
+                        // FIXME: This results in redundant lookup for
+                        // cases where there is no self-reference or circular reference.
+                        println!("{}", tagname);
+                        None
+                    }
+                    _ => panic!("Unreacheable."),
+                }
+            }
+            _ => panic!("Unreacheable."),
         }
     }
 }

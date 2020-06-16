@@ -206,7 +206,7 @@ impl Parser {
                     Some(found_tag.ty.clone())
                 } else {
                     // Define an incomplete enum
-                    let ty = Type::new_incomplete(IncompleteKind::ENUM);
+                    let ty = Type::new_incomplete(IncompleteKind::ENUM { name: name.clone() });
                     self.env.scopes.add_tag(name.clone(), ty.clone());
                     Some(ty)
                 };
@@ -230,7 +230,8 @@ impl Parser {
         if self.iter.consume("{") {
             if let Some(ref name) = maybe_name {
                 // Add itself as an incomplete type
-                let incomplete = Type::new_incomplete(IncompleteKind::STRUCT);
+                let incomplete =
+                    Type::new_incomplete(IncompleteKind::STRUCT { name: name.clone() });
                 self.env.scopes.add_tag(name.clone(), incomplete);
             }
             // C89 6.5.2.1 stipulates that an empty struct-decl shall
@@ -267,7 +268,7 @@ impl Parser {
                     Some(found_tag.ty.clone())
                 } else {
                     // Define an incomplete struct
-                    let ty = Type::new_incomplete(IncompleteKind::STRUCT);
+                    let ty = Type::new_incomplete(IncompleteKind::STRUCT { name: name.clone() });
                     self.env.scopes.add_tag(name.clone(), ty.clone());
                     Some(ty)
                 };
@@ -280,11 +281,11 @@ impl Parser {
         }
     }
 
-    // struct_declaration = decl_spec declarator ";"
+    // struct_declaration = spec_qual declarator ";"
     // TODO: Support bitfield etc
     // TODO: Can have comma separated declarator...
     fn struct_declaration(&mut self) -> (String, Type) {
-        let base = self.decl_spec();
+        let base = self.spec_qual();
         let (name, ty) = self.declarator(base.unwrap());
         self.iter.expect(";");
         (name, ty)
@@ -818,41 +819,41 @@ impl Parser {
             node = self.unary();
         } else if self.iter.consume("-") {
             node = Node::new_binary("-", Node::new_int(0), self.unary());
-            node.populate_ty()
+            node.populate_ty();
         } else {
             node = self.postfix();
         }
         node
     }
 
-    // postfix = primary
-    //         | primary '[' expr ']'
-    //         | primary "." ident
-    //         | primary "->" ident
-    //         | primary "++"
-    //         | primary "--"
+    // postfix = primary ('[' expr ']' | "." ident | "->" ident | "++" | "--")*
     fn postfix(&mut self) -> Node {
         let mut node = self.primary();
-        if self.iter.consume("[") {
-            node = Node::new_binary("+", node, self.expr());
-            node = Node::new_unary("*", node);
-            node.populate_ty();
-            self.iter.expect("]");
-        } else if self.iter.consume(".") {
-            let ident = self.iter.expect_ident();
-            node = Node::new_member(node, ident);
-            node.populate_ty();
-        } else if self.iter.consume("->") {
-            let ident = self.iter.expect_ident();
-            node = Node::new_member(Node::new_unary("*", node), ident);
-            node.populate_ty();
-        } else if self.iter.consume("++") {
-            node = Node::new_assign(AssignMode::ADD, node, Node::new_int(1), false);
-            node.populate_ty();
-        // TODO: Check lvalue
-        } else if self.iter.consume("--") {
-            node = Node::new_assign(AssignMode::SUB, node, Node::new_int(1), false);
-            node.populate_ty();
+
+        loop {
+            if self.iter.consume("[") {
+                node = Node::new_binary("+", node, self.expr());
+                node = Node::new_unary("*", node);
+                node.populate_ty();
+                self.iter.expect("]");
+            } else if self.iter.consume(".") {
+                let ident = self.iter.expect_ident();
+                node = Node::new_member(node, ident);
+                node.populate_ty();
+            } else if self.iter.consume("->") {
+                let ident = self.iter.expect_ident();
+                node = Node::new_member(Node::new_unary("*", node), ident);
+                node.populate_ty();
+            } else if self.iter.consume("++") {
+                node = Node::new_assign(AssignMode::ADD, node, Node::new_int(1), false);
+                node.populate_ty();
+            // TODO: Check lvalue
+            } else if self.iter.consume("--") {
+                node = Node::new_assign(AssignMode::SUB, node, Node::new_int(1), false);
+                node.populate_ty();
+            } else {
+                break;
+            }
         }
         node
     }
