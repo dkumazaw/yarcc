@@ -1,6 +1,6 @@
 // Recursive-descent parser
 use crate::cenv::{EnumConst, Env, Var};
-use crate::ctype::{EnumMember, StructMember, Type};
+use crate::ctype::{EnumMember, IncompleteKind, StructMember, Type};
 use crate::node::{AssignMode, Node};
 use crate::tokenizer::TokenIter;
 use std::collections::{LinkedList, VecDeque};
@@ -135,8 +135,17 @@ impl Parser {
         Some(Node::new_decl(inits))
     }
 
-    // decl_spec
+    // decl_spec = (storage-class-spec | type-spec | type-qual)*
     fn decl_spec(&mut self) -> Option<Type> {
+        self.storage_typespec_typequal(true)
+    }
+
+    // spec_qual = (type-spec | type-qual)*
+    fn spec_qual(&mut self) -> Option<Type> {
+        self.storage_typespec_typequal(false)
+    }
+
+    fn storage_typespec_typequal(&mut self, allow_storage: bool) -> Option<Type> {
         let tystr;
         if let Some(s) = self.iter.consume_type() {
             tystr = s;
@@ -186,19 +195,20 @@ impl Parser {
 
         match (maybe_name, maybe_ty) {
             (Some(name), Some(ty)) => {
-                self.env.scopes.init_tag(name.clone());
-                self.env.scopes.update_tag(name.as_str(), ty.clone());
+                self.env.scopes.add_tag(name.clone(), ty.clone());
                 Some(ty)
             }
             (Some(name), None) => {
                 let found_ty = if let Some(found_tag) = self.env.scopes.find_tag(name.as_str()) {
-                    if !found_tag.ty.as_ref().unwrap().is_enum() {
+                    if !found_tag.ty.is_enum() {
                         self.error("This tag is not defined as enum.")
                     }
-                    found_tag.ty.clone()
+                    Some(found_tag.ty.clone())
                 } else {
-                    self.env.scopes.init_tag(name.clone());
-                    None
+                    // Define an incomplete enum
+                    let ty = Type::new_incomplete(IncompleteKind::ENUM);
+                    self.env.scopes.add_tag(name.clone(), ty.clone());
+                    Some(ty)
                 };
                 found_ty
             }
@@ -219,7 +229,9 @@ impl Parser {
 
         if self.iter.consume("{") {
             if let Some(ref name) = maybe_name {
-                self.env.scopes.init_tag(name.clone()); // Add itself as an incomplete type
+                // Add itself as an incomplete type
+                let incomplete = Type::new_incomplete(IncompleteKind::STRUCT);
+                self.env.scopes.add_tag(name.clone(), incomplete);
             }
             // C89 6.5.2.1 stipulates that an empty struct-decl shall
             // result in undefined behavior, so I'm just going to enforce
@@ -249,10 +261,15 @@ impl Parser {
             }
             (Some(name), None) => {
                 let found_ty = if let Some(found_tag) = self.env.scopes.find_tag(name.as_str()) {
-                    found_tag.ty.clone()
+                    if !found_tag.ty.is_struct() {
+                        self.error("This tag is not defined as struct.")
+                    }
+                    Some(found_tag.ty.clone())
                 } else {
-                    self.env.scopes.init_tag(name.clone());
-                    None
+                    // Define an incomplete struct
+                    let ty = Type::new_incomplete(IncompleteKind::STRUCT);
+                    self.env.scopes.add_tag(name.clone(), ty.clone());
+                    Some(ty)
                 };
                 found_ty
             }

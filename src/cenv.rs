@@ -19,8 +19,8 @@ pub struct Var {
 #[derive(Debug, Clone)]
 pub struct Tag {
     pub name: String,
-    pub ty: Option<Type>, // None if incomplete
-    pub scope: usize,     // 0 if global
+    pub ty: Type,
+    pub scope: usize, // 0 if global
 }
 
 #[derive(Debug, Clone)]
@@ -153,29 +153,35 @@ impl Scopes {
     }
 
     // Tags
-    /// Adds a tag as an incomplete type
-    /// No-op if the identically named tag exists in the same scope.
-    pub fn init_tag(&mut self, name: String) {
+    /// Adds a tag with the provided ty
+    /// If an identically named tag is already present in the curernt scope,
+    /// try to update it with the provided type.
+    pub fn add_tag(&mut self, name: String, ty: Type) {
         if let Some(tag) = self.find_tag(name.as_str()) {
             if tag.scope == self.level {
+                self.update_tag(name.as_str(), ty);
                 return;
             }
         }
         self.tags.push(Tag {
             name: name,
-            ty: None,
+            ty: ty,
             scope: self.level,
         });
     }
 
+    /// Updates the tag of an incomplete type.
     pub fn update_tag(&mut self, name: &str, ty: Type) {
         // rev ensures that the right tag gets updated.
         // e.g. imagine you have "struct a" both in global and local contexts!
         if let Some(ref mut tag) = self.tags.iter_mut().rev().find(|x| x.name == name) {
-            if !tag.ty.is_none() {
+            if !tag.ty.is_incomplete() {
                 panic!("This tag is already complete.")
             }
-            tag.ty = Some(ty)
+            if tag.scope != self.level {
+                panic!("Trying to update the tag that isn't in your scope.")
+            }
+            tag.ty = ty
         } else {
             panic!("Trying to update a tag that is not present.")
         }

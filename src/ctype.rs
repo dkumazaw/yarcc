@@ -20,6 +20,9 @@ pub enum Type {
     ENUM {
         members: Vec<EnumMember>,
     },
+    INCOMPLETE {
+        kind: IncompleteKind,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -33,6 +36,14 @@ pub struct StructMember {
 pub struct EnumMember {
     pub name: String,
     pub val: i32,
+}
+
+#[derive(Debug, Clone)]
+pub enum IncompleteKind {
+    VOID,
+    ARRAY,  // Unknow size
+    STRUCT, // Unknown content
+    ENUM,   // Unknown content
 }
 
 impl PartialEq for Type {
@@ -81,6 +92,10 @@ impl Type {
         }
     }
 
+    pub fn new_incomplete(kind: IncompleteKind) -> Self {
+        Type::INCOMPLETE { kind: kind }
+    }
+
     pub fn clone_base(&self) -> Self {
         use Type::*;
 
@@ -110,17 +125,33 @@ impl Type {
     }
 
     pub fn is_struct(&self) -> bool {
-        use Type::STRUCT;
+        use Type::{INCOMPLETE, STRUCT};
         match self {
             STRUCT { .. } => true,
+            INCOMPLETE { ref kind } => match kind {
+                IncompleteKind::STRUCT => true,
+                _ => false,
+            },
             _ => false,
         }
     }
 
     pub fn is_enum(&self) -> bool {
-        use Type::ENUM;
+        use Type::{ENUM, INCOMPLETE};
         match self {
             ENUM { .. } => true,
+            INCOMPLETE { ref kind } => match kind {
+                IncompleteKind::ENUM => true,
+                _ => false,
+            },
+            _ => false,
+        }
+    }
+
+    pub fn is_incomplete(&self) -> bool {
+        use Type::INCOMPLETE;
+        match self {
+            INCOMPLETE { .. } => true,
             _ => false,
         }
     }
@@ -143,6 +174,7 @@ impl Type {
             ARRAY { .. } => self.base_size(),
             STRUCT { size, .. } => size.clone(),
             ENUM { .. } => 4,
+            INCOMPLETE { .. } => panic!("Requesting size of an incomplete type."),
         }
     }
 
