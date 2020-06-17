@@ -1,4 +1,5 @@
 // Type
+use std::slice::Iter;
 
 const INIT: usize = 0;
 const VOID: usize = 1;
@@ -47,6 +48,7 @@ impl TypeConfig {
 
 #[derive(Debug, Clone)]
 enum TypeKind {
+    VOID,
     CHAR,
     SHORT,
     INT,
@@ -64,6 +66,9 @@ enum TypeKind {
     },
     ENUM {
         members: Vec<EnumMember>,
+    },
+    FUNCTION {
+        args: Vec<(String, Type)>,
     },
     INCOMPLETE {
         kind: IncompleteKind,
@@ -85,7 +90,7 @@ pub struct EnumMember {
 
 #[derive(Debug, Clone)]
 pub enum IncompleteKind {
-    VOID,
+    VOID,   // TODO: Rethink this...?
     ARRAY,  // Unknow size
     STRUCT, // Unknown content
     ENUM,   // Unknown content
@@ -110,6 +115,7 @@ impl Type {
     pub fn new_from_config(tc: TypeConfig) -> Result<Self, &'static str> {
         println!("{:?}", tc);
         match tc.config {
+            VOID => Ok(Self::new_from_kind(TypeKind::VOID)),
             CHAR => Ok(Self::new_from_kind(TypeKind::CHAR)),
             SHORT => Ok(Self::new_from_kind(TypeKind::SHORT)),
             INT => Ok(Self::new_from_kind(TypeKind::INT)),
@@ -176,6 +182,11 @@ impl Type {
         Self::new_from_kind(kind)
     }
 
+    pub fn new_function(args: Vec<(String, Type)>) -> Self {
+        let kind = TypeKind::FUNCTION { args: args };
+        Self::new_from_kind(kind)
+    }
+
     pub fn new_incomplete(kind: IncompleteKind) -> Self {
         let tykind = TypeKind::INCOMPLETE { kind: kind };
         Self::new_from_kind(tykind)
@@ -208,6 +219,14 @@ impl Type {
             ptr_to: Box::new(self.clone()),
         };
         Self::new_from_kind(kind)
+    }
+
+    pub fn is_void(&self) -> bool {
+        use TypeKind::VOID;
+        match self.kind {
+            VOID => true,
+            _ => false,
+        }
     }
 
     pub fn is_array(&self) -> bool {
@@ -261,6 +280,7 @@ impl Type {
     pub fn size(&self) -> usize {
         use TypeKind::*;
         match self.kind {
+            VOID => panic!("not implemented"),
             CHAR => 1,
             SHORT => 2,
             INT => 4,
@@ -268,6 +288,7 @@ impl Type {
             ARRAY { .. } => self.base_size(),
             STRUCT { size, .. } => size.clone(),
             ENUM { .. } => 4,
+            FUNCTION { .. } => panic!("not implemented"),
             INCOMPLETE { .. } => panic!("Requesting size of an incomplete type."),
         }
     }
@@ -307,6 +328,15 @@ impl Type {
             }
             INCOMPLETE { ref kind } => panic!("Not implemented yet."),
             _ => panic!("Unreacheable."),
+        }
+    }
+
+    // Returns an iterator over arguments of a function type.
+    pub fn iter_func_args(&self) -> Iter<(String, Type)> {
+        use TypeKind::FUNCTION;
+        match self.kind {
+            FUNCTION { ref args } => args.iter(),
+            _ => panic!("Requesting an argument iterator from non-function type."),
         }
     }
 }

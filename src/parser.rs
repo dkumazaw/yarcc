@@ -36,33 +36,6 @@ impl Parser {
         }
     }
 
-    // TODO: Currently only used by funcdef
-    fn lvar_def(&mut self) -> Option<Var> {
-        if let Some(tkkind) = self.iter.consume_type() {
-            let refs = {
-                // # of times * occurs will tell us the depth of references
-                let mut tmp = 0;
-                while self.iter.consume("*") {
-                    tmp += 1;
-                }
-                tmp
-            };
-            let ident = self.iter.expect_ident();
-            if self.iter.consume("[") {
-                // This is an array
-                let array_size = self.iter.expect_number() as usize;
-                let var_type = Type::new_array(tkkind.as_str(), refs, array_size);
-                self.iter.expect("]");
-                Some(self.env.scopes.add_var(ident, var_type))
-            } else {
-                let var_type = Type::new(tkkind.as_str(), refs);
-                Some(self.env.scopes.add_var(ident, var_type))
-            }
-        } else {
-            None
-        }
-    }
-
     // program = external_decl*
     fn program(&mut self) -> LinkedList<Node> {
         let mut nodes = LinkedList::new();
@@ -145,6 +118,7 @@ impl Parser {
         self.storage_typespec_typequal(false)
     }
 
+    // Reads a storage class, type specifiers, and type qualifiers
     fn storage_typespec_typequal(&mut self, allow_storage: bool) -> Option<Type> {
         let mut maybe_ty: Option<Type> = None;
         let mut ty_config = TypeConfig::new();
@@ -334,7 +308,7 @@ impl Parser {
         (name, ty)
     }
 
-    // declarator = "*"* ident ("[" num "]")?
+    // declarator = "*"* ident ("[" num "]" | "(" parameter-type-list? ")")?
     fn declarator(&mut self, basety: Type) -> (String, Type) {
         let refs = {
             let mut tmp = 0;
@@ -350,11 +324,49 @@ impl Parser {
             let array_size = self.iter.expect_number() as usize;
             self.iter.expect("]");
             Type::new_array(basety.as_str(), refs, array_size)
+        } else if self.iter.consume("(") {
+            // This is a function declarator
+            let args = if self.iter.consume(")") {
+                Vec::new()
+            } else {
+                let tmp = self.parameter_type_list();
+                self.iter.expect(")");
+                tmp
+            };
+            Type::new_function(args)
         } else {
             Type::new_from_type(basety, refs)
         };
 
         (ident_name, var_type)
+    }
+
+    // parameter-type-list
+    //      = parameter-declaration ("," parameter-declaration)* ("," ...)?
+    // TODO Support variadic fnct
+    // TODO Stop if the first elem it sees is void
+    fn parameter_type_list(&mut self) -> Vec<(String, Type)> {
+        let mut argtypes: Vec<(String, Type)> = Vec::new();
+
+        loop {
+            let (name, ty) = self.parameter_declaration();
+            argtypes.push((name, ty));
+
+            if !self.iter.consume(",") {
+                break;
+            }
+        }
+        argtypes
+    }
+
+    // decl_spec declarator
+    fn parameter_declaration(&mut self) -> (String, Type) {
+        let ty = match self.decl_spec() {
+            Some(t) => t,
+            None => panic!("Parameter declaration expects a declaration specifier."),
+        };
+
+        self.declarator(ty)
     }
 
     fn init_array_lhs(pos: usize, var: &Var) -> Node {
@@ -411,45 +423,32 @@ impl Parser {
         inits
     }
 
-    // funcdef =  "int" * ident "(" (lvar_def ",")* ")" "{" stmt* "}"
+    // funcdef = decl_spec declarator "{" stmt* "}"
+    // NOTE: K&R style definition is not supported
     fn funcdef(&mut self) -> Option<Node> {
-        let _kind = self.iter.expect_type();
-        let refs = {
-            // # of times * occurs will tell us the depth of references
-            let mut tmp = 0;
-            while self.iter.consume("*") {
-                tmp += 1;
-            }
-            tmp
-        };
-
-        let ident_name = self.iter.expect_ident().to_string();
         let mut argvars: LinkedList<Var> = LinkedList::new();
         let mut stmts: LinkedList<Node> = LinkedList::new();
 
-        self.iter.expect("(");
+        let basety = match self.decl_spec() {
+            Some(t) => t,
+            None => panic!("Expected a declarator specifier."),
+        };
 
         // Create new local scopes:
         self.env.scopes.add_scope();
+        let (ident_name, functy) = self.declarator(basety);
+        let mut arg_iter = functy.iter_func_args();
 
-        if !self.iter.consume(")") {
-            // There's at least one local variable definition.
-            if let Some(lvar) = self.lvar_def() {
-                argvars.push_back(lvar);
-            } else {
-                panic!("Parser: Expected local variable definition in function def.\n");
+        while let Some((name, ty)) = arg_iter.next() {
+            if ty.is_void() {
+                break;
             }
-            while self.iter.consume(",") {
-                if let Some(lvar) = self.lvar_def() {
-                    argvars.push_back(lvar);
-                } else {
-                    panic!("Parser: Expected local variable definition in function def.\n");
-                }
-            }
-            self.iter.expect(")");
+            let var = self.env.scopes.add_var(name.clone(), ty.clone());
+            argvars.push_back(var);
         }
 
         // Parse function body
+
         self.iter.expect("{");
         while !self.iter.consume("}") {
             if let Some(stmt) = self.stmt() {
@@ -570,7 +569,7 @@ impl Parser {
     //      | "do" stmt while "(" expr ")" ";"
     //      | "for" "(" expr? ";" expr? ";" expr? ")" stmt
     fn iter(&mut self) -> Option<Node> {
-        let mut node;
+        let node;
         if self.iter.consume("while") {
             self.iter.expect("(");
             let cond = self.expr();
@@ -651,7 +650,7 @@ impl Parser {
 
     // conditional = logical_or ("?" expr ":" conditional)?
     fn conditional(&mut self) -> Node {
-        let mut node = self.logical_or();
+        let node = self.logical_or();
 
         if self.iter.consume("?") {
             let truenode = Some(self.expr());

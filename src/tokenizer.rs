@@ -4,7 +4,7 @@ static ASSIGN_OPS: [&str; 11] = [
     "=", "+=", "-=", "*=", "/=", "%=", "<<=", ">>=", "&=", "|=", "^=",
 ];
 static STORAGE_CLASSES: [&str; 5] = ["typedef", "extern", "static", "auto", "register"];
-static TYPES: [&str; 6] = ["char", "short", "int", "long", "struct", "enum"];
+static TYPES: [&str; 7] = ["void", "char", "short", "int", "long", "struct", "enum"];
 static TYPE_QUALS: [&str; 2] = ["const", "volatile"];
 static KEYWORDS: [&str; 12] = [
     "return", "if", "else", "while", "for", "sizeof", "break", "continue", "do", "switch", "case",
