@@ -98,7 +98,7 @@ impl PartialEq for Type {
 }
 
 impl Type {
-    fn from_kind(kind: TypeKind) -> Self {
+    fn new_from_kind(kind: TypeKind) -> Self {
         Type {
             kind: kind,
             is_const: false,
@@ -107,37 +107,26 @@ impl Type {
     }
 
     // Constructors:
-    pub fn new_base(basekind: &str) -> Self {
-        let kind = match basekind {
-            "char" => TypeKind::CHAR,
-            "short" => TypeKind::SHORT,
-            "int" => TypeKind::INT,
-            "long" => TypeKind::LONG,
-            _ => panic!("Non-base kind was provided."),
-        };
-        Self::from_kind(kind)
-    }
-
     pub fn new_from_config(tc: TypeConfig) -> Result<Self, &'static str> {
         println!("{:?}", tc);
         match tc.config {
-            CHAR => Ok(Self::from_kind(TypeKind::CHAR)),
-            SHORT => Ok(Self::from_kind(TypeKind::SHORT)),
-            INT => Ok(Self::from_kind(TypeKind::INT)),
-            LONG => Ok(Self::from_kind(TypeKind::LONG)),
+            CHAR => Ok(Self::new_from_kind(TypeKind::CHAR)),
+            SHORT => Ok(Self::new_from_kind(TypeKind::SHORT)),
+            INT => Ok(Self::new_from_kind(TypeKind::INT)),
+            LONG => Ok(Self::new_from_kind(TypeKind::LONG)),
             _ => Err("Invalid set of type specifiers."),
         }
     }
 
     /// Create a new Type from the provided base type.
-    pub fn new_from(basety: Self, ref_depth: usize) -> Self {
+    pub fn new_from_type(basety: Self, ref_depth: usize) -> Self {
         if ref_depth == 0 {
             basety
         } else {
             let kind = TypeKind::PTR {
-                ptr_to: Box::new(Type::new_from(basety, ref_depth - 1)),
+                ptr_to: Box::new(Type::new_from_type(basety, ref_depth - 1)),
             };
-            Self::from_kind(kind)
+            Self::new_from_kind(kind)
         }
     }
 
@@ -150,8 +139,20 @@ impl Type {
             let kind = TypeKind::PTR {
                 ptr_to: Box::new(Type::new(basekind, ref_depth - 1)),
             };
-            Self::from_kind(kind)
+            Self::new_from_kind(kind)
         }
+    }
+
+    /// TODO: Delete this once func def is done.
+    pub fn new_base(basekind: &str) -> Self {
+        let kind = match basekind {
+            "char" => TypeKind::CHAR,
+            "short" => TypeKind::SHORT,
+            "int" => TypeKind::INT,
+            "long" => TypeKind::LONG,
+            _ => panic!("Non-base kind was provided."),
+        };
+        Self::new_from_kind(kind)
     }
 
     pub fn new_array(basekind: &str, ref_depth: usize, array_size: usize) -> Self {
@@ -159,12 +160,12 @@ impl Type {
             size: array_size,
             ptr_to: Box::new(Type::new(basekind, ref_depth)),
         };
-        Self::from_kind(kind)
+        Self::new_from_kind(kind)
     }
 
     pub fn new_enum(members: Vec<EnumMember>) -> Self {
         let kind = TypeKind::ENUM { members: members };
-        Self::from_kind(kind)
+        Self::new_from_kind(kind)
     }
 
     pub fn new_struct(size: usize, members: Vec<StructMember>) -> Self {
@@ -172,12 +173,12 @@ impl Type {
             size: size,
             members: members,
         };
-        Self::from_kind(kind)
+        Self::new_from_kind(kind)
     }
 
     pub fn new_incomplete(kind: IncompleteKind) -> Self {
         let tykind = TypeKind::INCOMPLETE { kind: kind };
-        Self::from_kind(tykind)
+        Self::new_from_kind(tykind)
     }
 
     pub fn clone_base(&self) -> Self {
@@ -206,7 +207,7 @@ impl Type {
         let kind = TypeKind::PTR {
             ptr_to: Box::new(self.clone()),
         };
-        Self::from_kind(kind)
+        Self::new_from_kind(kind)
     }
 
     pub fn is_array(&self) -> bool {

@@ -351,7 +351,7 @@ impl Parser {
             self.iter.expect("]");
             Type::new_array(basety.as_str(), refs, array_size)
         } else {
-            Type::new_from(basety, refs)
+            Type::new_from_type(basety, refs)
         };
 
         (ident_name, var_type)
