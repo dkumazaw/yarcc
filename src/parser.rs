@@ -323,7 +323,7 @@ impl Parser {
             // This is an array
             let array_size = self.iter.expect_number() as usize;
             self.iter.expect("]");
-            Type::new_array(basety.as_str(), refs, array_size)
+            Type::new_array(basety, refs, array_size)
         } else if self.iter.consume("(") {
             // This is a function declarator
             let args = if self.iter.consume(")") {

@@ -112,6 +112,17 @@ impl Type {
     }
 
     // Constructors:
+    pub fn new_base(basekind: &str) -> Self {
+        let kind = match basekind {
+            "char" => TypeKind::CHAR,
+            "short" => TypeKind::SHORT,
+            "int" => TypeKind::INT,
+            "long" => TypeKind::LONG,
+            _ => panic!("Non-base kind was provided."),
+        };
+        Self::new_from_kind(kind)
+    }
+
     pub fn new_from_config(tc: TypeConfig) -> Result<Self, &'static str> {
         println!("{:?}", tc);
         match tc.config {
@@ -136,35 +147,10 @@ impl Type {
         }
     }
 
-    /// Create a new Type based on the kind str str.
-    /// TODO: This should be fully replaced by "new_from"
-    pub fn new(basekind: &str, ref_depth: usize) -> Self {
-        if ref_depth == 0 {
-            Type::new_base(basekind)
-        } else {
-            let kind = TypeKind::PTR {
-                ptr_to: Box::new(Type::new(basekind, ref_depth - 1)),
-            };
-            Self::new_from_kind(kind)
-        }
-    }
-
-    /// TODO: Delete this once func def is done.
-    pub fn new_base(basekind: &str) -> Self {
-        let kind = match basekind {
-            "char" => TypeKind::CHAR,
-            "short" => TypeKind::SHORT,
-            "int" => TypeKind::INT,
-            "long" => TypeKind::LONG,
-            _ => panic!("Non-base kind was provided."),
-        };
-        Self::new_from_kind(kind)
-    }
-
-    pub fn new_array(basekind: &str, ref_depth: usize, array_size: usize) -> Self {
+    pub fn new_array(basety: Self, ref_depth: usize, array_size: usize) -> Self {
         let kind = TypeKind::ARRAY {
             size: array_size,
-            ptr_to: Box::new(Type::new(basekind, ref_depth)),
+            ptr_to: Box::new(Type::new_from_type(basety, ref_depth)),
         };
         Self::new_from_kind(kind)
     }
@@ -198,19 +184,6 @@ impl Type {
         match self.kind {
             PTR { ref ptr_to } | ARRAY { ref ptr_to, .. } => *(ptr_to.clone()),
             _ => panic!("Trying to clone the base of terminal types."),
-        }
-    }
-
-    pub fn as_str(&self) -> &str {
-        use TypeKind::*;
-
-        match self.kind {
-            CHAR => "char",
-            SHORT => "short",
-            INT => "int",
-            LONG => "long",
-            STRUCT { .. } => "struct",
-            _ => panic!("This is not a base type."),
         }
     }
 
