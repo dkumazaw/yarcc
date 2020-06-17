@@ -1,7 +1,14 @@
 // Type
 
 #[derive(Debug, Clone)]
-pub enum Type {
+pub struct Type {
+    pub kind: TypeKind,
+    pub is_const: bool,
+    pub is_volatile: bool,
+}
+
+#[derive(Debug, Clone)]
+pub enum TypeKind {
     CHAR,
     SHORT,
     INT,
@@ -53,62 +60,90 @@ impl PartialEq for Type {
 }
 
 impl Type {
-    pub fn new_base(basekind: &str) -> Self {
-        match basekind {
-            "char" => Type::CHAR,
-            "short" => Type::SHORT,
-            "int" => Type::INT,
-            "long" => Type::LONG,
-            _ => panic!("Non-base kind was provided."),
+    fn from_kind(kind: TypeKind) -> Self {
+        Type {
+            kind: kind,
+            is_const: false,
+            is_volatile: false,
         }
     }
 
-    // Create a new Type from the provided base type.
+    // Constructors:
+    pub fn new_base(basekind: &str) -> Self {
+        let kind = match basekind {
+            "char" => TypeKind::CHAR,
+            "short" => TypeKind::SHORT,
+            "int" => TypeKind::INT,
+            "long" => TypeKind::LONG,
+            _ => panic!("Non-base kind was provided."),
+        };
+        Self::from_kind(kind)
+    }
+
+    /// Create a new Type from the provided base type.
     pub fn new_from(basety: Self, ref_depth: usize) -> Self {
         if ref_depth == 0 {
             basety
         } else {
-            Type::PTR {
+            let kind = TypeKind::PTR {
                 ptr_to: Box::new(Type::new_from(basety, ref_depth - 1)),
-            }
+            };
+            Self::from_kind(kind)
         }
     }
 
-    // Create a new Type based on the kind str str.
+    /// Create a new Type based on the kind str str.
+    /// TODO: This should be fully replaced by "new_from"
     pub fn new(basekind: &str, ref_depth: usize) -> Self {
         if ref_depth == 0 {
             Type::new_base(basekind)
         } else {
-            Type::PTR {
+            let kind = TypeKind::PTR {
                 ptr_to: Box::new(Type::new(basekind, ref_depth - 1)),
-            }
+            };
+            Self::from_kind(kind)
         }
     }
 
     pub fn new_array(basekind: &str, ref_depth: usize, array_size: usize) -> Self {
-        Type::ARRAY {
+        let kind = TypeKind::ARRAY {
             size: array_size,
             ptr_to: Box::new(Type::new(basekind, ref_depth)),
-        }
+        };
+        Self::from_kind(kind)
+    }
+
+    pub fn new_enum(members: Vec<EnumMember>) -> Self {
+        let kind = TypeKind::ENUM { members: members };
+        Self::from_kind(kind)
+    }
+
+    pub fn new_struct(size: usize, members: Vec<StructMember>) -> Self {
+        let kind = TypeKind::STRUCT {
+            size: size,
+            members: members,
+        };
+        Self::from_kind(kind)
     }
 
     pub fn new_incomplete(kind: IncompleteKind) -> Self {
-        Type::INCOMPLETE { kind: kind }
+        let tykind = TypeKind::INCOMPLETE { kind: kind };
+        Self::from_kind(tykind)
     }
 
     pub fn clone_base(&self) -> Self {
-        use Type::*;
+        use TypeKind::*;
 
-        match self {
+        match self.kind {
             PTR { ref ptr_to } | ARRAY { ref ptr_to, .. } => *(ptr_to.clone()),
             _ => panic!("Trying to clone the base of terminal types."),
         }
     }
 
     pub fn as_str(&self) -> &str {
-        use Type::*;
+        use TypeKind::*;
 
-        match self {
+        match self.kind {
             CHAR => "char",
             SHORT => "short",
             INT => "int",
@@ -119,14 +154,23 @@ impl Type {
     }
 
     pub fn new_ptr_to(&self) -> Self {
-        Type::PTR {
+        let kind = TypeKind::PTR {
             ptr_to: Box::new(self.clone()),
+        };
+        Self::from_kind(kind)
+    }
+
+    pub fn is_array(&self) -> bool {
+        use TypeKind::ARRAY;
+        match self.kind {
+            ARRAY { .. } => true,
+            _ => false,
         }
     }
 
     pub fn is_struct(&self) -> bool {
-        use Type::{INCOMPLETE, STRUCT};
-        match self {
+        use TypeKind::{INCOMPLETE, STRUCT};
+        match self.kind {
             STRUCT { .. } => true,
             INCOMPLETE { ref kind } => match kind {
                 IncompleteKind::STRUCT { .. } => true,
@@ -137,8 +181,8 @@ impl Type {
     }
 
     pub fn is_enum(&self) -> bool {
-        use Type::{ENUM, INCOMPLETE};
-        match self {
+        use TypeKind::{ENUM, INCOMPLETE};
+        match self.kind {
             ENUM { .. } => true,
             INCOMPLETE { ref kind } => match kind {
                 IncompleteKind::ENUM { .. } => true,
@@ -149,24 +193,24 @@ impl Type {
     }
 
     pub fn is_incomplete(&self) -> bool {
-        use Type::INCOMPLETE;
-        match self {
+        use TypeKind::INCOMPLETE;
+        match self.kind {
             INCOMPLETE { .. } => true,
             _ => false,
         }
     }
 
     pub fn is_ptr_like(&self) -> bool {
-        use Type::*;
-        match self {
+        use TypeKind::*;
+        match self.kind {
             PTR { .. } | ARRAY { .. } => true,
             _ => false,
         }
     }
 
     pub fn size(&self) -> usize {
-        use Type::*;
-        match self {
+        use TypeKind::*;
+        match self.kind {
             CHAR => 1,
             SHORT => 2,
             INT => 4,
@@ -180,17 +224,17 @@ impl Type {
 
     // TODO: This may be a bit confusing. Maybe name it like "array_size"?
     pub fn total_size(&self) -> usize {
-        use Type::*;
-        match self {
+        use TypeKind::*;
+        match self.kind {
             ARRAY { size, .. } => size.clone() * self.size(),
             _ => self.size(),
         }
     }
 
     pub fn base_size(&self) -> usize {
-        use Type::*;
-        match self {
-            PTR { ptr_to } | ARRAY { ptr_to, .. } => ptr_to.size(),
+        use TypeKind::*;
+        match self.kind {
+            PTR { ref ptr_to } | ARRAY { ref ptr_to, .. } => ptr_to.size(),
             _ => panic!("Requesting a base size for a terminal type."),
         }
     }
@@ -198,11 +242,11 @@ impl Type {
     /// Returns the relative offset and type of a member of struct
     /// None is returned if no such member exists
     pub fn get_member_offset(&self, name: &str) -> Option<(usize, Self)> {
-        use Type::{INCOMPLETE, STRUCT};
+        use TypeKind::{INCOMPLETE, STRUCT};
         if !self.is_struct() {
             panic!("Requesting a member offset from a non-struct type.")
         }
-        match self {
+        match self.kind {
             STRUCT { ref members, .. } => {
                 let maybe_found = members.iter().find(|m| m.name == name);
                 if let Some(found) = maybe_found {

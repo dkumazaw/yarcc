@@ -190,7 +190,7 @@ impl Parser {
                 self.iter.expect(",")
             }
 
-            maybe_ty = Some(Type::ENUM { members });
+            maybe_ty = Some(Type::new_enum(members));
         }
 
         match (maybe_name, maybe_ty) {
@@ -251,7 +251,7 @@ impl Parser {
                     break;
                 }
             }
-            maybe_ty = Some(Type::STRUCT { size, members });
+            maybe_ty = Some(Type::new_struct(size, members));
         }
 
         match (maybe_name, maybe_ty) {
@@ -323,15 +323,14 @@ impl Parser {
 
     // initializer = assign | "{" ( assign "," )* "}"
     fn initializer(&mut self, var: Var) -> LinkedList<Node> {
-        use Type::*;
-
         let mut inits: LinkedList<Node> = LinkedList::new();
         let is_init_list = self.iter.consume("{");
         let mut pos: usize = 0;
 
-        let lhs = match var.ty {
-            ARRAY { .. } => Parser::init_array_lhs(pos, &var),
-            _ => Node::new_lvar(var.offset.unwrap(), var.ty.clone()),
+        let lhs = if var.ty.is_array() {
+            Parser::init_array_lhs(pos, &var)
+        } else {
+            Node::new_lvar(var.offset.unwrap(), var.ty.clone())
         };
         let mut init = Node::new_assign(AssignMode::DEFAULT, lhs, self.assign(), false);
         init.populate_ty();
@@ -342,11 +341,7 @@ impl Parser {
         }
 
         let mut warned = false;
-        let is_array = if let Type::ARRAY { .. } = var.ty {
-            true
-        } else {
-            false
-        };
+        let is_array = var.ty.is_array();
         pos += 1;
         while self.iter.consume(",") {
             if !is_array || pos * var.ty.base_size() >= var.ty.total_size() {

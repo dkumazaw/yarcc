@@ -1,4 +1,4 @@
-use crate::ctype::Type;
+use crate::ctype::{Type, TypeKind};
 use crate::node::{AssignMode, Node, NodeKind};
 use crate::parser::Program;
 use std::collections::LinkedList;
@@ -234,7 +234,6 @@ impl<'a> CodeGen<'a> {
     // Entry point into codegen
     pub fn gen(&mut self, mut node: Node) {
         use NodeKind::*;
-        use Type::*;
 
         match node.kind {
             NDINT { val } => {
@@ -243,16 +242,15 @@ impl<'a> CodeGen<'a> {
             NDSTR { .. } => {
                 self.gen_lval(node);
             }
-            NDLVAR { .. } | NDGVAR { .. } => match node.ty.as_ref().unwrap() {
-                ARRAY { .. } => {
+            NDLVAR { .. } | NDGVAR { .. } => {
+                if node.ty.as_ref().unwrap().is_array() {
                     self.gen_lval(node);
-                }
-                _ => {
+                } else {
                     let size = node.ty.as_ref().unwrap().size();
                     self.gen_lval(node);
                     self.gen_load(size);
                 }
-            },
+            }
             NDMEMBER { .. } => {
                 let size = node.ty.as_ref().unwrap().size();
                 self.gen_lval(node);
