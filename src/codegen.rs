@@ -1,4 +1,4 @@
-use crate::ctype::{Type, TypeKind};
+use crate::ctype::Type;
 use crate::node::{AssignMode, Node, NodeKind};
 use crate::parser::Program;
 use std::collections::LinkedList;

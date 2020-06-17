@@ -5,6 +5,7 @@ static ASSIGN_OPS: [&str; 11] = [
 ];
 static STORAGE_CLASSES: [&str; 5] = ["typedef", "extern", "static", "auto", "register"];
 static TYPES: [&str; 6] = ["char", "short", "int", "long", "struct", "enum"];
+static TYPE_QUALS: [&str; 2] = ["const", "volatile"];
 static KEYWORDS: [&str; 12] = [
     "return", "if", "else", "while", "for", "sizeof", "break", "continue", "do", "switch", "case",
     "default",
@@ -20,6 +21,13 @@ fn is_storage_class(s: &str) -> bool {
 fn is_type(s: &str) -> bool {
     match s {
         _s if TYPES.contains(&_s) => true,
+        _ => false,
+    }
+}
+
+fn is_type_qual(s: &str) -> bool {
+    match s {
+        _s if TYPE_QUALS.contains(&_s) => true,
         _ => false,
     }
 }
@@ -285,7 +293,10 @@ impl Tokenizer {
                     // Match keywords here
                     match ident_name.as_str() {
                         ident_name
-                            if KEYWORDS.contains(&ident_name) || TYPES.contains(&ident_name) =>
+                            if KEYWORDS.contains(&ident_name)
+                                || STORAGE_CLASSES.contains(&ident_name)
+                                || TYPES.contains(&ident_name)
+                                || TYPE_QUALS.contains(&ident_name) =>
                         {
                             self.tokens
                                 .push_back(Token::new(TKRESERVED).string(&ident_name));
@@ -407,6 +418,19 @@ impl TokenIter {
             return None;
         }
         if is_type(t.string.as_ref().unwrap().as_str()) {
+            let n = self.next();
+            Some(n.string.as_ref().unwrap().to_string())
+        } else {
+            None
+        }
+    }
+
+    pub fn consume_type_qual(&mut self) -> Option<String> {
+        let t = self.peek();
+        if t.kind != TokenKind::TKRESERVED {
+            return None;
+        }
+        if is_type_qual(t.string.as_ref().unwrap().as_str()) {
             let n = self.next();
             Some(n.string.as_ref().unwrap().to_string())
         } else {

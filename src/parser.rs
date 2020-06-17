@@ -1,6 +1,6 @@
 // Recursive-descent parser
-use crate::cenv::{EnumConst, Env, Var};
-use crate::ctype::{EnumMember, IncompleteKind, StructMember, Type};
+use crate::cenv::{Env, Var};
+use crate::ctype::{EnumMember, IncompleteKind, StructMember, Type, TypeConfig};
 use crate::node::{AssignMode, Node};
 use crate::tokenizer::TokenIter;
 use std::collections::{LinkedList, VecDeque};
@@ -146,24 +146,70 @@ impl Parser {
     }
 
     fn storage_typespec_typequal(&mut self, allow_storage: bool) -> Option<Type> {
-        let tystr;
-        if let Some(s) = self.iter.consume_type() {
-            tystr = s;
-        } else {
+        let mut maybe_ty: Option<Type> = None;
+        let mut ty_config = TypeConfig::new();
+
+        let mut is_const = false;
+        let mut is_volatile = false;
+
+        let mut no_token_read = true;
+
+        loop {
+            if let Some(tystr) = self.iter.consume_type() {
+                if !maybe_ty.is_none() {
+                    self.error("Trying to add an additional type to enum/string.")
+                }
+                match tystr.as_str() {
+                    "struct" => {
+                        maybe_ty = Some(self.struct_spec());
+                    }
+                    "enum" => {
+                        maybe_ty = Some(self.enum_spec());
+                    }
+                    others => {
+                        match ty_config.add(others) {
+                            Ok(_) => (),
+                            Err(msg) => self.error(msg),
+                        };
+                    }
+                }
+                no_token_read = false;
+                continue;
+            }
+
+            if let Some(tcstr) = self.iter.consume_type_qual() {
+                match tcstr.as_str() {
+                    "const" => {
+                        is_const = true;
+                    }
+                    "volatile" => {
+                        is_volatile = true;
+                    }
+                    _ => panic!("Invalid type qualifier found..."),
+                }
+                no_token_read = false;
+                continue;
+            }
+            break;
+        }
+
+        if no_token_read {
             return None;
         }
 
-        match tystr.as_str() {
-            "struct" => self.struct_spec(),
-            "enum" => self.enum_spec(),
-            s => Some(Type::new_base(s)),
+        if maybe_ty.is_none() {
+            maybe_ty = match Type::new_from_config(ty_config) {
+                Ok(ty) => Some(ty),
+                Err(msg) => self.error(msg),
+            }
         }
+        maybe_ty
     }
 
     // Assumes type "enum" has already been read
     // enum-spec = "enum" ident? "{" ident ("=" constexpr)? ("," ident ("=" constexpr)?)* "}"
     //           | "enum" ident
-    fn enum_spec(&mut self) -> Option<Type> {
+    fn enum_spec(&mut self) -> Type {
         let maybe_name: Option<String> = self.iter.consume_ident();
         let mut maybe_ty: Option<Type> = None;
 
@@ -196,23 +242,22 @@ impl Parser {
         match (maybe_name, maybe_ty) {
             (Some(name), Some(ty)) => {
                 self.env.scopes.add_tag(name.clone(), ty.clone());
-                Some(ty)
+                ty
             }
             (Some(name), None) => {
-                let found_ty = if let Some(found_tag) = self.env.scopes.find_tag(name.as_str()) {
+                if let Some(found_tag) = self.env.scopes.find_tag(name.as_str()) {
                     if !found_tag.ty.is_enum() {
                         self.error("This tag is not defined as enum.")
                     }
-                    Some(found_tag.ty.clone())
+                    found_tag.ty.clone()
                 } else {
                     // Define an incomplete enum
                     let ty = Type::new_incomplete(IncompleteKind::ENUM);
                     self.env.scopes.add_tag(name.clone(), ty.clone());
-                    Some(ty)
-                };
-                found_ty
+                    ty
+                }
             }
-            (None, Some(ty)) => Some(ty),
+            (None, Some(ty)) => ty,
             (None, None) => {
                 self.error("Expected identifier or '{'");
             }
@@ -223,7 +268,7 @@ impl Parser {
     // struct-or-union-specifier
     //      = struct-or-union ident? "{" (struct-decl ";")+ "}"
     //      | struct-or-union ident
-    fn struct_spec(&mut self) -> Option<Type> {
+    fn struct_spec(&mut self) -> Type {
         let maybe_name: Option<String> = self.iter.consume_ident();
         let mut maybe_ty: Option<Type> = None;
 
@@ -257,23 +302,22 @@ impl Parser {
         match (maybe_name, maybe_ty) {
             (Some(name), Some(ty)) => {
                 self.env.scopes.update_tag(name.as_str(), ty.clone());
-                Some(ty)
+                ty
             }
             (Some(name), None) => {
-                let found_ty = if let Some(found_tag) = self.env.scopes.find_tag(name.as_str()) {
+                if let Some(found_tag) = self.env.scopes.find_tag(name.as_str()) {
                     if !found_tag.ty.is_struct() {
                         self.error("This tag is not defined as struct.")
                     }
-                    Some(found_tag.ty.clone())
+                    found_tag.ty.clone()
                 } else {
                     // Define an incomplete struct
                     let ty = Type::new_incomplete(IncompleteKind::STRUCT);
                     self.env.scopes.add_tag(name.clone(), ty.clone());
-                    Some(ty)
-                };
-                found_ty
+                    ty
+                }
             }
-            (None, Some(ty)) => Some(ty),
+            (None, Some(ty)) => ty,
             (None, None) => {
                 self.error("Expected identifier or '{'");
             }

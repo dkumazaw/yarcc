@@ -1,14 +1,52 @@
 // Type
 
+const INIT: usize = 0;
+const VOID: usize = 1;
+const CHAR: usize = 1 << 1;
+const SHORT: usize = 1 << 2;
+const INT: usize = 1 << 3;
+const LONG: usize = 1 << 4;
+
 #[derive(Debug, Clone)]
 pub struct Type {
-    pub kind: TypeKind,
+    kind: TypeKind,
     pub is_const: bool,
     pub is_volatile: bool,
 }
 
+/// Bitflag to configure type
 #[derive(Debug, Clone)]
-pub enum TypeKind {
+pub struct TypeConfig {
+    config: usize,
+}
+
+impl TypeConfig {
+    pub fn new() -> Self {
+        TypeConfig { config: INIT }
+    }
+
+    pub fn add(&mut self, s: &str) -> Result<(), &'static str> {
+        let to_add = match s {
+            "void" => VOID,
+            "char" => CHAR,
+            "short" => SHORT,
+            "int" => INT,
+            "long" => LONG,
+            _ => {
+                return Err("Unsupported type was provided.");
+            }
+        };
+
+        if (self.config & to_add) != 0 {
+            return Err("Identical type names.");
+        }
+        self.config |= to_add;
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone)]
+enum TypeKind {
     CHAR,
     SHORT,
     INT,
@@ -78,6 +116,17 @@ impl Type {
             _ => panic!("Non-base kind was provided."),
         };
         Self::from_kind(kind)
+    }
+
+    pub fn new_from_config(tc: TypeConfig) -> Result<Self, &'static str> {
+        println!("{:?}", tc);
+        match tc.config {
+            CHAR => Ok(Self::from_kind(TypeKind::CHAR)),
+            SHORT => Ok(Self::from_kind(TypeKind::SHORT)),
+            INT => Ok(Self::from_kind(TypeKind::INT)),
+            LONG => Ok(Self::from_kind(TypeKind::LONG)),
+            _ => Err("Invalid set of type specifiers."),
+        }
     }
 
     /// Create a new Type from the provided base type.
