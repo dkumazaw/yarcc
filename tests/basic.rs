@@ -1,4 +1,4 @@
-// basic functionalities such as arithmetic and logical ops 
+// basic functionalities such as arithmetic and logical ops
 #[macro_use]
 mod macros;
 
@@ -85,8 +85,6 @@ test_succeed! {
     return1: ("int main() { return (3 + 1) *  10;} ", 40),
     return2: ("int main() { int a; a = 4 + 5; return a + 1;} ", 10),
     return3: ("int main() { return 5; return 1; 2;} ", 5),
-    break0: ("tests/ctests/break.c", 0),
-    continue0: ("tests/ctests/continue.c", 0),
     while0: ("int main() { int a; a = 0; while (a != 10) a = a + 1; return a;} ", 10),
     while1: ("int main() { int a; a = 0; while (a != 10) if (a == 3) return a; else a = a + 1; return a;} ", 3),
     while2: ("/* Shouldn't run body */ int main() { int a = 3; while (a < 3) { a++; }  return a;}", 3),
