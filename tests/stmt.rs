@@ -1,7 +1,4 @@
 // Test cases for stmt
-use assert_cmd::prelude::*;
-use std::process::Command;
-
 #[macro_use]
 mod macros;
 

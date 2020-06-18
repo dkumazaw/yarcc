@@ -1,8 +1,4 @@
 // if, if else, switch
-
-use assert_cmd::prelude::*;
-use std::process::Command;
-
 #[macro_use]
 mod macros;
 

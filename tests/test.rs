@@ -1,6 +1,4 @@
-use assert_cmd::prelude::*;
-use std::process::Command;
-
+// basic functionalities such as arithmetic and logical ops 
 #[macro_use]
 mod macros;
 
@@ -19,7 +17,7 @@ test_succeed! {
     simple6: ("int main() { return  7 % 3;  }", 1),
     simple7: ("int main() { /* Empty return should evaluate to 0 */  }", 0),
     comment0: ("// Hey I am just a line comment! \n int main() { return 3; }", 3),
-    comment1: ("tests/comment.c", 4),
+    comment1: ("tests/ctests/comment.c", 4),
     comment2: ("int main() { /* I am just a comment! ***/ return 1; /* Returned! */ }", 1),
     unary0: ("int main() { -3*-5;} ", 15),
     unary1: ("int main() { 8*(-3)+30;} ", 6),

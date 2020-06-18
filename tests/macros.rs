@@ -3,6 +3,9 @@ macro_rules! test_succeed {
         $(
             #[test]
             fn $name() {
+                use assert_cmd::prelude::*;
+                use std::process::Command;
+
                 let _rcc = Command::cargo_bin("rcc")
                                 .unwrap()
                                 .arg($input)

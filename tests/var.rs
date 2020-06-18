@@ -1,7 +1,4 @@
 // locals, globals, scopes, etc
-use assert_cmd::prelude::*;
-use std::process::Command;
-
 #[macro_use]
 mod macros;
 
