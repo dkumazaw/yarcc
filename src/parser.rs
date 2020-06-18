@@ -171,13 +171,17 @@ impl Parser {
             return None;
         }
 
-        if maybe_ty.is_none() {
-            maybe_ty = match Type::new_from_config(ty_config) {
-                Ok(ty) => Some(ty),
+        let mut ty = if let Some(t) = maybe_ty {
+            t
+        } else {
+            match Type::new_from_config(ty_config) {
+                Ok(t) => t,
                 Err(msg) => self.error(msg),
             }
-        }
-        maybe_ty
+        };
+        ty.is_const = is_const;
+        ty.is_volatile = is_volatile;
+        Some(ty)
     }
 
     // Assumes type "enum" has already been read
