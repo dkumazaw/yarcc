@@ -1,4 +1,4 @@
-// if, if else, switch
+// selection stmts (if, if else, switch)
 #[macro_use]
 mod macros;
 
