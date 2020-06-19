@@ -25,3 +25,7 @@ test_succeed! {
     cenum: ("tests/ctests/enum.c", 0),
     typequal: ("tests/ctests/type_qual.c", 0),
 }
+
+test_fail! {
+    const_assing: ("int main() { const int i = 0; i = 2; }"),
+}

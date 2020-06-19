@@ -62,6 +62,7 @@ pub enum NodeKind {
         scale_lhs: Option<bool>,
         eval_pre: bool,
         assign_mode: AssignMode,
+        is_init: bool,
     }, // See AssignMode for more details
     NDBITAND {
         lhs: Box<Node>,
@@ -308,6 +309,20 @@ impl Node {
         }
     }
 
+    pub fn new_init(mode: AssignMode, lhs: Self, rhs: Self, eval_pre: bool) -> Self {
+        Node {
+            ty: None,
+            kind: NodeKind::NDASSIGN {
+                lhs: Box::new(lhs),
+                rhs: Box::new(rhs),
+                scale_lhs: None,
+                eval_pre: eval_pre,
+                assign_mode: mode,
+                is_init: true,
+            },
+        }
+    }
+
     pub fn new_assign(mode: AssignMode, lhs: Self, rhs: Self, eval_pre: bool) -> Self {
         Node {
             ty: None,
@@ -317,6 +332,7 @@ impl Node {
                 scale_lhs: None,
                 eval_pre: eval_pre,
                 assign_mode: mode,
+                is_init: false,
             },
         }
     }
@@ -646,6 +662,7 @@ impl Node {
                 ref mut rhs,
                 ref mut scale_lhs,
                 assign_mode,
+                is_init,
                 ..
             } => {
                 use AssignMode::*;
@@ -653,6 +670,9 @@ impl Node {
                 rhs.populate_ty();
 
                 let l_ty = lhs.ty.as_ref().unwrap();
+                if l_ty.is_const && !is_init {
+                    panic!("Trying to assign to const!")
+                }
                 if assign_mode == ADD || assign_mode == SUB {
                     if l_ty.is_ptr_like() {
                         *scale_lhs = Some(true);

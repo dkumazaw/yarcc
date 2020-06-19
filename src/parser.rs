@@ -392,7 +392,7 @@ impl Parser {
         } else {
             Node::new_lvar(var.offset.unwrap(), var.ty.clone())
         };
-        let mut init = Node::new_assign(AssignMode::DEFAULT, lhs, self.assign(), false);
+        let mut init = Node::new_init(AssignMode::DEFAULT, lhs, self.assign(), false);
         init.populate_ty();
         inits.push_back(init);
 
@@ -412,7 +412,7 @@ impl Parser {
                 self.assign();
                 continue;
             }
-            let mut init = Node::new_assign(
+            let mut init = Node::new_init(
                 AssignMode::DEFAULT,
                 Parser::init_array_lhs(pos, &var),
                 self.assign(),

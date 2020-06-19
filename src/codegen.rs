@@ -262,6 +262,7 @@ impl<'a> CodeGen<'a> {
                 scale_lhs,
                 eval_pre,
                 assign_mode,
+                ..
             } => {
                 use AssignMode::*;
                 if assign_mode == DEFAULT {
