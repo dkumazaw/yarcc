@@ -262,14 +262,16 @@ impl Parser {
             let mut size = 0;
             let mut members: Vec<StructMember> = Vec::new();
             loop {
-                let (name, ty) = self.struct_declaration();
-                let mysize = ty.total_size();
-                members.push(StructMember {
-                    name: name,
-                    ty: ty,
-                    offset: size,
-                });
-                size += mysize;
+                let mut decls = self.struct_declaration();
+                while let Some((name, ty)) = decls.pop_front() {
+                    let mysize = ty.total_size();
+                    members.push(StructMember {
+                        name: name,
+                        ty: ty,
+                        offset: size,
+                    });
+                    size += mysize;
+                }
                 if self.iter.consume("}") {
                     break;
                 }
@@ -302,14 +304,21 @@ impl Parser {
         }
     }
 
-    // struct_declaration = spec_qual declarator ";"
+    // struct_declaration = spec_qual declarator ("," declarator)* ";"
     // TODO: Support bitfield etc
-    // TODO: Can have comma separated declarator...
-    fn struct_declaration(&mut self) -> (String, Type) {
-        let base = self.spec_qual();
-        let (name, ty) = self.declarator(base.unwrap());
+    fn struct_declaration(&mut self) -> VecDeque<(String, Type)> {
+        let mut decls: VecDeque<(String, Type)> = VecDeque::new();
+        let base = self.spec_qual().unwrap();
+        loop {
+            let (name, ty) = self.declarator(base.clone());
+            decls.push_back((name, ty));
+            if !self.iter.consume(",") {
+                break;
+            }
+        }
+
         self.iter.expect(";");
-        (name, ty)
+        decls
     }
 
     // declarator = "*"* ident ("[" num "]" | "(" parameter-type-list? ")")?
