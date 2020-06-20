@@ -5,6 +5,7 @@ use std::collections::VecDeque;
 #[derive(Debug)]
 pub struct Env {
     pub literals: VecDeque<String>,
+    pub prototypes: Vec<(String, Type)>,
     pub scopes: Scopes,
 }
 
@@ -42,6 +43,7 @@ impl Env {
     pub fn new() -> Self {
         Env {
             literals: VecDeque::new(),
+            prototypes: Vec::new(),
             scopes: Scopes::new(),
         }
     }
@@ -51,6 +53,18 @@ impl Env {
         let pos = self.literals.len();
         self.literals.push_back(s);
         pos
+    }
+
+    pub fn add_prototype(&mut self, name: String, ty: Type) {
+        self.prototypes.push((name, ty));
+    }
+
+    pub fn check_prototype(&mut self, ident: &str) -> bool {
+        if let Some(_) = self.prototypes.iter().find(|(name, _)| name == ident) {
+            true
+        } else {
+            false
+        }
     }
 
     pub fn get_symbols(self) -> (Vec<Var>, VecDeque<String>) {

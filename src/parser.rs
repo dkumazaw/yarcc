@@ -62,6 +62,7 @@ impl Parser {
     // TODO: Support global variable initializer
     fn declaration(&mut self, is_global: bool) -> Option<Node> {
         let ty;
+        let mut inits: LinkedList<Node> = LinkedList::new();
 
         match self.decl_spec() {
             Some(t) => {
@@ -69,7 +70,7 @@ impl Parser {
             }
             None => {
                 if is_global {
-                    panic!("Expected type specifier")
+                    self.error("Expected type specifier")
                 } else {
                     return None;
                 }
@@ -81,17 +82,15 @@ impl Parser {
                 self.warn("This is a useless empty declaration.");
             }
             // TODO: Clean this up
-            return Some(Node::new_decl(LinkedList::new()));
+            return Some(Node::new_decl(inits));
         }
 
-        println!("{:?}", ty);
-        let mut inits: LinkedList<Node> = LinkedList::new();
         loop {
             let (name, ty) = self.declarator(ty.clone());
-            if is_global {
-                self.env.scopes.add_var(name, ty.clone());
+            if is_global && ty.is_function() {
+                self.env.add_prototype(name, ty);
             } else {
-                let var = self.env.scopes.add_var(name, ty.clone());
+                let var = self.env.scopes.add_var(name, ty);
                 if self.iter.consume("=") {
                     inits.append(&mut self.initializer(var));
                 }
@@ -444,10 +443,11 @@ impl Parser {
         };
 
         // Create new local scopes:
-        self.env.scopes.add_scope();
         let (ident_name, functy) = self.declarator(basety);
+        self.env.add_prototype(ident_name.clone(), functy.clone());
         let mut arg_iter = functy.iter_func_args();
 
+        self.env.scopes.add_scope();
         while let Some((name, ty)) = arg_iter.next() {
             if ty.is_void() {
                 break;
@@ -457,7 +457,6 @@ impl Parser {
         }
 
         // Parse function body
-
         self.iter.expect("{");
         while !self.iter.consume("}") {
             if let Some(stmt) = self.stmt() {
@@ -916,6 +915,9 @@ impl Parser {
         } else if let Some(ident) = self.iter.consume_ident() {
             if self.iter.consume("(") {
                 // This is a function call
+                if !self.env.check_prototype(&ident) {
+                    self.error("This identifier has not been declared with prototype.")
+                }
                 let mut remaining = 6;
                 let mut args: LinkedList<Node> = LinkedList::new();
 

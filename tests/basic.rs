@@ -103,8 +103,7 @@ test_succeed! {
     sizeof7: ("int main() { int array[10]; return sizeof array; } ", 40),
     sizeof8: ("int main() { int *arr[13]; return sizeof arr; }", 104),
     //ternary0: ("int main() { int a = 4; return a > 4 ? 1 : 5; }", 5),
-    func0: ("int main() { return foo(); }
-             int foo() { return 123; }", 123),
+    func0: ("int foo() { return 123; } int main() { return foo(); }", 123),
     func1: ("int bar () { 24; }
              int baz () { 46; }
              int main () { 

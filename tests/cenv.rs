@@ -21,3 +21,7 @@ test_succeed! {
     init7: ("int main() { int a[5] = {1,2,3,4,5,6,7}, *b, c=4; return a[3]; }", 4),
     literals: ("tests/ctests/literal.c", 1),
 }
+
+test_fail! {
+    no_prototype: ("int main() { return hoge(); }"),
+}

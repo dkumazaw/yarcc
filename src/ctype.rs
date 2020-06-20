@@ -124,7 +124,6 @@ impl Type {
     }
 
     pub fn new_from_config(tc: TypeConfig) -> Result<Self, &'static str> {
-        println!("{:?}", tc);
         match tc.config {
             VOID => Ok(Self::new_from_kind(TypeKind::VOID)),
             CHAR => Ok(Self::new_from_kind(TypeKind::CHAR)),
@@ -230,6 +229,14 @@ impl Type {
                 IncompleteKind::ENUM { .. } => true,
                 _ => false,
             },
+            _ => false,
+        }
+    }
+
+    pub fn is_function(&self) -> bool {
+        use TypeKind::FUNCTION;
+        match self.kind {
+            FUNCTION { .. } => true,
             _ => false,
         }
     }
