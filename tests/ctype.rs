@@ -28,5 +28,6 @@ test_succeed! {
 }
 
 test_fail! {
-    const_assing: ("int main() { const int i = 0; i = 2; }"),
+    const_assign: ("int main() { const int i = 0; i = 2; }"),
+    ptr_const_assing: ("int main() { int a, b, * const i=&a; i = &b; }"),
 }

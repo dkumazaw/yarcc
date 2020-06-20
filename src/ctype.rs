@@ -134,22 +134,18 @@ impl Type {
         }
     }
 
-    /// Create a new Type from the provided base type.
-    pub fn new_from_type(basety: Self, ref_depth: usize) -> Self {
-        if ref_depth == 0 {
-            basety
-        } else {
-            let kind = TypeKind::PTR {
-                ptr_to: Box::new(Type::new_from_type(basety, ref_depth - 1)),
-            };
-            Self::new_from_kind(kind)
-        }
+    /// Create a new Type who is a pointer to the basety
+    pub fn new_ptr(basety: Self) -> Self {
+        let kind = TypeKind::PTR {
+            ptr_to: Box::new(basety),
+        };
+        Self::new_from_kind(kind)
     }
 
-    pub fn new_array(basety: Self, ref_depth: usize, array_size: usize) -> Self {
+    pub fn new_array(basety: Self, array_size: usize) -> Self {
         let kind = TypeKind::ARRAY {
             size: array_size,
-            ptr_to: Box::new(Type::new_from_type(basety, ref_depth)),
+            ptr_to: Box::new(basety),
         };
         Self::new_from_kind(kind)
     }
@@ -288,6 +284,11 @@ impl Type {
             PTR { ref ptr_to } | ARRAY { ref ptr_to, .. } => ptr_to.size(),
             _ => panic!("Requesting a base size for a terminal type."),
         }
+    }
+
+    pub fn set_type_qual(&mut self, is_const: bool, is_volatile: bool) {
+        self.is_const = is_const;
+        self.is_volatile = is_volatile;
     }
 
     /// Returns the relative offset and type of a member of struct

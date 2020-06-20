@@ -174,8 +174,7 @@ impl Parser {
                 Err(msg) => self.error(msg),
             }
         };
-        ty.is_const = is_const;
-        ty.is_volatile = is_volatile;
+        ty.set_type_qual(is_const, is_volatile);
         Some(ty)
     }
 
@@ -316,22 +315,16 @@ impl Parser {
         decls
     }
 
-    // declarator = "*"* ident ("[" num "]" | "(" parameter-type-list? ")")?
+    // declarator = pointer ("[" num "]" | "(" parameter-type-list? ")")?
     fn declarator(&mut self, basety: Type) -> (String, Type) {
-        let refs = {
-            let mut tmp = 0;
-            while self.iter.consume("*") {
-                tmp += 1;
-            }
-            tmp
-        };
+        let basety = self.pointer(basety);
 
         let ident_name = self.iter.expect_ident();
         let var_type = if self.iter.consume("[") {
             // This is an array
             let array_size = self.iter.expect_number() as usize;
             self.iter.expect("]");
-            Type::new_array(basety, refs, array_size)
+            Type::new_array(basety, array_size)
         } else if self.iter.consume("(") {
             // This is a function declarator
             let args = if self.iter.consume(")") {
@@ -343,10 +336,36 @@ impl Parser {
             };
             Type::new_function(args)
         } else {
-            Type::new_from_type(basety, refs)
+            basety
         };
 
         (ident_name, var_type)
+    }
+
+    // pointer = ("*" type-qualifier-list?)*
+    fn pointer(&mut self, basety: Type) -> Type {
+        let mut ty = basety;
+
+        while self.iter.consume("*") {
+            let mut is_const = false;
+            let mut is_volatile = false;
+            while let Some(tqstr) = self.iter.consume_type_qual() {
+                match tqstr.as_str() {
+                    "const" => {
+                        is_const = true;
+                    }
+                    "volatile" => {
+                        is_volatile = true;
+                    }
+                    _ => panic!("This should be unreacheable"),
+                }
+            }
+
+            ty = Type::new_ptr(ty);
+            ty.set_type_qual(is_const, is_volatile);
+        }
+
+        ty
     }
 
     // parameter-type-list
