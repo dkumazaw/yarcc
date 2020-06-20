@@ -52,7 +52,7 @@ impl Parser {
         if self.iter.is_func() {
             return self.funcdef();
         } else {
-            self.declaration(true);
+            self.declaration(true); // TODO: Accept global decl w/ initializer
             return None;
         }
     }
@@ -80,12 +80,8 @@ impl Parser {
             if !ty.is_struct() {
                 self.warn("This is a useless empty declaration.");
             }
-            if is_global {
-                return None;
-            } else {
-                // TODO: Clean up this part
-                return Some(Node::new_decl(LinkedList::new()));
-            }
+            // TODO: Clean this up
+            return Some(Node::new_decl(LinkedList::new()));
         }
 
         println!("{:?}", ty);
