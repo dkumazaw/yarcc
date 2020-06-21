@@ -51,7 +51,7 @@ pub enum TokenKind {
 #[derive(Debug)]
 pub struct Token {
     pub kind: TokenKind,
-    string: Option<String>,
+    pub string: Option<String>,
     val: i32,
 }
 
@@ -60,6 +60,7 @@ pub struct Tokenizer {
 }
 
 pub struct TokenIter {
+    buf: LinkedList<Token>,
     tokens: LinkedList<Token>,
 }
 
@@ -337,7 +338,10 @@ impl Tokenizer {
 
 impl TokenIter {
     pub fn new(tokens: LinkedList<Token>) -> Self {
-        TokenIter { tokens: tokens }
+        TokenIter {
+            buf: LinkedList::new(),
+            tokens: tokens,
+        }
     }
 
     pub fn expect(&mut self, s: &str) {
@@ -382,6 +386,21 @@ impl TokenIter {
         }
 
         t.string.clone().unwrap()
+    }
+
+    pub fn delay(&mut self) -> (TokenKind, Option<String>) {
+        let t = self.next();
+        let kind = t.kind.clone();
+        let maybe_str = t.string.clone();
+        self.buf.push_back(t);
+        (kind, maybe_str)
+    }
+
+    pub fn commit_delay(&mut self) {
+        // TODO: Use prepend when stable
+        while let Some(t) = self.buf.pop_back() {
+            self.tokens.push_front(t);
+        }
     }
 
     // Consumes TKRESERVED matching s
@@ -500,7 +519,7 @@ impl TokenIter {
     }
 
     // Wrapper to hide option unwrapping
-    fn peek(&mut self) -> &Token {
+    pub fn peek(&mut self) -> &Token {
         self.tokens.front().unwrap()
     }
 

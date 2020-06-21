@@ -24,7 +24,7 @@ test_succeed! {
     cstruct: ("tests/ctests/struct.c", 0),
     cenum: ("tests/ctests/enum.c", 0),
     typequal: ("tests/ctests/type_qual.c", 0),
-    decl: ("tests/ctests/decl.c", 0),
+    //various_decl: ("tests/ctests/decl.c", 0),
 }
 
 test_fail! {

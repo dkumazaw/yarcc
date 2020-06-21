@@ -165,6 +165,7 @@ impl Type {
 
     pub fn new_function(args: Vec<(String, Type)>) -> Self {
         let kind = TypeKind::FUNCTION { args: args };
+        println!("{:?}", kind);
         Self::new_from_kind(kind)
     }
 

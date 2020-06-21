@@ -2,7 +2,7 @@
 use crate::cenv::{Env, Var};
 use crate::ctype::{EnumMember, IncompleteKind, StructMember, Type, TypeConfig};
 use crate::node::{AssignMode, Node};
-use crate::tokenizer::TokenIter;
+use crate::tokenizer::{TokenIter, TokenKind};
 use std::collections::{LinkedList, VecDeque};
 
 // Parser returns this context;
@@ -48,52 +48,86 @@ impl Parser {
     }
 
     // external_decl = funcdef | decl
+    // This handles the shared part of funcdef and decl
+    // and delegates the rest of the work to the respective funcitons.
     fn external_decl(&mut self) -> Option<Node> {
-        if self.iter.is_func() {
-            return self.funcdef();
-        } else {
-            self.declaration(true); // TODO: Accept global decl w/ initializer
+        let basety = match self.decl_spec() {
+            Some(t) => t,
+            None => self.error("Expected type specifier"),
+        };
+
+        if self.iter.consume(";") {
+            if !basety.is_struct() {
+                self.warn("This is a useless empty declaration.");
+            }
+            // TODO: Clean this up
             return None;
+        }
+
+        let (name, ty) = self.declarator(basety.clone());
+        if self.iter.consume("{") {
+            self.funcdef(name, ty)
+        } else {
+            self.global_declaration(name, ty, basety);
+            None
         }
     }
 
     // decl = decl_spec (init_decl ("," init_decl)*)? ";"
     // init_decl = declarator ("=" initializer)?
-    // TODO: Support global variable initializer
-    fn declaration(&mut self, is_global: bool) -> Option<Node> {
-        let ty;
-        let mut inits: LinkedList<Node> = LinkedList::new();
+    // TODO: Support global var init
+    fn global_declaration(&mut self, name: String, ty: Type, basety: Type) {
+        // Pick up from the first declarator
+        let mut _inits: LinkedList<Node> = LinkedList::new();
 
-        match self.decl_spec() {
-            Some(t) => {
-                ty = t;
-            }
-            None => {
-                if is_global {
-                    self.error("Expected type specifier")
-                } else {
-                    return None;
-                }
+        if ty.is_function() {
+            self.env.add_prototype(name, ty);
+        } else {
+            let var = self.env.scopes.add_var(name, ty);
+            if self.iter.consume("=") {
+                _inits.append(&mut self.initializer(var));
             }
         }
 
-        if self.iter.consume(";") {
-            if !ty.is_struct() {
-                self.warn("This is a useless empty declaration.");
-            }
-            // TODO: Clean this up
-            return Some(Node::new_decl(inits));
-        }
+        while self.iter.consume(",") {
+            let (name, ty) = self.declarator(basety.clone());
 
-        loop {
-            let (name, ty) = self.declarator(ty.clone());
-            if is_global && ty.is_function() {
+            if ty.is_function() {
                 self.env.add_prototype(name, ty);
             } else {
                 let var = self.env.scopes.add_var(name, ty);
                 if self.iter.consume("=") {
-                    inits.append(&mut self.initializer(var));
+                    _inits.append(&mut self.initializer(var));
                 }
+            }
+        }
+        self.iter.expect(";");
+    }
+
+    // decl = decl_spec (init_decl ("," init_decl)*)? ";"
+    // init_decl = declarator ("=" initializer)?
+    fn local_declaration(&mut self) -> Option<Node> {
+        let basety = match self.decl_spec() {
+            Some(t) => t,
+            None => {
+                return None;
+            }
+        };
+
+        let mut inits: LinkedList<Node> = LinkedList::new();
+
+        if self.iter.consume(";") {
+            if !basety.is_struct() {
+                self.warn("This is a useless empty declaration.");
+            }
+            return Some(Node::new_decl(inits));
+        }
+
+        loop {
+            let (name, ty) = self.declarator(basety.clone());
+            let var = self.env.scopes.add_var(name, ty);
+            if self.iter.consume("=") {
+                inits.append(&mut self.initializer(var));
             }
             if !self.iter.consume(",") {
                 break;
@@ -315,11 +349,22 @@ impl Parser {
         decls
     }
 
-    // declarator = pointer ("[" num "]" | "(" parameter-type-list? ")")?
+    // declarator =
+    //      pointer (ident | "(" declarator ")") ("[" num "]" | "(" parameter-type-list? ")")?
     fn declarator(&mut self, basety: Type) -> (String, Type) {
         let basety = self.pointer(basety);
+        let mut ident_name = "unseen".to_string();
 
-        let ident_name = self.iter.expect_ident();
+        println!("I was passed {:?}", basety);
+        let is_nested = if let Some(name) = self.iter.consume_ident() {
+            println!("{}", name);
+            ident_name = name;
+            false
+        } else {
+            self.delay_declarator();
+            true
+        };
+
         let var_type = if self.iter.consume("[") {
             // This is an array
             let array_size = self.iter.expect_number() as usize;
@@ -339,7 +384,46 @@ impl Parser {
             basety
         };
 
-        (ident_name, var_type)
+        println!("Found {:?}", var_type);
+        match is_nested {
+            true => {
+                self.iter.commit_delay();
+                self.declarator(var_type)
+            }
+            false => (ident_name, var_type),
+        }
+    }
+
+    fn delay_declarator(&mut self) {
+        use TokenKind::*;
+
+        self.iter.expect("(");
+        let mut paren_cnt = 1;
+        while paren_cnt > 0 {
+            let tk = self.iter.peek();
+            match tk.kind {
+                TKRESERVED => match tk.string.as_ref().unwrap().as_str() {
+                    "(" => {
+                        paren_cnt += 1;
+                        self.iter.delay();
+                    }
+                    ")" => {
+                        paren_cnt -= 1;
+                        if paren_cnt > 0 {
+                            self.iter.delay();
+                        } else {
+                            self.iter.expect(")");
+                        }
+                    }
+                    _ => {
+                        self.iter.delay();
+                    }
+                },
+                _ => {
+                    self.iter.delay();
+                }
+            }
+        }
     }
 
     // pointer = ("*" type-qualifier-list?)*
@@ -451,18 +535,13 @@ impl Parser {
     }
 
     // funcdef = decl_spec declarator "{" stmt* "}"
+    // Assumes that everything up to the first "{" has already been read
     // NOTE: K&R style definition is not supported
-    fn funcdef(&mut self) -> Option<Node> {
+    fn funcdef(&mut self, ident_name: String, functy: Type) -> Option<Node> {
         let mut argvars: LinkedList<Var> = LinkedList::new();
         let mut stmts: LinkedList<Node> = LinkedList::new();
 
-        let basety = match self.decl_spec() {
-            Some(t) => t,
-            None => panic!("Expected a declarator specifier."),
-        };
-
         // Create new local scopes:
-        let (ident_name, functy) = self.declarator(basety);
         self.env.add_prototype(ident_name.clone(), functy.clone());
         let mut arg_iter = functy.iter_func_args();
 
@@ -476,7 +555,6 @@ impl Parser {
         }
 
         // Parse function body
-        self.iter.expect("{");
         while !self.iter.consume("}") {
             if let Some(stmt) = self.stmt() {
                 stmts.push_back(stmt);
@@ -499,7 +577,7 @@ impl Parser {
     //      | jump
     //      | expr? ";"
     fn stmt(&mut self) -> Option<Node> {
-        let node = if let Some(decl) = self.declaration(false) {
+        let node = if let Some(decl) = self.local_declaration() {
             Some(decl)
         } else if let Some(labeled) = self.labeled() {
             Some(labeled)
@@ -969,6 +1047,7 @@ impl Parser {
                 } else if let Some(ec) = self.env.scopes.find_const(&ident) {
                     Node::new_int(ec.member.val)
                 } else {
+                    println!("{}", ident);
                     self.error("Undefined identifier!");
                 }
             }
