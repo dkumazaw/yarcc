@@ -575,8 +575,12 @@ impl<'a> CodeGen<'a> {
                 self.gen_lval(*operand);
             }
             NDDEREF { node: operand } => {
+                let ty = node.ty.unwrap();
                 self.gen(*operand);
-                self.gen_load(node.ty.unwrap().size());
+
+                if !ty.is_array() {
+                    self.gen_load(ty.size());
+                }
             }
             NDBITNOT { node: operand } => {
                 self.gen(*operand);

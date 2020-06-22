@@ -282,7 +282,7 @@ impl Type {
     pub fn base_size(&self) -> usize {
         use TypeKind::*;
         match self.kind {
-            PTR { ref ptr_to } | ARRAY { ref ptr_to, .. } => ptr_to.size(),
+            PTR { ref ptr_to } | ARRAY { ref ptr_to, .. } => ptr_to.total_size(),
             _ => panic!("Requesting a base size for a terminal type."),
         }
     }

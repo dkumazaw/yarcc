@@ -365,24 +365,7 @@ impl Parser {
             true
         };
 
-        let var_type = if self.iter.consume("[") {
-            // This is an array
-            let array_size = self.iter.expect_number() as usize;
-            self.iter.expect("]");
-            Type::new_array(basety, array_size)
-        } else if self.iter.consume("(") {
-            // This is a function declarator
-            let args = if self.iter.consume(")") {
-                Vec::new()
-            } else {
-                let tmp = self.parameter_type_list();
-                self.iter.expect(")");
-                tmp
-            };
-            Type::new_function(args)
-        } else {
-            basety
-        };
+        let var_type = self.recurse_array_func(basety);
 
         println!("Found {:?}", var_type);
         match is_nested {
@@ -392,6 +375,28 @@ impl Parser {
             }
             false => (ident_name, var_type),
         }
+    }
+
+    fn recurse_array_func(&mut self, basety: Type) -> Type {
+        if self.iter.consume("[") {
+            let array_size = self.iter.expect_number() as usize;
+            self.iter.expect("]");
+            return Type::new_array(self.recurse_array_func(basety), array_size);
+        }
+        if self.iter.consume("(") {
+            // This is a function declarator
+            let args = if self.iter.consume(")") {
+                Vec::new()
+            } else {
+                let tmp = self.parameter_type_list();
+                self.iter.expect(")");
+                tmp
+            };
+            let _tmp = self.recurse_array_func(basety);
+            return Type::new_function(args);
+        }
+
+        return basety;
     }
 
     fn delay_declarator(&mut self) {
