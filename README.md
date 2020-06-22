@@ -14,6 +14,7 @@ All of the development and testing have taken place on an Ubuntu 18.04 VM.
 - Initializer for multi-level arrays
 - Floating point arithmetics
 - Type casting
+- Replace the lexer with a DFA-based implementation
 
 ## Caveats:
 The nature of this project being educational, the codebase is quite lax on error checking. 
