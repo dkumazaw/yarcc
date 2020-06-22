@@ -242,7 +242,7 @@ impl<'a> CodeGen<'a> {
             NDSTR { .. } => {
                 self.gen_lval(node);
             }
-            NDLVAR { .. } | NDGVAR { .. } => {
+            NDLVAR { .. } | NDGVAR { .. } | NDMEMBER { .. } => {
                 if node.ty.as_ref().unwrap().is_array() {
                     self.gen_lval(node);
                 } else {
@@ -253,11 +253,6 @@ impl<'a> CodeGen<'a> {
             }
             NDPROTOTY { .. } => {
                 self.gen_lval(node);
-            }
-            NDMEMBER { .. } => {
-                let size = node.ty.as_ref().unwrap().size();
-                self.gen_lval(node);
-                self.gen_load(size);
             }
             NDASSIGN {
                 lhs,

@@ -63,6 +63,14 @@ int test_comma_sep() {
     return hi.a + hi.e; // Expect: 8
 }
 
+int test_array() {
+    struct hoge { int a[10], b, *c[2]; } l;
+    l.a[3] = 4;
+    l.c[1] = &l.a[3];
+
+    return *l.c[1]; // Expect: 4
+}
+
 /* TODO:
 int test_ptr_to_self() {
     struct a {
@@ -84,6 +92,7 @@ int main() {
     if (test_same_name() != 22) return 4;
     if (test_arrow() != 6) return 5;
     if (test_comma_sep() != 8) return 6;
+    if (test_array() != 4) return 7;
     // TODO: if (test_ptr_to_self() != 123456) return 6;
 
     // Successful
