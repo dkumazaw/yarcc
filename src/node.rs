@@ -153,7 +153,7 @@ pub enum NodeKind {
     },
     // funcs
     NDCALL {
-        name: String,
+        prototy: Box<Node>,
         args: LinkedList<Node>,
     }, // function call
     NDFUNCDEF {
@@ -173,6 +173,9 @@ pub enum NodeKind {
     NDGVAR {
         name: String,
     }, // global var
+    NDPROTOTY {
+        name: String,
+    }, // function prototype
 }
 
 impl Node {
@@ -483,11 +486,11 @@ impl Node {
         }
     }
 
-    pub fn new_call(name: String, args: LinkedList<Self>) -> Self {
+    pub fn new_call(prototy: Self, args: LinkedList<Self>) -> Self {
         Node {
             ty: None,
             kind: NodeKind::NDCALL {
-                name: name,
+                prototy: Box::new(prototy),
                 args: args,
             },
         }
@@ -528,6 +531,13 @@ impl Node {
         Node {
             ty: Some(ty),
             kind: NodeKind::NDGVAR { name: name },
+        }
+    }
+
+    pub fn new_prototy(name: String) -> Self {
+        Node {
+            ty: None,
+            kind: NodeKind::NDPROTOTY { name: name },
         }
     }
 

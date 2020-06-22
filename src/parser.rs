@@ -968,7 +968,13 @@ impl Parser {
         node
     }
 
-    // postfix = primary ('[' expr ']' | "." ident | "->" ident | "++" | "--")*
+    // postfix =
+    //  primary ('[' expr ']'
+    //          | "(" expr ("," expr)* ")"
+    //          | "." ident
+    //          | "->" ident
+    //          | "++"
+    //          | "--")*
     fn postfix(&mut self) -> Node {
         let mut node = self.primary();
 
@@ -978,6 +984,21 @@ impl Parser {
                 node = Node::new_unary("*", node);
                 node.populate_ty();
                 self.iter.expect("]");
+            } else if self.iter.consume("(") {
+                // This is a function call
+                let mut args: LinkedList<Node> = LinkedList::new();
+                if self.iter.consume(")") {
+                    node = Node::new_call(node, args);
+                    continue;
+                }
+                loop {
+                    args.push_back(self.expr());
+                    if !self.iter.consume(",") {
+                        break;
+                    }
+                }
+                self.iter.expect(")");
+                node = Node::new_call(node, args)
             } else if self.iter.consume(".") {
                 let ident = self.iter.expect_ident();
                 node = Node::new_member(node, ident);
@@ -1002,7 +1023,7 @@ impl Parser {
 
     // primary = num
     //         | str
-    //         | ident ("(" (expr, )* ")")?
+    //         | ident
     //         | "(" expr ")"
     fn primary(&mut self) -> Node {
         if self.iter.consume("(") {
@@ -1010,46 +1031,21 @@ impl Parser {
             self.iter.expect(")");
             node
         } else if let Some(ident) = self.iter.consume_ident() {
-            if self.iter.consume("(") {
-                // This is a function call
-                if !self.env.check_prototype(&ident) {
-                    self.error("This identifier has not been declared with prototype.")
-                }
-                let mut remaining = 6;
-                let mut args: LinkedList<Node> = LinkedList::new();
-
-                if self.iter.consume(")") {
-                    // No argument case
-                    return Node::new_call(ident, args);
-                }
-
-                remaining -= 1;
-                // Handle the 1st arg
-                args.push_back(self.expr());
-
-                while self.iter.consume(",") {
-                    if remaining == 0 {
-                        panic!("Parser: Func arg exceeded the max. number of args supported.");
-                    }
-                    remaining -= 1;
-                    args.push_back(self.expr());
-                }
-                self.iter.expect(")");
-
-                Node::new_call(ident, args)
+            if let Some(var) = self.env.scopes.find_var(&ident) {
+                // Variable
+                let node = match var.offset {
+                    Some(offset) => Node::new_lvar(offset, var.ty.clone()),
+                    None => Node::new_gvar(ident, var.ty.clone()),
+                };
+                node
+            } else if let Some(ec) = self.env.scopes.find_const(&ident) {
+                // Enum const
+                Node::new_int(ec.member.val)
+            } else if self.env.is_prototype(&ident) {
+                // Registered as a function prototype
+                Node::new_prototy(ident)
             } else {
-                // This is a variable or enum const
-                if let Some(var) = self.env.scopes.find_var(&ident) {
-                    match var.offset {
-                        Some(offset) => Node::new_lvar(offset, var.ty.clone()),
-                        None => Node::new_gvar(ident, var.ty.clone()),
-                    }
-                } else if let Some(ec) = self.env.scopes.find_const(&ident) {
-                    Node::new_int(ec.member.val)
-                } else {
-                    println!("{}", ident);
-                    self.error("Undefined identifier!");
-                }
+                self.error("Found an undefined identifier.");
             }
         } else if let Some(literal) = self.iter.consume_str() {
             let pos = self.env.add_literal(literal);

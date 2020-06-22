@@ -59,7 +59,7 @@ impl Env {
         self.prototypes.push((name, ty));
     }
 
-    pub fn check_prototype(&mut self, ident: &str) -> bool {
+    pub fn is_prototype(&mut self, ident: &str) -> bool {
         if let Some(_) = self.prototypes.iter().find(|(name, _)| name == ident) {
             true
         } else {

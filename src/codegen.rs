@@ -503,9 +503,15 @@ impl<'a> CodeGen<'a> {
             NDBLOCK { stmts } => {
                 self.gen_blockstmts(stmts);
             }
-            NDCALL { name, mut args } => {
+            NDCALL { prototy, mut args } => {
                 self.cond_label += 2; // Consume 2
                 let num_args = args.len();
+
+                let funcname = if let NDPROTOTY { name } = prototy.kind {
+                    name
+                } else {
+                    panic!("NDCALL must take prototy")
+                };
 
                 // Push args to the designated registers
                 for i in 0..num_args {
@@ -520,7 +526,7 @@ impl<'a> CodeGen<'a> {
                 gen_line!(self.f, "  sub r12, r13\n"); // Need to sub rsp this much
                                                        // TODO: Skip alignment if its already a multiple of 16
                 gen_line!(self.f, "  sub rsp, r12\n");
-                gen_line!(self.f, "  call {}\n", name);
+                gen_line!(self.f, "  call {}\n", funcname);
                 // Rewind the alignment
                 gen_line!(self.f, "  add rsp, r12\n");
 
