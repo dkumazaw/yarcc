@@ -118,7 +118,7 @@ impl<'a> CodeGen<'a> {
                 gen_line!(self.f, "  sub rax, {}\n", offset);
                 gen_line!(self.f, "  push rax\n");
             }
-            NDGVAR { name } => {
+            NDGVAR { name } | NDPROTOTY { name } => {
                 gen_line!(self.f, "  push offset {}\n", name);
             }
             NDSTR { pos } => {
@@ -250,6 +250,9 @@ impl<'a> CodeGen<'a> {
                     self.gen_lval(node);
                     self.gen_load(size);
                 }
+            }
+            NDPROTOTY { .. } => {
+                self.gen_lval(node);
             }
             NDMEMBER { .. } => {
                 let size = node.ty.as_ref().unwrap().size();
@@ -507,11 +510,8 @@ impl<'a> CodeGen<'a> {
                 self.cond_label += 2; // Consume 2
                 let num_args = args.len();
 
-                let funcname = if let NDPROTOTY { name } = prototy.kind {
-                    name
-                } else {
-                    panic!("NDCALL must take prototy")
-                };
+                self.gen(*prototy);
+                gen_line!(self.f, "  pop r15\n");
 
                 // Push args to the designated registers
                 for i in 0..num_args {
@@ -526,7 +526,7 @@ impl<'a> CodeGen<'a> {
                 gen_line!(self.f, "  sub r12, r13\n"); // Need to sub rsp this much
                                                        // TODO: Skip alignment if its already a multiple of 16
                 gen_line!(self.f, "  sub rsp, r12\n");
-                gen_line!(self.f, "  call {}\n", funcname);
+                gen_line!(self.f, "  call r15\n");
                 // Rewind the alignment
                 gen_line!(self.f, "  add rsp, r12\n");
 
