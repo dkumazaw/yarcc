@@ -25,4 +25,4 @@ On another note, I decided not to support obsolete features such as the followin
 - Function declarations without a prototype
 
 ## References
-In the earliest stage of development, I have predominantly referred to [this book](https://www.sigbus.info/compilerbook). In addition to [the normative reference](https://www.pdf-archive.com/2014/10/02/ansi-iso-9899-1990-1/ansi-iso-9899-1990-1.pdf) which is the standard itself, I have also referred to [the Dragon Book](https://en.wikipedia.org/wiki/Compilers:_Principles,_Techniques,_and_Tools) for gaining design insights.
+In the earliest stage of development, I mainly referred to [this book](https://www.sigbus.info/compilerbook). In addition to [the normative reference](https://www.pdf-archive.com/2014/10/02/ansi-iso-9899-1990-1/ansi-iso-9899-1990-1.pdf) which is the standard itself, I have also referred to [the Dragon Book](https://en.wikipedia.org/wiki/Compilers:_Principles,_Techniques,_and_Tools) for gaining design insights.
