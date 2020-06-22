@@ -55,10 +55,16 @@ int test_ptr3() {
     *(a + 2) = 4; p = a; return * (4-2 + p); // Expect: 4
 }
 
-int test_simple_double() {
+int test_simple_2d() {
     int a[5][6];
     a[2][1] = 9;
-    return a[2][1]; // Expect: 9
+    return *(*(a + 2) + 1); // Expect: 9
+}
+
+int test_simple_2d_2() {
+    int a[5][6];
+    *(*(a + 1) + 5) = 129;
+    return a[1][5]; // Expect: 129
 }
 
 int main() {
@@ -71,7 +77,7 @@ int main() {
     if (test_ptr() != 37) return 7;
     if (test_ptr2() != 4) return 8;
     if (test_ptr3() != 4) return 9;
-    if (test_simple_double() != 9) return 10;
+    if (test_simple_2d() != 9) return 10;
 
     // Successful
     return 0;
