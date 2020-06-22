@@ -67,6 +67,13 @@ int test_simple_2d_2() {
     return a[1][5]; // Expect: 129
 }
 
+int test_multidim() {
+    int b[2][6][2], c[1][2][3][4];
+    b[1][3][1] = 68; 
+    *(*(*(*(c + 1))+1)+2) = 5;
+    return *(*(*(b + 1) + 3 )+ 1) + c[1][0][1][2]; // Expect: 73
+}
+
 int main() {
     if (test_simple() != 1) return 1;
     if (test_simple2() != 4) return 2;
@@ -78,6 +85,8 @@ int main() {
     if (test_ptr2() != 4) return 8;
     if (test_ptr3() != 4) return 9;
     if (test_simple_2d() != 9) return 10;
+    if (test_simple_2d_2() != 129) return 11;
+    if (test_multidim() != 73) return 12;
 
     // Successful
     return 0;
