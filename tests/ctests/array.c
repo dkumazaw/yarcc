@@ -74,6 +74,13 @@ int test_multidim() {
     return *(*(*(b + 1) + 3 )+ 1) + c[1][0][1][2]; // Expect: 73
 }
 
+int test_addr() {
+    int a[4];
+    a[0] = 12;
+    int *b = &a;
+    return *b; // Expect: 12
+}
+
 int main() {
     if (test_simple() != 1) return 1;
     if (test_simple2() != 4) return 2;
@@ -87,6 +94,7 @@ int main() {
     if (test_simple_2d() != 9) return 10;
     if (test_simple_2d_2() != 129) return 11;
     if (test_multidim() != 73) return 12;
+    if (test_addr() != 12) return 13;
 
     // Successful
     return 0;
