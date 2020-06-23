@@ -496,47 +496,58 @@ impl Parser {
     // initializer = assign | "{" ( assign "," )* "}"
     fn initializer(&mut self, var: Var) -> LinkedList<Node> {
         let mut inits: LinkedList<Node> = LinkedList::new();
-        let is_init_list = self.iter.consume("{");
-        let mut pos: usize = 0;
 
-        let lhs = if var.ty.is_array() {
-            Parser::init_array_lhs(pos, &var)
-        } else {
-            Node::new_lvar(var.offset.unwrap(), var.ty.clone())
-        };
-        let mut init = Node::new_init(AssignMode::DEFAULT, lhs, self.assign(), false);
-        init.populate_ty();
-        inits.push_back(init);
-
-        if !is_init_list {
+        if var.ty.is_scalar() {
+            let lvar = Node::new_lvar(var.offset.unwrap(), var.ty.clone());
+            let val = self.scalar_initializer(&var.ty);
+            let mut init = Node::new_init(AssignMode::DEFAULT, lvar, val, false);
+            init.populate_ty();
+            inits.push_back(init);
             return inits;
         }
 
+        self.iter.expect("{");
+        let mut pos = 0;
         let mut warned = false;
-        let is_array = var.ty.is_array();
-        pos += 1;
-        while self.iter.consume(",") {
-            if !is_array || pos * var.ty.base_size() >= var.ty.total_size() {
+        loop {
+            if pos * var.ty.base_size() >= var.ty.total_size() {
                 if !warned {
                     self.warn("Excess elements in initializer for an array will be ignored.");
                     warned = true;
                 }
-                self.assign();
-                continue;
+                self.assign(); // Ignored
+            } else {
+                let mut init = Node::new_init(
+                    AssignMode::DEFAULT,
+                    Parser::init_array_lhs(pos, &var),
+                    self.assign(),
+                    false,
+                );
+                init.populate_ty();
+                inits.push_back(init);
             }
-            let mut init = Node::new_init(
-                AssignMode::DEFAULT,
-                Parser::init_array_lhs(pos, &var),
-                self.assign(),
-                false,
-            );
-            init.populate_ty();
-            inits.push_back(init);
+
             pos += 1;
+            if !self.iter.consume(",") {
+                break;
+            }
         }
 
         self.iter.expect("}");
         inits
+    }
+
+    fn scalar_initializer(&mut self, ty: &Type) -> Node {
+        if self.iter.consume("{") {
+            let node = self.scalar_initializer(ty);
+            while self.iter.consume(",") {
+                self.scalar_initializer(ty); // Ignored
+            }
+            self.iter.expect("}");
+            node
+        } else {
+            self.assign()
+        }
     }
 
     // funcdef = decl_spec declarator "{" stmt* "}"

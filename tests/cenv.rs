@@ -19,6 +19,7 @@ test_succeed! {
     init5: ("int main() { int a[4] = {1, 2, 3, 5}; return a[3]; }", 5),
     init6: ("int main() { int a, b=4, c=5; return b *c; }", 20),
     init7: ("int main() { int a[5] = {1,2,3,4,5,6,7}, *b, c=4; return a[3]; }", 4),
+    init8: ("int main() { int a = {{{25}, {14}}, {0}}; return a; }", 25),
     literals: ("tests/ctests/literal.c", 1),
 }
 

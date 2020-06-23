@@ -254,6 +254,25 @@ impl Type {
         }
     }
 
+    pub fn is_integral(&self) -> bool {
+        use TypeKind::*;
+        match self.kind {
+            CHAR | SHORT | INT | LONG | ENUM { .. } => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_scalar(&self) -> bool {
+        use TypeKind::*;
+        if self.is_integral() {
+            return true;
+        }
+        match self.kind {
+            PTR { .. } => true,
+            _ => false,
+        }
+    }
+
     pub fn size(&self) -> usize {
         use TypeKind::*;
         match self.kind {
