@@ -1,5 +1,5 @@
 # yarcc: A hobby C compiler written in Rust [WIP]
-This is a hobby C compiler written in Rust from scratch — its only dependency is the standard library. This compiler emits x86_64 assembly compliant with System V ABI. This ongoing project aims to support the majority of C89/90 features. 
+This is a hobby C compiler written from scratch in Rust that emits x86_64 assembly compliant with System V ABI. This ongoing project aims to support the majority of C89/90 features. 
 
 ## Usage
 Currently, you can either provide the raw C code as the first argument or pass the path to the file you want to compile:
