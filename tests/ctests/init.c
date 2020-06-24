@@ -19,8 +19,8 @@ int array_2d() {
 }
 
 int array_3d() {
-    int a[2][2][2] = { { {1, 2}, { 3, 4 } }, { { 5, 6 } } };
-    return 1;
+    int a[2][2][2] = { { {1, 2}, { 3, 4 } }, { { 5, 6 }, { 7, 8 } } };
+    return a[0][0][0] + a[1][1][1]; // Expect: 9 
 }
 
 /* TODO */
@@ -40,6 +40,7 @@ int main() {
     if (array_excessive() != 4) return 8;
     if (scalar_nested_excessive() != 25) return 9;
     if (array_2d() != 15) return 10;
+    if (array_3d() != 9) return 11;
 
     // Successful
     return 0;
