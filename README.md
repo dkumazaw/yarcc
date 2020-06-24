@@ -1,17 +1,19 @@
 # yarcc: A hobby C compiler written in Rust [WIP]
 This is a hobby C compiler written from scratch in Rust that emits x86_64 assembly compliant with System V ABI. This ongoing project aims to support the majority of C89/90 features. 
 
-## Usage
+## Running and testing
 Currently, you can either provide the raw C code as the first argument or pass the path to the file you want to compile:
 
 ```cargo run examples/singlenum.c```
+
+The entire test suite can be executed by
+```cargo test```.
 
 All of the development and testing have taken place on an Ubuntu 18.04 VM. 
 
 
 ## Major TODOs
 - Preprocessor
-- Initializer for multi-level arrays
 - Floating point arithmetics
 - Type casting
 - Replace the lexer with a DFA-based implementation
