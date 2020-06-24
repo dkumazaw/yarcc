@@ -57,7 +57,7 @@ enum TypeKind {
         ptr_to: Box<Type>,
     },
     ARRAY {
-        size: usize,
+        num_elems: usize,
         ptr_to: Box<Type>,
     },
     STRUCT {
@@ -111,7 +111,7 @@ impl Type {
         }
     }
 
-    // Constructors:
+    /// Constructors:
     pub fn new_base(basekind: &str) -> Self {
         let kind = match basekind {
             "char" => TypeKind::CHAR,
@@ -134,7 +134,6 @@ impl Type {
         }
     }
 
-    /// Create a new Type who is a pointer to the basety
     pub fn new_ptr(basety: Self) -> Self {
         let kind = TypeKind::PTR {
             ptr_to: Box::new(basety),
@@ -142,9 +141,9 @@ impl Type {
         Self::new_from_kind(kind)
     }
 
-    pub fn new_array(basety: Self, array_size: usize) -> Self {
+    pub fn new_array(basety: Self, num_elems: usize) -> Self {
         let kind = TypeKind::ARRAY {
-            size: array_size,
+            num_elems: num_elems,
             ptr_to: Box::new(basety),
         };
         Self::new_from_kind(kind)
@@ -183,6 +182,14 @@ impl Type {
         }
     }
 
+    pub fn base_as_ref(&self) -> &Self {
+        use TypeKind::ARRAY;
+        match self.kind {
+            ARRAY { ref ptr_to, .. } => &ptr_to,
+            _ => panic!("Trying to access the base of non-array type"),
+        }
+    }
+
     pub fn new_ptr_to(&self) -> Self {
         let kind = TypeKind::PTR {
             ptr_to: Box::new(self.clone()),
@@ -190,6 +197,7 @@ impl Type {
         Self::new_from_kind(kind)
     }
 
+    /// Convenience functions for checking type
     pub fn is_void(&self) -> bool {
         use TypeKind::VOID;
         match self.kind {
@@ -273,6 +281,7 @@ impl Type {
         }
     }
 
+    /// Obtaining size
     pub fn size(&self) -> usize {
         use TypeKind::*;
         match self.kind {
@@ -293,7 +302,7 @@ impl Type {
     pub fn total_size(&self) -> usize {
         use TypeKind::*;
         match self.kind {
-            ARRAY { size, .. } => size.clone() * self.size(),
+            ARRAY { num_elems, .. } => num_elems * self.size(),
             _ => self.size(),
         }
     }
@@ -306,6 +315,15 @@ impl Type {
         }
     }
 
+    pub fn num_elems(&self) -> usize {
+        use TypeKind::ARRAY;
+        match self.kind {
+            ARRAY { num_elems, .. } => num_elems,
+            _ => panic!("Requesting the # of elements from a non-array type."),
+        }
+    }
+
+    /// Type qualifier setter
     pub fn set_type_qual(&mut self, is_const: bool, is_volatile: bool) {
         self.is_const = is_const;
         self.is_volatile = is_volatile;
@@ -332,7 +350,7 @@ impl Type {
         }
     }
 
-    // Returns an iterator over arguments of a function type.
+    /// Returns an iterator over arguments of a function type.
     pub fn iter_func_args(&self) -> Iter<(String, Type)> {
         use TypeKind::FUNCTION;
         match self.kind {

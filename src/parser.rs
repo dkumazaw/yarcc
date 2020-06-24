@@ -485,69 +485,127 @@ impl Parser {
         self.declarator(ty)
     }
 
-    fn init_array_lhs(pos: usize, var: &Var) -> Node {
-        let mut lhs = Node::new_lvar(var.offset.unwrap(), var.ty.clone());
-        let rhs = Node::new_int(pos as i32);
-        lhs = Node::new_binary("+", lhs, rhs);
-        lhs = Node::new_unary("*", lhs);
-        lhs
-    }
-
     // initializer = assign | "{" ( assign "," )* "}"
     fn initializer(&mut self, var: Var) -> LinkedList<Node> {
-        let mut inits: LinkedList<Node> = LinkedList::new();
-
         if var.ty.is_scalar() {
-            let lvar = Node::new_lvar(var.offset.unwrap(), var.ty.clone());
-            let val = self.scalar_initializer(&var.ty);
-            let mut init = Node::new_init(AssignMode::DEFAULT, lvar, val, false);
-            init.populate_ty();
+            let mut inits: LinkedList<Node> = LinkedList::new();
+            let init = self.scalar_initializer(var.offset.unwrap(), &var.ty);
             inits.push_back(init);
             return inits;
         }
 
+        if var.ty.is_array() {
+            return self.array_initializer(var.offset.unwrap(), &var.ty);
+        }
+
+        panic!("Not implemented type")
+    }
+
+    fn scalar_initializer(&mut self, offset: usize, ty: &Type) -> Node {
+        if !ty.is_scalar() {
+            panic!("This is not a scalar type.")
+        }
+        if self.iter.consume("{") {
+            let node = self.scalar_initializer(offset, ty);
+            while self.iter.consume(",") {
+                self.scalar_initializer_ignore(ty); // Ignored
+            }
+            self.iter.expect("}");
+            node
+        } else {
+            let lvar = Node::new_lvar(offset, ty.clone());
+            let val = self.assign();
+            let mut node = Node::new_init(AssignMode::DEFAULT, lvar, val, false);
+            node.populate_ty();
+            node
+        }
+    }
+
+    // NOTE: Maybe this can be consolidated with the above method,
+    // but I dont like passing around Options just to communicate whether or not
+    // the values read are to be ignored.
+    fn scalar_initializer_ignore(&mut self, ty: &Type) {
+        if !ty.is_scalar() {
+            panic!("This is not a scalar type.")
+        }
+        if self.iter.consume("{") {
+            self.scalar_initializer_ignore(ty);
+            while self.iter.consume(",") {
+                self.scalar_initializer_ignore(ty);
+            }
+            self.iter.expect("}");
+        } else {
+            self.assign();
+        }
+    }
+
+    fn array_initializer(&mut self, base_ofs: usize, ty: &Type) -> LinkedList<Node> {
+        if !ty.is_array() {
+            panic!("Calling an array initializer on a non-array type.")
+        }
+
         self.iter.expect("{");
+        let num_elems = ty.num_elems();
+        let basety = ty.base_as_ref();
+        let mut inits: LinkedList<Node> = LinkedList::new();
         let mut pos = 0;
         let mut warned = false;
+
         loop {
-            if pos * var.ty.base_size() >= var.ty.total_size() {
+            if pos >= num_elems {
                 if !warned {
                     self.warn("Excess elements in initializer for an array will be ignored.");
                     warned = true;
                 }
-                self.assign(); // Ignored
+                // Ignored
+                if basety.is_array() {
+                    self.array_initializer_ignore(basety);
+                } else {
+                    self.scalar_initializer_ignore(basety);
+                }
             } else {
-                let mut init = Node::new_init(
-                    AssignMode::DEFAULT,
-                    Parser::init_array_lhs(pos, &var),
-                    self.assign(),
-                    false,
-                );
-                init.populate_ty();
-                inits.push_back(init);
-            }
+                // TODO: This feels really ad hoc, but for now I don't have a better idea
+                let myofs = base_ofs - pos * ty.base_size();
 
+                if basety.is_array() {
+                    inits.append(&mut self.array_initializer(myofs, basety));
+                } else {
+                    inits.push_back(self.scalar_initializer(myofs, basety));
+                }
+            }
             pos += 1;
             if !self.iter.consume(",") {
                 break;
             }
         }
 
+        // TODO: Initialize the rest with 0s
         self.iter.expect("}");
         inits
     }
 
-    fn scalar_initializer(&mut self, ty: &Type) -> Node {
-        if self.iter.consume("{") {
-            let node = self.scalar_initializer(ty);
-            while self.iter.consume(",") {
-                self.scalar_initializer(ty); // Ignored
-            }
-            self.iter.expect("}");
-            node
-        } else {
-            self.assign()
+    // NOTE: See my comment for scalar_initializer_ignore
+    fn array_initializer_ignore(&mut self, ty: &Type) {
+        if !ty.is_array() {
+            panic!("This is not an array type.")
         }
+        self.iter.expect("{");
+        if self.iter.consume("}") {
+            return;
+        }
+
+        let basety = ty.base_as_ref();
+        loop {
+            if basety.is_array() {
+                self.array_initializer_ignore(basety);
+            } else {
+                self.scalar_initializer_ignore(basety);
+            }
+            if !self.iter.consume(",") {
+                break;
+            }
+        }
+        self.iter.expect("}");
     }
 
     // funcdef = decl_spec declarator "{" stmt* "}"
