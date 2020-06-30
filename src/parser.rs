@@ -355,9 +355,7 @@ impl Parser {
         let basety = self.pointer(basety);
         let mut ident_name = "unseen".to_string();
 
-        println!("I was passed {:?}", basety);
         let is_nested = if let Some(name) = self.iter.consume_ident() {
-            println!("{}", name);
             ident_name = name;
             false
         } else {
@@ -367,7 +365,6 @@ impl Parser {
 
         let var_type = self.recurse_array_func(basety);
 
-        println!("Found {:?}", var_type);
         match is_nested {
             true => {
                 self.iter.commit_delay();
@@ -489,35 +486,58 @@ impl Parser {
     fn initializer(&mut self, var: Var) -> LinkedList<Node> {
         if var.ty.is_scalar() {
             let mut inits: LinkedList<Node> = LinkedList::new();
-            let init = self.scalar_initializer(var.offset.unwrap(), &var.ty);
+            let val = self.scalar_initializer(&var.ty);
+            let mut init = self.generate_scalar_init(var.offset.unwrap(), &var.ty, val);
+            init.populate_ty();
             inits.push_back(init);
             return inits;
         }
 
         if var.ty.is_array() {
-            return self.array_initializer(var.offset.unwrap(), &var.ty);
+            let vals = self.array_initializer(&var.ty);
+            return self.generate_array_inits(var.offset.unwrap(), &var.ty, vals);
         }
 
         panic!("Not implemented type")
     }
 
-    fn scalar_initializer(&mut self, offset: usize, ty: &Type) -> Node {
+    fn generate_scalar_init(&self, offset: usize, ty: &Type, val: Node) -> Node {
+        let lvar = Node::new_lvar(offset, ty.clone());
+        Node::new_init(AssignMode::DEFAULT, lvar, val, false)
+    }
+
+    fn generate_array_inits(
+        &self,
+        mut offset: usize,
+        ty: &Type,
+        mut vals: LinkedList<Node>,
+    ) -> LinkedList<Node> {
+        let mut inits: LinkedList<Node> = LinkedList::new();
+        let terminalty = ty.terminal_as_ref();
+
+        while let Some(val) = vals.pop_front() {
+            let mut init = self.generate_scalar_init(offset, terminalty, val);
+            init.populate_ty();
+            inits.push_back(init);
+            offset -= ty.terminal_size();
+        }
+
+        inits
+    }
+
+    fn scalar_initializer(&mut self, ty: &Type) -> Node {
         if !ty.is_scalar() {
             panic!("This is not a scalar type.")
         }
         if self.iter.consume("{") {
-            let node = self.scalar_initializer(offset, ty);
+            let node = self.scalar_initializer(ty);
             while self.iter.consume(",") {
                 self.scalar_initializer_ignore(ty); // Ignored
             }
             self.iter.expect("}");
             node
         } else {
-            let lvar = Node::new_lvar(offset, ty.clone());
-            let val = self.assign();
-            let mut node = Node::new_init(AssignMode::DEFAULT, lvar, val, false);
-            node.populate_ty();
-            node
+            self.assign()
         }
     }
 
@@ -539,7 +559,13 @@ impl Parser {
         }
     }
 
-    fn array_initializer(&mut self, base_ofs: usize, ty: &Type) -> LinkedList<Node> {
+    fn scalar_initialize_with_zero(&mut self, ty: &Type) -> Node {
+        // C89 6.5.7 semantics requires the excess elements to behave
+        // as if they were assigned 0 for arithmetic type and NULL for pointer type
+        Node::new_int(0)
+    }
+
+    fn array_initializer(&mut self, ty: &Type) -> LinkedList<Node> {
         if !ty.is_array() {
             panic!("Calling an array initializer on a non-array type.")
         }
@@ -547,7 +573,7 @@ impl Parser {
         self.iter.expect("{");
         let num_elems = ty.num_elems();
         let basety = ty.base_as_ref();
-        let mut inits: LinkedList<Node> = LinkedList::new();
+        let mut vals: LinkedList<Node> = LinkedList::new();
         let mut pos = 0;
         let mut warned = false;
 
@@ -564,13 +590,10 @@ impl Parser {
                     self.scalar_initializer_ignore(basety);
                 }
             } else {
-                // TODO: This feels really ad hoc, but for now I don't have a better idea
-                let myofs = base_ofs - pos * ty.base_size();
-
                 if basety.is_array() {
-                    inits.append(&mut self.array_initializer(myofs, basety));
+                    vals.append(&mut self.array_initializer(basety));
                 } else {
-                    inits.push_back(self.scalar_initializer(myofs, basety));
+                    vals.push_back(self.scalar_initializer(basety));
                 }
             }
             pos += 1;
@@ -579,9 +602,16 @@ impl Parser {
             }
         }
 
-        // TODO: Initialize the rest with 0s
+        while pos < num_elems {
+            if basety.is_array() {
+                vals.append(&mut self.array_initialize_with_zeros(basety));
+            } else {
+                vals.push_back(self.scalar_initialize_with_zero(basety));
+            }
+            pos += 1
+        }
         self.iter.expect("}");
-        inits
+        vals
     }
 
     // NOTE: See my comment for scalar_initializer_ignore
@@ -606,6 +636,21 @@ impl Parser {
             }
         }
         self.iter.expect("}");
+    }
+
+    fn array_initialize_with_zeros(&mut self, ty: &Type) -> LinkedList<Node> {
+        let num_elems = ty.num_elems();
+        let basety = ty.base_as_ref();
+        let mut vals: LinkedList<Node> = LinkedList::new();
+
+        for _ in 0..num_elems {
+            if basety.is_array() {
+                vals.append(&mut self.array_initialize_with_zeros(basety))
+            } else {
+                vals.push_back(self.scalar_initialize_with_zero(basety))
+            }
+        }
+        vals
     }
 
     // funcdef = decl_spec declarator "{" stmt* "}"

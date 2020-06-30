@@ -182,11 +182,21 @@ impl Type {
         }
     }
 
+    /// Used to access array's base type
     pub fn base_as_ref(&self) -> &Self {
         use TypeKind::ARRAY;
         match self.kind {
             ARRAY { ref ptr_to, .. } => &ptr_to,
             _ => panic!("Trying to access the base of non-array type"),
+        }
+    }
+
+    /// Used to access array's terminal type
+    pub fn terminal_as_ref(&self) -> &Self {
+        use TypeKind::ARRAY;
+        match self.kind {
+            ARRAY { ref ptr_to, .. } => ptr_to.terminal_as_ref(),
+            _ => &self,
         }
     }
 
@@ -307,11 +317,27 @@ impl Type {
         }
     }
 
+    /// Used for pointer arithmetics
     pub fn base_size(&self) -> usize {
         use TypeKind::*;
         match self.kind {
             PTR { ref ptr_to } | ARRAY { ref ptr_to, .. } => ptr_to.total_size(),
             _ => panic!("Requesting a base size for a terminal type."),
+        }
+    }
+
+    /// Used only for arrays
+    pub fn terminal_size(&self) -> usize {
+        use TypeKind::*;
+        match self.kind {
+            ARRAY { ref ptr_to, .. } => {
+                if ptr_to.is_array() {
+                    ptr_to.terminal_size()
+                } else {
+                    ptr_to.size()
+                }
+            }
+            _ => self.size(),
         }
     }
 

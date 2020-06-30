@@ -81,6 +81,14 @@ int test_addr() {
     return *b; // Expect: 12
 }
 
+int test_zero_inits() {
+    int a[4] = { 1, 2 };
+    int b[3][3] = { { 4, 8 }, { 16, 32 } };
+    int c[2][2][2] = { { {64} } };
+
+    return a[3] | b[0][2] | b[2][0] | c[1][0][0]; // Expect 0
+}
+
 int main() {
     if (test_simple() != 1) return 1;
     if (test_simple2() != 4) return 2;
@@ -95,6 +103,7 @@ int main() {
     if (test_simple_2d_2() != 129) return 11;
     if (test_multidim() != 73) return 12;
     if (test_addr() != 12) return 13;
+    if (test_zero_inits() != 0) return 14;
 
     // Successful
     return 0;
